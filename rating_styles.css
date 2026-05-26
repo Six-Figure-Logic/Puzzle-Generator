@@ -1,0 +1,479 @@
+/* ══════════════════════════════════════════
+   FIX 6: HEADER RIGHT — How to Play + rating inline beneath it
+══════════════════════════════════════════ */
+.header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Rating on one line under the button */
+.player-rating-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.player-rating-label-inline {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.player-rating-value {
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.player-rating-rd {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
+/* Keep old .player-rating-wrap for any legacy reference */
+.player-rating-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.player-rating-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* ══════════════════════════════════════════
+   CASUAL | RATED PILL TOGGLE
+══════════════════════════════════════════ */
+.mode-pill {
+  display: inline-flex;
+  border-radius: 999px;
+  border: 1px solid var(--border-bright);
+  overflow: hidden;
+  background: var(--surface2);
+  height: 30px;
+  flex-shrink: 0;
+}
+
+.mode-pill-btn {
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 0 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  height: 100%;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.mode-pill-btn.active[data-mode="casual"] {
+  background: rgba(0, 229, 160, 0.18);
+  color: #00e5a0;
+}
+
+.mode-pill-btn.active[data-mode="rated"] {
+  background: rgba(232, 255, 71, 0.15);
+  color: var(--accent);
+}
+
+.mode-pill-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mode-pill.locked {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════
+   PENALTY TIMER (red, right of main timer)
+══════════════════════════════════════════ */
+.timer-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.penalty-time {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--danger);
+  letter-spacing: 0.10em;
+  display: none;
+}
+
+.penalty-time.visible {
+  display: inline;
+}
+
+/* ══════════════════════════════════════════
+   TOPBAR-CLUES: mode + new puzzle stacked
+══════════════════════════════════════════ */
+.topbar-clues {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.topbar-clues-row1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-clues-row2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+/* ══════════════════════════════════════════
+   RESULT POPUP OVERLAY
+══════════════════════════════════════════ */
+.result-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 12, 0.85);
+  backdrop-filter: blur(6px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.result-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.result-box {
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 440px;
+  padding: 28px 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+}
+
+/* Fix 1: title variants */
+.result-title {
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  text-align: center;
+}
+
+.result-title.casual-title {
+  color: #00e5a0;
+}
+
+/* Fix 1: "Puzzle Failed" title color */
+.result-title.failed-title {
+  color: var(--danger);
+}
+
+/* ── Fix 5: Redesigned stats grid ── */
+/* 2×2 grid: top-left=time, top-right=mistakes+penalty combined, bottom-left=puzzle rating, bottom-right=grade */
+.result-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.result-stat {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Fix 5: combined Mistakes | Penalty box */
+.result-stat-combined {
+  gap: 6px;
+}
+
+.result-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.result-stat-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+}
+
+.result-stat-value {
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+
+/* Fix 5: Letter grade box */
+.result-stat-grade {
+  align-items: center;
+  justify-content: center;
+}
+
+.result-grade-value {
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-shadow: 0 0 20px currentColor;
+}
+
+/* ── Rating change row ── */
+.result-rating-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 14px 0 4px;
+  border-top: 1px solid var(--border);
+}
+
+.result-old-rating {
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+
+.result-arrow {
+  font-size: 18px;
+  color: var(--text-muted);
+}
+
+.result-new-rating {
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  transition: color 0.3s ease;
+}
+
+.result-delta {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 5px;
+}
+
+.result-delta.positive {
+  color: #00e5a0;
+  background: rgba(0,229,160,0.15);
+  border: 1px solid rgba(0,229,160,0.35);
+}
+
+.result-delta.negative {
+  color: var(--danger);
+  background: var(--danger-dim);
+  border: 1px solid rgba(255,77,106,0.35);
+}
+
+.result-delta.neutral {
+  color: var(--text-muted);
+  background: var(--surface2);
+  border: 1px solid var(--border-bright);
+}
+
+/* ── Casual-mode result (no rating shown) ── */
+.result-casual-note {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Result close btn ── */
+.result-close-btn {
+  width: 100%;
+  padding: 11px;
+  background: var(--surface2);
+  border: 1px solid var(--border-bright);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.result-close-btn:hover {
+  background: var(--accent-dim);
+  border-color: rgba(232,255,71,0.4);
+  color: var(--accent);
+}
+
+/* ══════════════════════════════════════════
+   GIVE-UP CONFIRM POPUP
+══════════════════════════════════════════ */
+.giveup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 12, 0.80);
+  backdrop-filter: blur(4px);
+  z-index: 2001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.giveup-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.giveup-box {
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+  border-radius: 14px;
+  max-width: 380px;
+  width: 100%;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+}
+
+.giveup-title {
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--danger);
+}
+
+.giveup-msg {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #c8d0e8;
+  line-height: 1.55;
+}
+
+.giveup-btns {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.giveup-btn-yes {
+  flex: 1;
+  padding: 10px;
+  background: var(--danger-dim);
+  border: 1px solid rgba(255,77,106,0.4);
+  border-radius: 8px;
+  color: var(--danger);
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.giveup-btn-yes:hover {
+  background: rgba(255,77,106,0.22);
+}
+
+.giveup-btn-no {
+  flex: 1;
+  padding: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border-bright);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.giveup-btn-no:hover {
+  background: var(--accent-dim);
+  border-color: rgba(232,255,71,0.4);
+  color: var(--accent);
+}
+
+/* ══════════════════════════════════════════
+   MISTAKE COUNTER (small, near feedback)
+══════════════════════════════════════════ */
+.mistake-counter {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--danger);
+  letter-spacing: 0.08em;
+  display: none;
+  white-space: nowrap;
+}
+
+.mistake-counter.visible {
+  display: inline;
+}
