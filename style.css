@@ -698,8 +698,8 @@ header h1 {
   white-space: nowrap;
   
   box-sizing: border-box;
-  width: auto !important;
-  align-self: flex-end;
+  width: fit-content;
+  align-self: flex-start;
   justify-content: flex-start;
 }
 
@@ -1007,12 +1007,17 @@ header h1 {
 .header-right {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: stretch;
+   width: fit-content;
   gap: 6px;
   flex-shrink: 0;
+    position: relative;
+  z-index: 1;
 }
 
 .player-rating-inline {
+  padding-left: 0;
+  justify-content: flex-start;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1021,16 +1026,16 @@ header h1 {
 
 .player-rating-label-inline {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.2em;
-  color: var(--text-muted);
+  color: var(--accent);
   text-transform: uppercase;
 }
 
 .player-rating-value {
-  font-family: 'BankGothic', 'Oswald', sans-serif;
-  font-size: 20px;
+  font-family: var(--mono);
+  font-size: 24px;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--accent);
