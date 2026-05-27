@@ -18,26 +18,21 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="rating_styles.css" />
   <link rel="icon" type="image/png" href="favcon1.png">
 </head>
 <body>
   <div class="bg-grid"></div>
   <main class="container">
 
-    <!-- ══════════════════════════════════════
-         HEADER
-    ══════════════════════════════════════ -->
+    <!-- HEADER -->
     <header>
-      <!-- Fix 6: single row — title left, [how-to-play + rating beneath it] right -->
       <div class="header-top">
         <h1>SIX-FIGURE<span class="accent"> LOGIC</span></h1>
-        <!-- Right side: How to Play button with rating beneath it -->
         <div class="header-right">
+          <!-- Change 5: removed width:100% / justify-content:center from inline; handled in CSS -->
           <button id="howToPlayBtn" class="btn-help">
             <span class="btn-help-icon">?</span> How to Play
           </button>
-          <!-- Fix 6: rating on one line, under button, right-aligned -->
           <div class="player-rating-inline">
             <span class="player-rating-label-inline">YOUR RATING</span>
             <span class="player-rating-value" id="playerRatingValue">1000</span>
@@ -48,9 +43,7 @@
     </header>
 
 
-    <!-- ══════════════════════════════════════
-         HOW TO PLAY MODAL
-    ══════════════════════════════════════ -->
+    <!-- HOW TO PLAY MODAL -->
     <div id="tutorialModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="How to Play">
       <div class="modal-box">
         <button class="modal-close" id="modalClose" aria-label="Close">&times;</button>
@@ -115,7 +108,7 @@
             <div class="clue-row"><span class="clue-ex">A * B = N</span><span class="clue-def">A times B equals N.</span><span class="clue-note"></span></div>
             <div class="clue-group-label">COMPARISON</div>
             <div class="clue-row"><span class="clue-ex">A &gt; B</span><span class="clue-def">A is greater than B.</span><span class="clue-note"></span></div>
-            <div class="clue-row"><span class="clue-ex">A &lt; B</span><span class="clue-def">A is less than B.</span><span class="clue-note"></span></div>
+            <div class="clue-row"><span class="clue-ex">A &lt; B</span><span class="clue-ex">A &lt; B</span><span class="clue-def">A is less than B.</span><span class="clue-note"></span></div>
             <div class="clue-group-label">PARITY &amp; PRIMALITY</div>
             <div class="clue-row"><span class="clue-ex">A is even</span><span class="clue-def">A ∈ {2, 4, 6, 8, 10}.</span><span class="clue-note"></span></div>
             <div class="clue-row"><span class="clue-ex">A is odd</span><span class="clue-def">A ∈ {1, 3, 5, 7, 9}.</span><span class="clue-note"></span></div>
@@ -144,9 +137,7 @@
     </div>
 
 
-    <!-- ══════════════════════════════════════
-         BOOK SIDEBAR
-    ══════════════════════════════════════ -->
+    <!-- BOOK SIDEBAR -->
     <aside class="books-sidebar" aria-label="Purchase books">
       <div style="margin-top: 13em;"></div>
       <span class="books-label">AVAILABLE IN PRINT</span>
@@ -161,9 +152,7 @@
     </aside>
 
 
-    <!-- ══════════════════════════════════════
-         GIVE-UP CONFIRM POPUP
-    ══════════════════════════════════════ -->
+    <!-- GIVE-UP CONFIRM POPUP -->
     <div id="giveupOverlay" class="giveup-overlay" role="dialog" aria-modal="true">
       <div class="giveup-box">
         <div class="giveup-title">GIVE UP?</div>
@@ -178,9 +167,7 @@
     </div>
 
 
-    <!-- ══════════════════════════════════════
-         RESULT POPUP
-    ══════════════════════════════════════ -->
+    <!-- RESULT POPUP -->
     <div id="resultOverlay" class="result-overlay" role="dialog" aria-modal="true">
       <div class="result-box">
         <div class="result-title" id="resultTitle">✓  PUZZLE SOLVED</div>
@@ -204,21 +191,17 @@
     </div>
 
 
-    <!-- ══════════════════════════════════════
-         MAIN LAYOUT
-    ══════════════════════════════════════ -->
+    <!-- MAIN LAYOUT -->
     <div class="main-layout">
 
-      <!-- [1,1] clues topbar — mode pill + new puzzle button stacked -->
+      <!-- [1,1] clues topbar -->
       <div class="topbar topbar-clues">
-        <!-- Row 1: Casual | Rated pill -->
         <div class="topbar-clues-row1">
           <div id="modePill" class="mode-pill" role="group" aria-label="Game mode">
             <button id="modeCasualBtn" class="mode-pill-btn active" data-mode="casual">CASUAL</button>
             <button id="modeRatedBtn"  class="mode-pill-btn"        data-mode="rated">RATED</button>
           </div>
         </div>
-        <!-- Row 2: New Puzzle + Difficulty -->
         <div class="topbar-clues-row2">
           <button id="newPuzzleBtn" class="btn primary">
             <span class="btn-icon">&#x27F3;</span> New Puzzle
@@ -239,8 +222,13 @@
         </div>
       </div>
 
-      <!-- [1,2] answers topbar -->
+      <!-- [1,2] answers topbar — Change 4: mistake boxes stacked above check btn -->
       <div class="topbar topbar-answers">
+        <div class="mistake-boxes" id="mistakeBoxes">
+          <div class="mistake-box" id="mistakeBox1"></div>
+          <div class="mistake-box" id="mistakeBox2"></div>
+          <div class="mistake-box" id="mistakeBox3"></div>
+        </div>
         <button id="checkBtn" class="btn success">
           <span class="btn-icon">&#x2713;</span> Check Solution
         </button>
@@ -252,7 +240,8 @@
           <span class="btn-icon">&#x21BA;</span> Reset Grid
         </button>
         <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
-        <span id="mistakeCounter" class="mistake-counter"></span>
+        <!-- mistakeCounter kept in DOM for JS compat but hidden -->
+        <span id="mistakeCounter" class="mistake-counter" style="display:none!important"></span>
         <div class="timer-wrap">
           <div id="timer" class="timer">00:00</div>
           <span id="penaltyTime" class="penalty-time"></span>
@@ -303,7 +292,5 @@
   </main>
 
   <script src="app.js"></script>
-  <script src="rating.js"></script>
-  <script src="rating_game.js"></script>
 </body>
 </html>

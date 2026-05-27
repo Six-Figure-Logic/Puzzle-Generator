@@ -91,7 +91,6 @@ function buildGridRows() {
       // LEFT CLICK: lock this value — eliminate row + column, fill answer
       cell.addEventListener('click', (e) => {
         e.preventDefault();
-        pushHistory();
         const lockedRow = cell.dataset.row;
         const lockedVal = cell.dataset.value;
 
@@ -118,7 +117,6 @@ function buildGridRows() {
         // Assign value to the corresponding answer dropdown
         const select = document.getElementById(lockedRow);
         if (select) select.value = lockedVal;
-        checkDuplicateAnswers();
       });
 
       cell.addEventListener('keydown', (e) => {
@@ -142,67 +140,16 @@ function buildGridRows() {
   }
 }
 
-// ── Undo / Redo ──────────────────────────────────────────────────────────────
-const undoStack = [];
-const redoStack = [];
-const undoBtn = document.getElementById('undoBtn');
-const redoBtn = document.getElementById('redoBtn');
-
-function getGridSnapshot() {
-  const snap = {};
-  gridEl.querySelectorAll('.cell').forEach(c => {
-    snap[c.dataset.row + '-' + c.dataset.value] = c.classList.contains('crossed');
-  });
-  return snap;
-}
-
-function applyGridSnapshot(snap) {
-  gridEl.querySelectorAll('.cell').forEach(c => {
-    const crossed = snap[c.dataset.row + '-' + c.dataset.value] || false;
-    c.classList.toggle('crossed', crossed);
-    c.setAttribute('aria-pressed', String(crossed));
-  });
-}
-
-function pushHistory() {
-  undoStack.push(getGridSnapshot());
-  redoStack.length = 0;
-  updateUndoRedoBtns();
-}
-
-function updateUndoRedoBtns() {
-  if (undoBtn) undoBtn.disabled = undoStack.length === 0;
-  if (redoBtn) redoBtn.disabled = redoStack.length === 0;
-}
-
-if (undoBtn) undoBtn.addEventListener('click', () => {
-  if (!undoStack.length) return;
-  redoStack.push(getGridSnapshot());
-  applyGridSnapshot(undoStack.pop());
-  updateUndoRedoBtns();
-});
-
-if (redoBtn) redoBtn.addEventListener('click', () => {
-  if (!redoStack.length) return;
-  undoStack.push(getGridSnapshot());
-  applyGridSnapshot(redoStack.pop());
-  updateUndoRedoBtns();
-});
-
 function toggleCell(cell) {
-  pushHistory();
   const isCrossed = cell.classList.toggle('crossed');
   cell.setAttribute('aria-pressed', String(isCrossed));
-  updateUndoRedoBtns();
 }
 
 function resetGrid() {
-  pushHistory();
   gridEl.querySelectorAll('.cell.crossed').forEach(c => {
     c.classList.remove('crossed');
     c.setAttribute('aria-pressed','false');
   });
-  updateUndoRedoBtns();
 }
 
 // Populate selects 1..10
@@ -216,18 +163,6 @@ function populateAnswerSelects() {
       opt.textContent = String(n);
       el.appendChild(opt);
     }
-    el.addEventListener('change', checkDuplicateAnswers);
-  });
-}
-
-function checkDuplicateAnswers() {
-  const vals = inputIds.map(id => document.getElementById(id).value);
-  const counts = {};
-  vals.forEach(v => { if (v) counts[v] = (counts[v] || 0) + 1; });
-  inputIds.forEach((id, i) => {
-    const el = document.getElementById(id);
-    const isDupe = vals[i] && counts[vals[i]] > 1;
-    el.classList.toggle('answer-duplicate', isDupe);
   });
 }
 
@@ -1536,7 +1471,7 @@ case 'no product': {
     // When WED unavailable (screening), use E+C only with adjusted weights
     let rating;
     if (sol) {
-      rating = Math.round(800 + (E_norm * 0.50 + WED_norm * 0.50) * 18);
+      rating = Math.round(800 + (E_norm * 0.40 + WED_norm * 0.60) * 18);
     } else {
       const clue_w = 0.50 - (E_norm / 100) * 0.30;
       const elim_w = 1 - clue_w;
@@ -1593,38 +1528,23 @@ function difficultyFromElim(rawClues, elim) {
 
 
 function applyNewPuzzle(sol) {
-  // Normalize uppercase keys {A..F} → lowercase {a..f} for scorePuzzle/checkClue
-  if (sol && sol.A !== undefined && sol.a === undefined) {
-    sol.a = sol.A; sol.b = sol.B; sol.c = sol.C;
-    sol.d = sol.D; sol.e = sol.E; sol.f = sol.F;
-  }
-
   currentSolution = sol;
   resetGrid();
-  undoStack.length = 0;
-  redoStack.length = 0;
-  updateUndoRedoBtns();
-  inputIds.forEach(id => {
-    const el = document.getElementById(id);
-    el.value = '';
-    el.classList.remove('answer-duplicate');
-  });
+  inputIds.forEach(id => document.getElementById(id).value = '');
   feedbackEl.textContent = '';
   feedbackEl.className = 'feedback';
 
-  // Compute rating synchronously — WED runs inside generator loop now
+  // Show placeholder rating immediately so UI feels instant
   const ratingEl = document.getElementById('puzzleRating');
   if (ratingEl && sol._rawClues && sol._rawClues.length) {
-    const elim   = window._scorePuzzle(sol._rawClues, sol);
-    const rating = window._computePuzzleRating(sol._rawClues, elim, sol);
-    document.getElementById('puzzleRatingValue').textContent = '  ★ ' + rating;
-    ratingEl.className = 'puzzle-rating rating-' + window._ratingToDifficulty(rating);
+    document.getElementById('puzzleRatingValue').textContent = '  ★ …';
+    ratingEl.className = 'puzzle-rating';
     ratingEl.style.display = 'inline';
   } else if (ratingEl) {
     ratingEl.style.display = 'none';
   }
 
-  // Render clues
+  // Render clues into the page
   const cluesList = document.getElementById('cluesList');
   if (cluesList) {
     cluesList.innerHTML = '';
@@ -1643,6 +1563,69 @@ function applyNewPuzzle(sol) {
     }
   }
   startTimer();
+
+  // Defer WED/rating computation so clues display before backtracker runs.
+  // For easy puzzles this completes in <100ms; super-six expert may take ~5s.
+  // The rating star updates when done. Safe to delete debug block below.
+  if (sol._rawClues && sol._rawClues.length && ratingEl) {
+    setTimeout(() => {
+      const elim   = window._scorePuzzle(sol._rawClues, sol);
+      const rating = window._computePuzzleRating(sol._rawClues, elim, sol);
+      document.getElementById('puzzleRatingValue').textContent = `  ★ ${rating}`;
+      ratingEl.className = 'puzzle-rating rating-' + window._ratingToDifficulty(rating);
+
+      // ── DEBUG POPUP: WED breakdown ──────────────────────────────────────
+      // DELETE from here to "END DEBUG POPUP" once VBA comparison is confirmed.
+      (function showWEDDebug() {
+        const dbg = window._computePuzzleRating._lastDebug;
+        if (!dbg || !dbg.wedResult) return;
+        const { wedResult, E_norm, WED_norm, C_norm, elim: elimD, rating: ratingD } = dbg;
+        const clueList = sol._clues || [];
+
+        const varLines = wedResult.ecDetails.map(d => {
+          const nums = d.clueIndices.join(', ');
+          const texts = d.clueIndices.map(n => clueList[n-1] || 'clue ' + n).join(' | ');
+          return '  ' + d.varName + ': EC=' + d.ec
+               + '  [clue' + (d.clueIndices.length > 1 ? 's' : '') + ' ' + nums + ']'
+               + '  "' + texts + '"';
+        }).join('\n');
+
+        const msg = [
+          '=== WED DEBUG (' + clueList.length + ' clues) ===',
+          '',
+          'Clues:',
+          ...clueList.map((s, i) => '  #' + (i+1) + ': ' + s),
+          '',
+          'Per-variable Entry Costs (EC):',
+          varLines,
+          '',
+          'WED_raw = ' + wedResult.WED_raw.toFixed(2),
+          'WED_norm = ' + WED_norm.toFixed(1),
+          '',
+          'E_norm  = ' + E_norm.toFixed(1) + '  (elim=' + elimD + ')',
+          'C_norm  = ' + C_norm.toFixed(1),
+          '',
+          'Rating = ' + ratingD
+        ].join('\n');
+
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        const box = document.createElement('div');
+        box.style.cssText = 'background:#1a1a2e;color:#e8ff47;font-family:monospace;font-size:12px;padding:24px;border-radius:8px;max-width:680px;max-height:80vh;overflow:auto;white-space:pre;border:1px solid #e8ff47;';
+        box.textContent = msg;
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = 'Close';
+        closeBtn.style.cssText = 'display:block;margin-top:16px;padding:6px 20px;background:#e8ff47;color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:bold;';
+        closeBtn.onclick = () => document.body.removeChild(overlay);
+        box.appendChild(closeBtn);
+        overlay.appendChild(box);
+        overlay.onclick = (e) => { if (e.target === overlay) document.body.removeChild(overlay); };
+        document.body.appendChild(overlay);
+      })();
+      // ── END DEBUG POPUP ─────────────────────────────────────────────────
+
+    }, 50);
+  }
 }
 
 
@@ -1679,7 +1662,7 @@ function checkAnswers() {
   const values = inputIds.map(id => user[id]);
   const unique = new Set(values);
   if (unique.size < values.length) {
-    feedbackEl.textContent = '✗ Duplicate values not allowed.';
+    feedbackEl.textContent = '✗ Each letter must have a different value.';
     feedbackEl.className = 'feedback incorrect';
     resetClueColors();
     return;
@@ -1736,9 +1719,6 @@ newPuzzleBtn.addEventListener('click', () => {
   if (cluesList) {
     cluesList.innerHTML = '<li class="clue-placeholder">Generating…</li>';
   }
-  undoStack.length = 0;
-  redoStack.length = 0;
-  updateUndoRedoBtns();
   resetClueColors();
   feedbackEl.textContent = '';
   feedbackEl.className = 'feedback';
@@ -1761,9 +1741,8 @@ newPuzzleBtn.addEventListener('click', () => {
       try {
         const candidate = gen();
         if (!candidate || !candidate._rawClues) continue;
-        const elim   = window._scorePuzzle(candidate._rawClues, candidate);
-        const rating = window._computePuzzleRating(candidate._rawClues, elim, candidate);
-        const label  = window._ratingToDifficulty(rating);
+        const elim  = window._scorePuzzle(candidate._rawClues, candidate);
+        const label = window._difficultyFromElim(candidate._rawClues, elim);
         if (label === selectedDifficulty) { sol = candidate; break; }
       } catch(err) {
         alert('Error: ' + err.message);
@@ -1782,17 +1761,9 @@ newPuzzleBtn.addEventListener('click', () => {
   }
 
   function finish() {
-    // Only restore "New Puzzle" text if lockGame hasn't taken over the button.
-    // When a puzzle loaded successfully, lockGame() already set the button to
-    // "Give Up?" — restoring originalText here would clobber that.
-    if (!window._sfgame || !window._sfgame.gameActive) {
-      newPuzzleBtn.innerHTML = originalText;
-      newPuzzleBtn.disabled = false;
-    } else {
-      // Game is active — just re-enable the button (lockGame already set its text)
-      newPuzzleBtn.disabled = false;
+    newPuzzleBtn.innerHTML = originalText;
+    newPuzzleBtn.disabled = false;
     }
-  }
 
   // One rAF to let the browser paint the disabled+pulsing state before we start
   requestAnimationFrame(() => setTimeout(runChunk, 0));
@@ -1869,617 +1840,3 @@ function attachClueTooltip(li, rawClue) {
 // Init
 buildGridRows();
 populateAnswerSelects();
-
-// ══════════════════════════════════════════
-// Six-Figure Logic Glicko-2 rating system
-// ══════════════════════════════════════════
-
-(function () {
-  'use strict';
-
-  // ─── Constants ───────────────────────────────────────────────────────────
-  const STORAGE_KEY   = 'sfl_rating_v1';
-  const TAU           = 0.5;          // Glicko-2 system constant (volatility constraint)
-  const INIT_RATING   = 1000;
-  const INIT_RD       = 350;
-  const INIT_VOL      = 0.06;
-  const MIN_RD        = 50;
-  const MAX_RD        = 350;
-  const RD_DECAY_PER_DAY = 3;        // RD added per 24h inactivity
-  const MS_PER_DAY    = 86400000;
-
-  // ─── Storage helpers ─────────────────────────────────────────────────────
-  function loadProfile() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch(e) {}
-    return {
-      rating:    INIT_RATING,
-      rd:        INIT_RD,
-      vol:       INIT_VOL,
-      lastPlayed: null,
-      gamesPlayed: 0
-    };
-  }
-
-  function saveProfile(p) {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch(e) {}
-  }
-
-  // Apply RD drift for inactivity (cap at MAX_RD)
-  function applyRdDrift(p) {
-    if (!p.lastPlayed) return p;
-    const daysSince = (Date.now() - p.lastPlayed) / MS_PER_DAY;
-    if (daysSince < 1) return p;
-    const drift = Math.floor(daysSince) * RD_DECAY_PER_DAY;
-    p.rd = Math.min(MAX_RD, p.rd + drift);
-    return p;
-  }
-
-  // ─── Expected time formula ────────────────────────────────────────────────
-  // Equal-rating baseline (player = puzzle):
-  //   ≤2000: base = 180 + (puzzleRating - 800) × 0.15  seconds
-  //   >2000: base = 360 + (puzzleRating - 2000) × 1.8  seconds
-  // Then scaled by (puzzleRating / playerRating):
-  //   expectedTime = base × (puzzleRating / playerRating)
-  function expectedBase(puzzleRating) {
-    if (puzzleRating <= 2000) {
-      return 180 + (puzzleRating - 800) * 0.15;
-    } else {
-      return 360 + (puzzleRating - 2000) * 1.8;
-    }
-  }
-
-  function expectedTime(puzzleRating, playerRating) {
-    const base = expectedBase(puzzleRating);
-    return base * (puzzleRating / playerRating);
-  }
-
-  // Penalty seconds per mistake (20% of equal-rating base time)
-  function penaltyPerMistake(puzzleRating) {
-    return Math.round(expectedBase(puzzleRating) * 0.20);
-  }
-
-  // ─── S (performance score) calculation ───────────────────────────────────
-  // S = clamp(0.5 - 0.35 × ln(effectiveTime / expectedTime), 0.05, 1.25)
-  // Give up / 3 mistakes before solve → S = 0 (hard loss)
-  function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
-    const penalty   = penaltyPerMistake(puzzleRating);
-    const effective = solveSeconds + mistakes * penalty;
-    const expected  = expectedTime(puzzleRating, playerRating);
-    const ratio     = effective / expected;
-    const raw       = 0.5 - 0.35 * Math.log(ratio);
-    return Math.max(0.05, Math.min(1.25, raw));
-  }
-
-  // ─── Glicko-2 update ─────────────────────────────────────────────────────
-  // Uses continuous S in place of binary outcome.
-  // puzzle is treated as the "opponent" with its own rating.
-  // PUZZLE_RD raised to 350 so upsets against much-harder puzzles
-  // yield appropriately large rating swings.
-  const PUZZLE_RD = 350;
-
-  function glicko2Update(profile, puzzleRating, S) {
-    const mu    = (profile.rating - 1500) / 173.7178;
-    const phi   = profile.rd / 173.7178;
-    const sigma = profile.vol;
-
-    const mu_j  = (puzzleRating - 1500) / 173.7178;
-    const phi_j = PUZZLE_RD / 173.7178;
-
-    function g(phi) {
-      return 1 / Math.sqrt(1 + 3 * phi * phi / (Math.PI * Math.PI));
-    }
-    function E(mu, mu_j, phi_j) {
-      return 1 / (1 + Math.exp(-g(phi_j) * (mu - mu_j)));
-    }
-
-    const g_j = g(phi_j);
-    const E_j = E(mu, mu_j, phi_j);
-
-    // Step 3: v (estimated variance)
-    const v = 1 / (g_j * g_j * E_j * (1 - E_j));
-
-    // Step 4: delta
-    const delta = v * g_j * (S - E_j);
-
-    // Step 5: new volatility via Illinois algorithm
-    const a = Math.log(sigma * sigma);
-    const eps = 0.000001;
-    function f(x) {
-      const ex = Math.exp(x);
-      const d2 = phi * phi + v + ex;
-      return (ex * (delta * delta - phi * phi - v - ex)) / (2 * d2 * d2)
-           - (x - a) / (TAU * TAU);
-    }
-    let A = a;
-    let B;
-    if (delta * delta > phi * phi + v) {
-      B = Math.log(delta * delta - phi * phi - v);
-    } else {
-      let k = 1;
-      while (f(a - k * TAU) < 0) k++;
-      B = a - k * TAU;
-    }
-    let fA = f(A), fB = f(B);
-    for (let i = 0; i < 100 && Math.abs(B - A) > eps; i++) {
-      const C  = A + (A - B) * fA / (fB - fA);
-      const fC = f(C);
-      if (fC * fB < 0) { A = B; fA = fB; }
-      else             { fA /= 2; }
-      B = C; fB = fC;
-    }
-    const newSigma = Math.exp(A / 2);
-
-    // Step 6: pre-rating update RD
-    const phiStar = Math.sqrt(phi * phi + newSigma * newSigma);
-
-    // Step 7: new RD and rating
-    const newPhi = 1 / Math.sqrt(1 / (phiStar * phiStar) + 1 / v);
-    const newMu  = mu + newPhi * newPhi * g_j * (S - E_j);
-
-    const newRating = Math.round(173.7178 * newMu + 1500);
-    const newRd     = Math.max(MIN_RD, Math.min(MAX_RD, Math.round(173.7178 * newPhi)));
-
-    return { newRating, newRd, newVol: newSigma, expectedS: E_j, v, delta };
-  }
-
-  // ─── Public API ──────────────────────────────────────────────────────────
-  window.SFLRating = {
-
-    getProfile() {
-      const p = loadProfile();
-      applyRdDrift(p);
-      return p;
-    },
-
-    getRatingDisplay() {
-      const p = this.getProfile();
-      return Math.round(p.rating);
-    },
-
-    expectedTime,
-    penaltyPerMistake,
-    computeS,
-
-    // Call this when a puzzle is completed (or given up)
-    // Returns { oldRating, newRating, oldRd, newRd, ratingDelta, S, expectedS }
-    recordResult(solveSeconds, mistakes, puzzleRating, gaveUp) {
-      let p = loadProfile();
-      applyRdDrift(p);
-
-      const S = gaveUp ? 0 : computeS(solveSeconds, mistakes, puzzleRating, p.rating);
-      const result = glicko2Update(p, puzzleRating, S);
-
-      const oldRating = Math.round(p.rating);
-      const oldRd     = Math.round(p.rd);
-
-      p.rating     = result.newRating;
-      p.rd         = result.newRd;
-      p.vol        = result.newVol;
-      p.lastPlayed = Date.now();
-      p.gamesPlayed++;
-
-      saveProfile(p);
-
-      return {
-        oldRating,
-        newRating: result.newRating,
-        oldRd,
-        newRd:     result.newRd,
-        ratingDelta: result.newRating - oldRating,
-        S:         Math.round(S * 100) / 100,
-        expectedS: Math.round(result.expectedS * 100) / 100,
-        penalty:   penaltyPerMistake(puzzleRating) * mistakes,
-        gamesPlayed: p.gamesPlayed
-      };
-    }
-  };
-
-})();
-
-// ══════════════════════════════════════════
-// Game state + rating integration for Six-Figure Logic
-// ══════════════════════════════════════════
-
-(function () {
-  'use strict';
-
-  // ─── Game state ───────────────────────────────────────────────────────────
-  let gameActive   = false;   // puzzle is in progress
-  let gameMode     = 'casual'; // 'casual' | 'rated'
-  let mistakeCount = 0;
-  let penaltySecs  = 0;       // cumulative penalty seconds (display only)
-  let puzzlePenaltyPerMistake = 0; // computed when puzzle starts
-  let puzzleWasGivenUp = false; // track if current end was a give-up
-
-  // ─── DOM refs ─────────────────────────────────────────────────────────────
-  const newPuzzleBtn   = document.getElementById('newPuzzleBtn');
-  const modePill       = document.getElementById('modePill');
-  const modeCasualBtn  = document.getElementById('modeCasualBtn');
-  const modeRatedBtn   = document.getElementById('modeRatedBtn');
-  const penaltyEl      = document.getElementById('penaltyTime');
-  const mistakeEl      = document.getElementById('mistakeCounter'); // kept for compat but hidden
-  const ratingDisplayEl = document.getElementById('playerRatingValue');
-  const ratingRdEl     = document.getElementById('playerRatingRd');
-  const resultOverlay  = document.getElementById('resultOverlay');
-  const giveupOverlay  = document.getElementById('giveupOverlay');
-
-  // ─── Rating display ───────────────────────────────────────────────────────
-  function refreshRatingDisplay() {
-    const p = window.SFLRating.getProfile();
-    if (ratingDisplayEl) ratingDisplayEl.textContent = Math.round(p.rating);
-    if (ratingRdEl)      ratingRdEl.textContent = '± ' + Math.round(p.rd);
-  }
-  refreshRatingDisplay();
-
-  // ─── Mode pill ────────────────────────────────────────────────────────────
-  function setMode(mode) {
-    gameMode = mode;
-    modeCasualBtn.classList.toggle('active', mode === 'casual');
-    modeRatedBtn.classList.toggle('active',  mode === 'rated');
-  }
-  setMode('casual');
-
-  modeCasualBtn.addEventListener('click', () => { if (!gameActive) setMode('casual'); });
-  modeRatedBtn.addEventListener('click',  () => { if (!gameActive) setMode('rated'); });
-
-  // ─── Penalty helpers ──────────────────────────────────────────────────────
-  function formatMMSS(secs) {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return m + ':' + String(s).padStart(2, '0');
-  }
-
-  // ─── Mistake boxes (change 4) ─────────────────────────────────────────────
-  function updateMistakeBoxes(count) {
-    for (let i = 1; i <= 3; i++) {
-      const box = document.getElementById('mistakeBox' + i);
-      if (!box) continue;
-      if (i <= count) {
-        box.classList.add('active');
-        box.textContent = '✗';
-      } else {
-        box.classList.remove('active');
-        box.textContent = '';
-      }
-    }
-  }
-
-  function resetMistakeBoxes() {
-    updateMistakeBoxes(0);
-  }
-
-  function addMistake() {
-    mistakeCount++;
-    penaltySecs += puzzlePenaltyPerMistake;
-
-    // Update penalty display
-    penaltyEl.textContent = '+' + formatMMSS(penaltySecs);
-    penaltyEl.classList.add('visible');
-
-    // Update mistake boxes
-    updateMistakeBoxes(mistakeCount);
-
-    if (mistakeCount >= 3) {
-      // Auto-forfeit — show result popup as failed
-      puzzleWasGivenUp = true;
-      const solveTime = getCurrentTimerSeconds();
-      stopTimer(); // hook won't fire because puzzleWasGivenUp=true
-
-      _lastGiveUpRatingResult = null;
-      if (gameMode === 'rated' && window.currentSolution) {
-        const puzzleRating = (window.currentSolution && window.currentSolution._rating) || 1000;
-        _lastGiveUpRatingResult = window.SFLRating.recordResult(solveTime, mistakeCount, puzzleRating, true);
-        refreshRatingDisplay();
-      }
-
-      // Show popup for rated; casual gets popup too on auto-forfeit (3 mistakes)
-      showResultPopup(solveTime, true);
-      unlockGame();
-    }
-  }
-
-  // ─── Lock / unlock game state ─────────────────────────────────────────────
-  function lockGame(puzzleRating) {
-    gameActive = true;
-    puzzleWasGivenUp = false;
-    mistakeCount = 0;
-    penaltySecs  = 0;
-    puzzlePenaltyPerMistake = window.SFLRating.penaltyPerMistake(puzzleRating);
-
-    // Lock mode pill
-    modePill.classList.add('locked');
-    modeCasualBtn.disabled = true;
-    modeRatedBtn.disabled  = true;
-
-    // Change 1: Button becomes "Give Up?" — keep yellow (.primary) styling
-    newPuzzleBtn.innerHTML = '<span class="btn-icon">✗</span> Give Up?';
-    newPuzzleBtn.classList.remove('give-up-active');
-    // Keep .primary class so it stays yellow
-
-    // Reset penalty display
-    penaltyEl.textContent = '';
-    penaltyEl.classList.remove('visible');
-
-    // Reset mistake boxes
-    resetMistakeBoxes();
-  }
-
-  function unlockGame() {
-    gameActive = false;
-    modePill.classList.remove('locked');
-    modeCasualBtn.disabled = false;
-    modeRatedBtn.disabled  = false;
-    // Restore button text
-    newPuzzleBtn.innerHTML = '<span class="btn-icon">&#x27F3;</span> New Puzzle';
-    newPuzzleBtn.classList.remove('give-up-active');
-    penaltyEl.classList.remove('visible');
-
-    // Reset mistake boxes
-    resetMistakeBoxes();
-  }
-
-  // ─── Give up logic ────────────────────────────────────────────────────────
-  let _lastGiveUpRatingResult = null; // stash rating result for popup display
-
-  function doGiveUp() {
-    puzzleWasGivenUp = true;
-    const solveTime = getCurrentTimerSeconds();
-    stopTimer();
-
-    _lastGiveUpRatingResult = null;
-    if (gameMode === 'rated' && window.currentSolution) {
-      const puzzleRating = (window.currentSolution && window.currentSolution._rating) || 1000;
-      _lastGiveUpRatingResult = window.SFLRating.recordResult(solveTime, mistakeCount, puzzleRating, true);
-      refreshRatingDisplay();
-    }
-
-    // Change 3: Casual give up → no popup at all; rated give up → show popup
-    if (gameMode === 'rated') {
-      showResultPopup(solveTime, true);
-    }
-    unlockGame();
-  }
-
-  function showGiveUpConfirm() {
-    giveupOverlay.classList.add('open');
-  }
-
-  function hideGiveUpConfirm() {
-    giveupOverlay.classList.remove('open');
-  }
-
-  document.getElementById('giveupYes').addEventListener('click', () => {
-    hideGiveUpConfirm();
-    doGiveUp();
-  });
-
-  document.getElementById('giveupNo').addEventListener('click', () => {
-    hideGiveUpConfirm();
-  });
-
-  // ─── Intercept New Puzzle button ──────────────────────────────────────────
-  newPuzzleBtn.addEventListener('click', function (e) {
-    if (!gameActive) return; // let app.js generate normally
-
-    // Puzzle is active — this is "Give Up?"
-    e.stopImmediatePropagation();
-
-    showGiveUpConfirm();
-  }, true); // capture phase
-
-  // ─── Hook applyNewPuzzle to lock the game ────────────────────────────────
-  const _originalApply = window.applyNewPuzzle;
-  window.applyNewPuzzle = function (sol) {
-    if (sol) {
-      if (sol.A !== undefined && sol.a === undefined) {
-        sol.a = sol.A; sol.b = sol.B; sol.c = sol.C;
-        sol.d = sol.D; sol.e = sol.E; sol.f = sol.F;
-      }
-    }
-    _originalApply(sol);
-    window.currentSolution = sol;
-    if (sol && sol._rawClues && sol._rawClues.length) {
-      const elim   = window._scorePuzzle(sol._rawClues, sol);
-      const rating = window._computePuzzleRating(sol._rawClues, elim, sol);
-      sol._rating = rating;
-    }
-    lockGame(sol._rating || 1000);
-  };
-
-  // ─── Get current timer value in seconds ──────────────────────────────────
-  function getCurrentTimerSeconds() {
-    const timerEl = document.getElementById('timer');
-    if (!timerEl) return 0;
-    const text = timerEl.textContent || '00:00';
-    const parts = text.split(':');
-    return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-  }
-
-  // ─── Hook stopTimer from app.js ───────────────────────────────────────────
-  const _originalStopTimer = window.stopTimer;
-  window.stopTimer = function () {
-    if (typeof _originalStopTimer === 'function') _originalStopTimer();
-    // Only fire result popup if game was active and it was a genuine solve (not give-up)
-    if (gameActive && !puzzleWasGivenUp) {
-      const solveTime = getCurrentTimerSeconds();
-      showResultPopup(solveTime, false);
-      unlockGame();
-    }
-  };
-
-  // ─── Hook checkAnswers to count mistakes ─────────────────────────────────
-  const checkBtn = document.getElementById('checkBtn');
-  checkBtn.addEventListener('click', function () {
-    setTimeout(() => {
-      if (!gameActive) return;
-      const fb = document.getElementById('feedback');
-      if (!fb) return;
-      if (fb.classList.contains('incorrect') &&
-          fb.textContent.includes('clues')) {
-        addMistake();
-      }
-    }, 0);
-  });
-
-  // ─── Letter grade from performance ───────────────────────────────────────
-  function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, gaveUp) {
-    if (gaveUp) return 'F';
-    const S = window.SFLRating.computeS(solveSeconds, mistakes, puzzleRating, playerRating);
-    if (S >= 0.95) return 'A+';
-    if (S >= 0.88) return 'A';
-    if (S >= 0.82) return 'A−';
-    if (S >= 0.75) return 'B+';
-    if (S >= 0.68) return 'B';
-    if (S >= 0.62) return 'B−';
-    if (S >= 0.55) return 'C+';
-    if (S >= 0.48) return 'C';
-    if (S >= 0.42) return 'C−';
-    if (S >= 0.35) return 'D+';
-    if (S >= 0.28) return 'D';
-    return 'D−';
-  }
-
-  function gradeColor(grade) {
-    if (grade === 'F')  return 'var(--danger)';
-    if (grade.startsWith('A')) return 'var(--success)';
-    if (grade.startsWith('B')) return '#7ecfff';
-    if (grade.startsWith('C')) return 'var(--accent)';
-    return '#ffa032';
-  }
-
-  function difficultyColor(rating) {
-    if (rating <= 1000) return '#00e5a0';
-    if (rating <= 1300) return 'var(--accent)';
-    if (rating <= 1650) return '#ffa032';
-    return 'var(--danger)';
-  }
-
-  function difficultyLabel(rating) {
-    if (rating <= 1000) return 'EASY';
-    if (rating <= 1300) return 'MEDIUM';
-    if (rating <= 1650) return 'HARD';
-    return 'EXPERT';
-  }
-
-  // ─── Result popup ─────────────────────────────────────────────────────────
-  function showResultPopup(solveTime, gaveUp) {
-    const puzzleRating = (window.currentSolution && window.currentSolution._rating) || 1000;
-    const isRated = gameMode === 'rated';
-    const title   = document.getElementById('resultTitle');
-    const statsEl = document.getElementById('resultStats');
-    const ratingRowEl = document.getElementById('resultRatingRow');
-    const casualNoteEl = document.getElementById('resultCasualNote');
-
-    if (gaveUp) {
-      title.textContent = '✗  PUZZLE FAILED';
-      title.className   = 'result-title failed-title';
-    } else {
-      title.textContent = '✓  PUZZLE SOLVED';
-      title.className   = 'result-title' + (isRated ? '' : ' casual-title');
-    }
-
-    const p = window.SFLRating.getProfile();
-    const grade = computeLetterGrade(solveTime, mistakeCount, puzzleRating, p.rating, gaveUp);
-    const gc = gradeColor(grade);
-    const dc = difficultyColor(puzzleRating);
-
-    const mistakesDisplay = mistakeCount > 0 ? mistakeCount : 'None';
-    const mistakesColor = mistakeCount > 0 ? 'var(--danger)' : 'var(--success)';
-    const penaltyDisplay = penaltySecs > 0 ? '+' + formatMMSS(penaltySecs) : 'None';
-    const penaltyColor = penaltySecs > 0 ? 'var(--danger)' : 'var(--success)';
-
-    // Change 2: show "N/A" for solve time when gave up
-    const solveTimeDisplay = gaveUp ? 'N/A' : formatMMSS(solveTime);
-
-    statsEl.innerHTML = `
-      <div class="result-stat">
-        <span class="result-stat-label">SOLVE TIME</span>
-        <span class="result-stat-value">${solveTimeDisplay}</span>
-      </div>
-      <div class="result-stat result-stat-combined">
-        <div class="result-stat-row">
-          <span class="result-stat-label">MISTAKES</span>
-          <span class="result-stat-label">PENALTY</span>
-        </div>
-        <div class="result-stat-row">
-          <span class="result-stat-value" style="color:${mistakesColor}">${mistakesDisplay}</span>
-          <span class="result-stat-value" style="color:${penaltyColor}">${penaltyDisplay}</span>
-        </div>
-      </div>
-      <div class="result-stat">
-        <span class="result-stat-label">PUZZLE RATING</span>
-        <span class="result-stat-value" style="color:${dc}">${puzzleRating}</span>
-      </div>
-      <div class="result-stat result-stat-grade">
-        <span class="result-stat-label">PERFORMANCE</span>
-        <span class="result-grade-value" style="color:${gc}">${grade}</span>
-      </div>
-    `;
-
-    if (isRated) {
-      let result;
-      if (!gaveUp) {
-        result = window.SFLRating.recordResult(solveTime, mistakeCount, puzzleRating, false);
-      } else {
-        result = _lastGiveUpRatingResult || { oldRating: '?', newRating: '?', ratingDelta: 0 };
-      }
-
-      const deltaSign  = result.ratingDelta >= 0 ? '+' : '';
-      const deltaClass = result.ratingDelta > 0 ? 'positive' : result.ratingDelta < 0 ? 'negative' : 'neutral';
-
-      ratingRowEl.style.display = 'flex';
-      ratingRowEl.innerHTML = `
-        <span class="result-old-rating">${result.oldRating}</span>
-        <span class="result-arrow">→</span>
-        <span class="result-new-rating" id="animNewRating">${result.oldRating}</span>
-        <span class="result-delta ${deltaClass}">${deltaSign}${result.ratingDelta}</span>
-      `;
-      casualNoteEl.style.display = 'none';
-
-      // Animate for both solve and give-up; also refresh header rating now
-      refreshRatingDisplay();
-      animateRating(result.oldRating, result.newRating, 1800);
-    } else {
-      ratingRowEl.style.display = 'none';
-      casualNoteEl.style.display = 'block';
-      casualNoteEl.textContent   = gaveUp ? 'Casual mode — no rating change' : 'Casual mode — rating unaffected';
-    }
-
-    resultOverlay.classList.add('open');
-  }
-
-  function animateRating(from, to, durationMs) {
-    const el = document.getElementById('animNewRating');
-    if (!el) return;
-    const start = performance.now();
-    const diff  = to - from;
-    function step(now) {
-      const t = Math.min(1, (now - start) / durationMs);
-      const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-      el.textContent = Math.round(from + diff * eased);
-      if (t < 1) requestAnimationFrame(step);
-      else el.textContent = to;
-    }
-    requestAnimationFrame(step);
-  }
-
-  // Close result popup
-  document.getElementById('resultCloseBtn').addEventListener('click', () => {
-    resultOverlay.classList.remove('open');
-  });
-  resultOverlay.addEventListener('click', (e) => {
-    if (e.target === resultOverlay) resultOverlay.classList.remove('open');
-  });
-
-  // Expose for external access if needed
-  window._sfgame = {
-    refreshRatingDisplay,
-    get gameActive() { return gameActive; }
-  };
-
-})();
-
-
