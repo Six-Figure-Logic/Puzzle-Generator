@@ -162,6 +162,10 @@ header h1 {
   letter-spacing: 0.01em;
   transition: all 0.15s ease;
   white-space: nowrap;
+
+    display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-icon { font-size: 15px; line-height: 1; }
@@ -172,6 +176,8 @@ header h1 {
   color: #0d0f14;
   font-size: 16px;
   border-color: var(--accent);
+
+
 }
 .btn.primary:hover {
   background: #f5ff7a;
