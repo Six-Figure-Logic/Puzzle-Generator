@@ -1944,21 +1944,30 @@ populateAnswerSelects();
   // ─── S (performance score) calculation ───────────────────────────────────
   // S = clamp(0.5 - 0.35 × ln(effectiveTime / expectedTime), 0.05, 1.25)
   // Give up / 3 mistakes before solve → S = 0 (hard loss)
-  function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
-    const penalty   = penaltyPerMistake(puzzleRating);
-    const effective = solveSeconds + mistakes * penalty;
-    const expected  = expectedTime(puzzleRating, playerRating);
-    const ratio     = effective / expected;
-    const raw       = 0.5 - 0.35 * Math.log(ratio);
-    return Math.max(0.05, Math.min(1.25, raw));
+function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
+    const penalty    = penaltyPerMistake(puzzleRating);
+    const effective  = solveSeconds + mistakes * penalty;
+    const expected   = expectedTime(puzzleRating, playerRating);
+    const ratio      = effective / expected;
+    const time_score = Math.max(0.05, Math.min(1.25, 0.5 - 0.491 * Math.log(ratio)));
+
+    // Remap so "solved in expected time" is always neutral (zero rating change),
+    // regardless of the rating gap between player and puzzle.
+    const mu    = (playerRating - 1500) / 173.7178;
+    const mu_j  = (puzzleRating - 1500) / 173.7178;
+    const phi_j = 350 / 173.7178;
+    function g(p) { return 1 / Math.sqrt(1 + 3 * p * p / (Math.PI * Math.PI)); }
+    const E_j = 1 / (1 + Math.exp(-g(phi_j) * (mu - mu_j)));
+
+    return Math.max(0.0, Math.min(1.25, E_j + (time_score - 0.5)));
   }
 
   // ─── Glicko-2 update ─────────────────────────────────────────────────────
   // Uses continuous S in place of binary outcome.
   // puzzle is treated as the "opponent" with its own rating.
-  // PUZZLE_RD raised to 350 so upsets against much-harder puzzles
+  // PUZZLE_RD raised to 200 so upsets against much-harder puzzles
   // yield appropriately large rating swings.
-  const PUZZLE_RD = 350;
+  const PUZZLE_RD = 200;
 
   function glicko2Update(profile, puzzleRating, S) {
     const mu    = (profile.rating - 1500) / 173.7178;
@@ -2325,20 +2334,26 @@ populateAnswerSelects();
   });
 
   // ─── Letter grade from performance ───────────────────────────────────────
-  function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, gaveUp) {
+function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, gaveUp) {
     if (gaveUp) return 'F';
-    const S = window.SFLRating.computeS(solveSeconds, mistakes, puzzleRating, playerRating);
-    if (S >= 0.95) return 'A+';
-    if (S >= 0.88) return 'A';
-    if (S >= 0.82) return 'A−';
-    if (S >= 0.75) return 'B+';
-    if (S >= 0.68) return 'B';
-    if (S >= 0.62) return 'B−';
-    if (S >= 0.55) return 'C+';
-    if (S >= 0.48) return 'C';
-    if (S >= 0.42) return 'C−';
-    if (S >= 0.35) return 'D+';
-    if (S >= 0.28) return 'D';
+    // Grade is based purely on time performance, independent of rating gap.
+    // E_j remapping is only for Glicko rating changes, not for grading.
+    const penalty   = window.SFLRating.penaltyPerMistake(puzzleRating);
+    const effective = solveSeconds + mistakes * penalty;
+    const expected  = window.SFLRating.expectedTime(puzzleRating, playerRating);
+    const ratio     = effective / expected;
+    const time_score = Math.max(0.05, Math.min(1.25, 0.5 - 0.491 * Math.log(ratio)));
+    if (time_score >= 0.95) return 'A+';
+    if (time_score >= 0.87) return 'A';
+    if (time_score >= 0.80) return 'A−';
+    if (time_score >= 0.72) return 'B+';
+    if (time_score >= 0.64) return 'B';
+    if (time_score >= 0.49) return 'B−';
+    if (time_score >= 0.42) return 'C+';
+    if (time_score >= 0.35) return 'C';
+    if (time_score >= 0.28) return 'C−';
+    if (time_score >= 0.21) return 'D+';
+    if (time_score >= 0.14) return 'D';
     return 'D−';
   }
 
