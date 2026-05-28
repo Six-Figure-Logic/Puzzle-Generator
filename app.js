@@ -1502,7 +1502,7 @@ case 'no product': {
   //   C_norm  (avg clue complexity)  weight 0.15
   //
   //   Rating = round(800 + (E*0.30 + WED*0.55 + C*0.15) * 15.5)
-  //   Bands: Easy 800-1000 | Medium 1001-1300 | Hard 1301-1650 | Expert 1651+
+  //   Bands: Easy 800-1000 | Medium 1001-1300 | Hard 1301-1700 | Expert 1701+
   //
   //   NOTE: computePuzzleRating takes optional sol argument for WED.
   //   During generation screening (sol unknown) WED is skipped; only
@@ -1552,7 +1552,7 @@ case 'no product': {
   function ratingToDifficulty(rating) {
     if (rating <= 1000) return 'easy';
     if (rating <= 1300) return 'medium';
-    if (rating <= 1650) return 'hard';
+    if (rating <= 1700) return 'hard';
     return 'expert';
   }
 
@@ -1563,7 +1563,7 @@ case 'no product': {
   //   elim ≥ 50  → E_norm ≥ ~87 → even all-easy clues (C_norm≈0) gives
   //                rating ≥ 800+(87×0.826)×15.5 ≈ 1910 → always Expert
   //   elim ≤  6  → E_norm = 0 → max rating = 800+(100×0.50)×15.5 = 1575
-  //                → can never be Expert (needs 1651+)
+  //                → can never be Expert (needs 1701+)
   //   elim ≤ 12  → E_norm ≤ ~13 → max rating ≈ 800+(13×0.874+100×0.469)×15.5
   //                ≈ 1300 → can never be Hard or Expert
 
@@ -2195,7 +2195,7 @@ populateAnswerSelects();
     modeRatedBtn.disabled  = true;
 
     // Change 1: Button becomes "Give Up?" — keep yellow (.primary) styling
-    newPuzzleBtn.innerHTML = '<span class="btn-icon">✗</span> Give Up?';
+    newPuzzleBtn.innerHTML = '<span class="btn-icon"></span>Give Up?';
     newPuzzleBtn.classList.remove('give-up-active');
     // Keep .primary class so it stays yellow
 
@@ -2353,14 +2353,14 @@ populateAnswerSelects();
   function difficultyColor(rating) {
     if (rating <= 1000) return '#00e5a0';
     if (rating <= 1300) return 'var(--accent)';
-    if (rating <= 1650) return '#ffa032';
+    if (rating <= 1700) return '#ffa032';
     return 'var(--danger)';
   }
 
   function difficultyLabel(rating) {
     if (rating <= 1000) return 'EASY';
     if (rating <= 1300) return 'MEDIUM';
-    if (rating <= 1650) return 'HARD';
+    if (rating <= 1700) return 'HARD';
     return 'EXPERT';
   }
 
@@ -2386,16 +2386,20 @@ populateAnswerSelects();
     const gc = gradeColor(grade);
     const dc = difficultyColor(puzzleRating);
 
-    const mistakesDisplay = mistakeCount > 0 ? mistakeCount : 'None';
+    const mistakesDisplay = mistakeCount > 0 ? '\u2009'.repeat(4) + mistakeCount : '\u2009'.repeat(2) + '—';
     const mistakesColor = mistakeCount > 0 ? 'var(--danger)' : 'var(--success)';
-    const penaltyDisplay = penaltySecs > 0 ? '+' + formatMMSS(penaltySecs) : 'None';
+    const penaltyDisplay = penaltySecs > 0 ? '+' + formatMMSS(penaltySecs) : '—'+'\u2009'.repeat(2);
     const penaltyColor = penaltySecs > 0 ? 'var(--danger)' : 'var(--success)';
 
     // Change 2: show "N/A" for solve time when gave up
     const solveTimeDisplay = gaveUp ? 'N/A' : formatMMSS(solveTime);
 
     statsEl.innerHTML = `
-      <div class="result-stat">
+    <div class="result-stat result-stat-grade">
+        <span class="result-stat-label">PUZZLE RATING</span>
+        <span class="result-stat-value" style="color:${dc}">${puzzleRating}</span>
+      </div>
+      <div class="result-stat result-stat-grade">
         <span class="result-stat-label">SOLVE TIME</span>
         <span class="result-stat-value">${solveTimeDisplay}</span>
       </div>
@@ -2409,10 +2413,7 @@ populateAnswerSelects();
           <span class="result-stat-value" style="color:${penaltyColor}">${penaltyDisplay}</span>
         </div>
       </div>
-      <div class="result-stat">
-        <span class="result-stat-label">PUZZLE RATING</span>
-        <span class="result-stat-value" style="color:${dc}">${puzzleRating}</span>
-      </div>
+      
       <div class="result-stat result-stat-grade">
         <span class="result-stat-label">PERFORMANCE</span>
         <span class="result-grade-value" style="color:${gc}">${grade}</span>

@@ -48,57 +48,45 @@
       <div class="modal-box">
         <button class="modal-close" id="modalClose" aria-label="Close">&times;</button>
 
-        <div class="modal-tabs">
-          <button class="modal-tab active" data-tab="howto">HOW TO PLAY</button>
+       <div class="modal-tabs">
+         <button class="modal-tab active" data-tab="howto">HOW TO PLAY</button>
           <button class="modal-tab" data-tab="clues">CLUE TYPES</button>
+          <button class="modal-tab" data-tab="rating">RATING & MODES</button>
         </div>
 
-        <div class="modal-body" id="tab-howto">
-          <div class="modal-section">
-            <div class="modal-section-title">THE GOAL</div>
-            <ul><li>Assign values to each of the six letters A through F so as to satisfy all clues.</li></ul>
-          </div>
-          <div class="modal-section">
-            <div class="modal-section-title">THE RULES</div>
-            <ul>
-              <li>Each letter A–F must be assigned a <strong>different</strong> integer from 1 to 10.</li>
-              <li>Every letter must be assigned — even those that don't appear in any clue.</li>
-              <li>The solution must satisfy all clues simultaneously.</li>
-              <li>Each puzzle has exactly one correct solution.</li>
-            </ul>
-          </div>
-          <div class="modal-section">
-            <div class="modal-section-title">THE ELIMINATION GRID</div>
-            <p>The grid shows values 1–10 for each letter. Use it to track which values are still possible.</p>
-            <div class="tip-grid">
-              <div class="tip-row"><span class="tip-key">Left click</span><span class="tip-desc">Lock this value for this letter — crosses out all other values in the same row and the same number in all other rows. Also fills the answer dropdown.</span></div>
-              <div class="tip-row"><span class="tip-key">Right click</span><span class="tip-desc">Manually toggle a single cell as eliminated (crossed out).</span></div>
-              <div class="tip-row"><span class="tip-key">Reset Grid</span><span class="tip-desc">Resets the grid to its initial state.</span></div>
-            </div>
-          </div>
-          <div class="modal-section">
-            <div class="modal-section-title">CHECKING YOUR ANSWER</div>
-            <p>Use the answer dropdowns or left-click the grid to record your final answer.<br>Click <span class="diff-chip easy">CHECK SOLUTION</span> — each clue turns <span class="tip-green">green</span> if satisfied or <span class="tip-red">red</span> if contradicted.</p>
-          </div>
-          <div class="modal-section">
-            <div class="modal-section-title">RATED MODE &amp; RATING</div>
-            <ul>
-              <li>Switch to <strong>Rated</strong> before generating a puzzle to affect your rating.</li>
-              <li>Your rating starts at <strong>1000</strong> and adjusts after every rated solve.</li>
-              <li>Solving faster than expected <em>raises</em> your rating; slower <em>lowers</em> it.</li>
-              <li>Each incorrect "Check Solution" adds a time penalty. Three mistakes = auto-forfeit.</li>
-              <li>Giving up in Rated mode counts as a loss.</li>
-              <li>Rating uncertainty (±RD) decreases as you play more, and slowly recovers during inactivity.</li>
-            </ul>
-          </div>
-          <div class="modal-section">
-            <div class="modal-section-title">DIFFICULTY</div>
-            <div class="diff-legend"><span class="diff-chip easy">EASY</span> The puzzle can be solved through a sequence of deductions from individual clues.</div>
-            <div class="diff-legend"><span class="diff-chip medium">MEDIUM</span> Some deductions require combining two or more clues simultaneously.</div>
-            <div class="diff-legend"><span class="diff-chip hard">HARD</span> Several multi-clue deduction steps are required.</div>
-            <div class="diff-legend"><span class="diff-chip expert">EXPERT</span> Requires clever tactics, critical thinking, and complex combinations of clues.</div>
-          </div>
-        </div>
+       <div class="modal-body" id="tab-howto">
+  <div class="modal-section">
+    <div class="modal-section-title">THE GOAL</div>
+    <ul><li>Assign values to each of the six letters A through F so as to satisfy all clues.</li></ul>
+  </div>
+  <div class="modal-section">
+    <div class="modal-section-title">THE RULES</div>
+    <ul>
+      <li>Each letter A–F must be assigned a <strong>different</strong> integer from 1 to 10.</li>
+      <li>Every letter must be assigned — even those that don't appear in any clue.</li>
+      <li>The solution must satisfy all clues simultaneously and the rules stated above.</li>
+      <li>Each puzzle has exactly one correct solution.</li>
+    </ul>
+  </div>
+  <div class="modal-section">
+    <div class="modal-section-title">THE ELIMINATION GRID</div>
+    <p>The grid shows values 1–10 for each letter. Use it to track which values are still possible.</p>
+    <div class="tip-grid">
+      <div class="tip-row"><span class="tip-key">Left click</span><span class="tip-desc">Assign this value for this letter — crosses out all other values in the same row and the same number in all other rows. Also fills the answer dropdown.</span></div>
+      <div class="tip-row"><span class="tip-key">Right click</span><span class="tip-desc">Manually toggle a single cell as eliminated (crossed out).</span></div>
+      <div class="tip-row"><span class="tip-key">&#x21BA; Reset Grid</span><span class="tip-desc">Resets the grid to its initial state.</span></div>
+    </div>
+  </div>
+  <div class="modal-section">
+    <div class="modal-section-title">CHECKING YOUR ANSWER</div>
+    <ul>
+      <li>Use the elimination grid and clues to deduce the correct value for each letter.</li>
+      <li>Each letter's value can be set by either left-clicking in the grid or using the dropdowns in the solution panel.</li>
+      <li>Clicking <span class="diff-chip easy">CHECK</span> compares your current solution against the clues.</li>
+      <li>Each clue turns <span class="tip-green">green</span> if satisfied or <span class="tip-red">red</span> if contradicted.</li>
+    </ul>
+  </div>
+</div>
 
         <div class="modal-body hidden" id="tab-clues">
           <div class="clue-table">
@@ -108,7 +96,7 @@
             <div class="clue-row"><span class="clue-ex">A * B = N</span><span class="clue-def">A times B equals N.</span><span class="clue-note"></span></div>
             <div class="clue-group-label">COMPARISON</div>
             <div class="clue-row"><span class="clue-ex">A &gt; B</span><span class="clue-def">A is greater than B.</span><span class="clue-note"></span></div>
-            <div class="clue-row"><span class="clue-ex">A &lt; B</span><span class="clue-ex">A &lt; B</span><span class="clue-def">A is less than B.</span><span class="clue-note"></span></div>
+            <div class="clue-row"><span class="clue-ex">A &lt; B</span><span class="clue-def">A is less than B.</span><span class="clue-note"></span></div>
             <div class="clue-group-label">PARITY &amp; PRIMALITY</div>
             <div class="clue-row"><span class="clue-ex">A is even</span><span class="clue-def">A ∈ {2, 4, 6, 8, 10}.</span><span class="clue-note"></span></div>
             <div class="clue-row"><span class="clue-ex">A is odd</span><span class="clue-def">A ∈ {1, 3, 5, 7, 9}.</span><span class="clue-note"></span></div>
@@ -133,13 +121,39 @@
           </div>
         </div>
 
+        <div class="modal-body hidden" id="tab-rating">
+  <div class="modal-section">
+    <div class="modal-section-title">GAME MODES</div>
+    <ul>
+      <li>In <span class="tip-green">CASUAL</span> mode, your rating is never affected.</li>
+      <li>In <em>RATED</em> mode, your rating is adjusted after each solve/forfeit.</li>
+    </ul>
+  </div>
+  <div class="modal-section">
+    <div class="modal-section-title">YOUR RATING</div>
+    <ul>
+      <li>Your rating starts at <strong>1000</strong> and adjusts after every rated solve.</li>
+      <li>Solving a puzzle faster than expected <em>raises</em> your rating; slower <em>lowers</em> it.</li>
+      <li>Each incorrect "CHECK" adds a time penalty and a strike. Three strikes = auto-forfeit.</li>
+      <li>Giving up in <em>RATED</em> mode counts as a loss.</li>
+      <li>Rating uncertainty (±RD) decreases as you play more, and slowly recovers during inactivity.</li>
+    </ul>
+  </div>
+  <div class="modal-section">
+    <div class="modal-section-title">DIFFICULTY</div>
+    <div class="diff-legend"><span class="diff-chip easy">EASY</span> Rating range: 800-1000. The puzzle can be solved through a sequence of deductions from individual clues.</div>
+    <div class="diff-legend"><span class="diff-chip medium">MEDIUM</span> Rating range: 1001-1300. Some deductions require combining two or more clues simultaneously.</div>
+    <div class="diff-legend"><span class="diff-chip hard">HARD</span> Rating range: 1301-1700. Several multi-clue deduction steps are required.</div>
+    <div class="diff-legend"><span class="diff-chip expert">EXPERT</span> Rating range: 1701+. Requires clever tactics, critical thinking, and complex combinations of clues.</div>
+  </div>
+</div>
       </div>
     </div>
 
 
     <!-- BOOK SIDEBAR -->
     <aside class="books-sidebar" aria-label="Purchase books">
-      <div style="margin-top: 13em;"></div>
+      <div style="margin-top: 12em;"></div>
       <span class="books-label">AVAILABLE IN PRINT</span>
       <a href="https://www.amazon.com/gp/product/B0G625WYCQ" target="_blank" rel="noopener" class="book-link" aria-label="Six-Figure Logic Volume I on Amazon">
         <img src="vol_1.jpg" alt="Six-Figure Logic Volume I" class="book-cover" />
@@ -197,13 +211,13 @@
       <!-- [1,1] clues topbar -->
       <div class="topbar topbar-clues">
         <div class="topbar-clues-row1">
-          <div id="modePill" class="mode-pill" role="group" aria-label="Game mode">
-            <button id="modeCasualBtn" class="mode-pill-btn active" data-mode="casual">CASUAL</button>
+          <div id="modePill" class="mode-pill" role="group" aria-label="Game mode" >
+            <button id="modeCasualBtn" class="mode-pill-btn active" data-mode="casual" >CASUAL</button>
             <button id="modeRatedBtn"  class="mode-pill-btn"        data-mode="rated">RATED</button>
           </div>
         </div>
         <div class="topbar-clues-row2">
-          <button id="newPuzzleBtn" class="btn primary">
+          <button id="newPuzzleBtn" class="btn primary" style="margin-top: 1em;">
             <span class="btn-icon">&#x27F3;</span> New Puzzle
           </button>
           <div class="difficulty-wrap">
@@ -230,7 +244,7 @@
           <div class="mistake-box" id="mistakeBox3"></div>
         </div>
         <button id="checkBtn" class="btn success">
-          <span class="btn-icon">&#x2713;</span> Check Solution
+          <span class="btn-icon">&#x2713;</span> CHECK
         </button>
       </div>
 

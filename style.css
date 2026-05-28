@@ -37,7 +37,7 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
-  padding: 28px 20px 48px;
+  padding: 20px 10px 0px;
   overflow-x: hidden;
 }
 
@@ -63,7 +63,7 @@ body {
 
 /* ── Header ── */
 header {
-  margin-bottom: 24px;
+  margin-bottom: 0px;
 }
 
 header h1 {
@@ -818,7 +818,7 @@ header h1 {
 
 .modal-section-title {
   font-family: 'BankGothic', 'Oswald', sans-serif;
-  font-size: 11px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.18em;
   color: var(--accent);
@@ -887,7 +887,7 @@ header h1 {
 
 .clue-group-label {
   font-family: 'BankGothic', 'Oswald', sans-serif;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.18em;
   color: var(--text-muted);
@@ -943,13 +943,13 @@ header h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
+  width: 40px;
   height: 22px;
   border-radius: 5px;
   border: 1px solid var(--border-bright);
   background: transparent;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1;
   cursor: pointer;
   transition: all 0.12s ease;
@@ -1056,9 +1056,10 @@ header h1 {
   border: 1px solid var(--border-bright);
   overflow: hidden;
   background: var(--surface2);
-  height: 30px;
+  height: 35px;
   flex-shrink: 0;
-  transform: scaleX(0.85); transform-origin: left;
+  transform: scaleX(0.85) translateY(20px);
+  transform-origin: left;
 }
 
 .mode-pill-btn {
@@ -1274,7 +1275,7 @@ header h1 {
 
 .result-stat-value {
   font-family: 'BankGothic', 'Oswald', sans-serif;
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--text);
   letter-spacing: 0.04em;
