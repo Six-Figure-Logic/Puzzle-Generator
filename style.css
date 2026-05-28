@@ -172,16 +172,17 @@ header h1 {
 
 .btn.primary {
   background: var(--accent);
-  min-width: 140px; /* tune to fit "Generating…" + spinner */
+  Width: 150px; 
+  height: 48px;
   color: #0d0f14;
-  font-size: 16px;
+  font-size: 18px;
   border-color: var(--accent);
-
-
+  -webkit-text-stroke-width: 1px;
+  -webkit-text-stroke-color: #0d0f14;
 }
 .btn.primary:hover {
   background: #f5ff7a;
-  box-shadow: 0 0 20px var(--accent-glow);
+  box-shadow: 0 0 40px var(--accent-glow);
 }
 
 @keyframes btn-pulse {
@@ -409,6 +410,15 @@ header h1 {
 .diff-btn.active[data-diff="medium"] { background: rgba(232,255,71,0.12); color: var(--accent); border-color: rgba(232,255,71,0.5); }
 .diff-btn.active[data-diff="hard"]   { background: rgba(255,160,50,0.15); color: #ffa032;       border-color: rgba(255,160,50,0.5); }
 .diff-btn.active[data-diff="expert"] { background: rgba(255,77,106,0.15); color: var(--danger); border-color: rgba(255,77,106,0.5); }
+
+.diff-btn.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+
+
 
 /* ── Book sidebar (fixed, floats in right margin beside the grid) ── */
 .books-sidebar {
@@ -1058,13 +1068,13 @@ header h1 {
 /* ── CASUAL | RATED pill toggle ── */
 .mode-pill {
   display: inline-flex;
-  border-radius: 9px;
+  border-radius: 5px;
   border: 1px solid var(--border-bright);
   overflow: hidden;
   background: var(--surface2);
-  height: 35px;
+  height: 20px;
   flex-shrink: 0;
-  transform: scaleX(0.85) translateY(20px);
+  transform: scaleX(0.84) translateY(12px);
   transform-origin: left;
 }
 
@@ -1102,7 +1112,7 @@ header h1 {
 }
 
 .mode-pill.locked {
-  opacity: 0.55;
+  opacity: 0.45;
   pointer-events: none;
 }
 

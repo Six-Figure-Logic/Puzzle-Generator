@@ -1744,7 +1744,7 @@ newPuzzleBtn.addEventListener('click', () => {
   feedbackEl.className = 'feedback';
 
   const originalText = newPuzzleBtn.innerHTML;
-  newPuzzleBtn.innerHTML = '<span class="btn-icon">⟳</span> Generating';
+  newPuzzleBtn.innerHTML = '<span class="btn-icon"></span> Generating';
   newPuzzleBtn.disabled = true;
  
   // Run the search in small chunks separated by setTimeout(0) so the browser
@@ -2203,6 +2203,12 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
     modeCasualBtn.disabled = true;
     modeRatedBtn.disabled  = true;
 
+    // Lock difficulty buttons
+document.querySelectorAll('.diff-btn').forEach(b => {
+  b.disabled = true;
+  b.classList.add('locked');
+});
+
     // Change 1: Button becomes "Give Up?" — keep yellow (.primary) styling
     newPuzzleBtn.innerHTML = '<span class="btn-icon"></span>Give Up?';
     newPuzzleBtn.classList.remove('give-up-active');
@@ -2221,8 +2227,15 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
     modePill.classList.remove('locked');
     modeCasualBtn.disabled = false;
     modeRatedBtn.disabled  = false;
+
+// Unlock difficulty buttons
+document.querySelectorAll('.diff-btn').forEach(b => {
+  b.disabled = false;
+  b.classList.remove('locked');
+});
+
     // Restore button text
-    newPuzzleBtn.innerHTML = '<span class="btn-icon">&#x27F3;</span> New Puzzle';
+    newPuzzleBtn.innerHTML = '<span class="btn-icon"></span> New Puzzle';
     newPuzzleBtn.classList.remove('give-up-active');
     penaltyEl.classList.remove('visible');
 
