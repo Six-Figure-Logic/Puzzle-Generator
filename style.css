@@ -1283,7 +1283,7 @@ header h1 {
 
 .result-stat-label {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.18em;
   color: var(--text-muted);
@@ -1291,9 +1291,9 @@ header h1 {
 
 .result-stat-value {
   font-family: 'BankGothic', 'Oswald', sans-serif;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--accent);
   letter-spacing: 0.04em;
 }
 

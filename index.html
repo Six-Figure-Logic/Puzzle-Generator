@@ -125,26 +125,40 @@
   <div class="modal-section">
     <div class="modal-section-title">GAME MODES</div>
     <ul>
-      <li>In <span class="tip-green">CASUAL</span> mode, your rating is never affected.</li>
-      <li>In <em>RATED</em> mode, your rating is adjusted after each solve/forfeit.</li>
+      <li>In <span class="tip-green">CASUAL</span> mode, your rating is never affected — play freely.</li>
+      <li>In <em>RATED</em> mode, your rating updates after every puzzle, win or loss.</li>
     </ul>
   </div>
   <div class="modal-section">
-    <div class="modal-section-title">YOUR RATING</div>
+    <div class="modal-section-title">EXPECTED SOLVE TIME</div>
     <ul>
-      <li>Your rating starts at <strong>1000</strong> and adjusts after every rated solve.</li>
-      <li>Solving a puzzle faster than expected <em>raises</em> your rating; slower <em>lowers</em> it.</li>
-      <li>Each incorrect "CHECK" adds a time penalty and a strike. Three strikes = auto-forfeit.</li>
-      <li>Giving up in <em>RATED</em> mode counts as a loss.</li>
-      <li>Rating uncertainty (±RD) decreases as you play more, and slowly recovers during inactivity.</li>
+      <li>Each puzzle has an <em>expected solve time</em> based on its rating relative to yours.</li>
+      <li>A puzzle rated equal to you has a baseline time. A harder puzzle (higher rating) gives you <em>more</em> time; an easier one (lower rating) gives you <em>less</em>.</li>
+      <li>Finishing <em>faster</em> than expected <span class="tip-green">raises</span> your rating. Finishing <em>slower</em> <span class="tip-red">lowers</span> it.</li>
+    </ul>
+  </div>
+  <div class="modal-section">
+    <div class="modal-section-title">MISTAKES & PENALTIES</div>
+    <ul>
+      <li>Each incorrect <span class="diff-chip easy">CHECK</span> adds a <span class="tip-red">time penalty</span> to your effective solve time — counted against you even if you finish quickly.</li>
+      <li>Three mistakes triggers an <span class="tip-red">automatic forfeit</span>, which counts as a loss regardless of progress.</li>
+      <li>Giving up in <em>RATED</em> mode always counts as a loss.</li>
+    </ul>
+  </div>
+  <div class="modal-section">
+    <div class="modal-section-title">RATING UNCERTAINTY (±RD)</div>
+    <ul>
+      <li>Your rating starts at <strong>1000 ± 350</strong>. The ±RD reflects how confident the system is in your rating.</li>
+      <li>±RD shrinks as you play more rated puzzles, making each result have less impact.</li>
+      <li>During inactivity, ±RD slowly rises — the system becomes less certain, and results carry more weight again.</li>
     </ul>
   </div>
   <div class="modal-section">
     <div class="modal-section-title">DIFFICULTY</div>
-    <div class="diff-legend"><span class="diff-chip easy">EASY</span> Rating range: 800-1000. The puzzle can be solved through a sequence of deductions from individual clues.</div>
-    <div class="diff-legend"><span class="diff-chip medium">MEDIUM</span> Rating range: 1001-1300. Some deductions require combining two or more clues simultaneously.</div>
-    <div class="diff-legend"><span class="diff-chip hard">HARD</span> Rating range: 1301-1700. Several multi-clue deduction steps are required.</div>
-    <div class="diff-legend"><span class="diff-chip expert">EXPERT</span> Rating range: 1701+. Requires clever tactics, critical thinking, and complex combinations of clues.</div>
+    <div class="diff-legend"><span class="diff-chip easy">EASY</span> Rating 800–1000. Solvable through a sequence of single-clue deductions.</div>
+    <div class="diff-legend"><span class="diff-chip medium">MEDIUM</span> Rating 1001–1300. Some steps require combining two or more clues.</div>
+    <div class="diff-legend"><span class="diff-chip hard">HARD</span> Rating 1301–1700. Several multi-clue deduction chains required.</div>
+    <div class="diff-legend"><span class="diff-chip expert">EXPERT</span> Rating 1701+. Complex clue combinations and critical logical leaps throughout.</div>
   </div>
 </div>
       </div>

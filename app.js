@@ -1743,9 +1743,12 @@ newPuzzleBtn.addEventListener('click', () => {
   feedbackEl.textContent = '';
   feedbackEl.className = 'feedback';
 
-  const originalText = newPuzzleBtn.innerHTML;
+const originalText = newPuzzleBtn.innerHTML;
   newPuzzleBtn.innerHTML = '<span class="btn-icon"></span> Generating';
   newPuzzleBtn.disabled = true;
+  // Immediately start fading down to 0.3 over 0.5s
+  newPuzzleBtn.style.transition = 'opacity 0.5s ease';
+  newPuzzleBtn.style.opacity = '0.3';
  
   // Run the search in small chunks separated by setTimeout(0) so the browser
   // can repaint between chunks — this is what actually makes the pulse visible.
@@ -1782,15 +1785,25 @@ newPuzzleBtn.addEventListener('click', () => {
   }
 
   function finish() {
-    // Only restore "New Puzzle" text if lockGame hasn't taken over the button.
-    // When a puzzle loaded successfully, lockGame() already set the button to
-    // "Give Up?" — restoring originalText here would clobber that.
     if (!window._sfgame || !window._sfgame.gameActive) {
       newPuzzleBtn.innerHTML = originalText;
       newPuzzleBtn.disabled = false;
+      newPuzzleBtn.style.transition = '';
+      newPuzzleBtn.style.opacity = '1';
     } else {
-      // Game is active — just re-enable the button (lockGame already set its text)
       newPuzzleBtn.disabled = false;
+      // Swap text immediately
+      newPuzzleBtn.innerHTML = '<span class="btn-icon"></span>Forfeit?';
+      newPuzzleBtn.classList.remove('generating');
+      newPuzzleBtn.style.opacity = '0.3';
+      // Ensure we're at 0.3 before starting the slow fade-in
+      newPuzzleBtn.style.transition = 'opacity 0.5s ease';
+      newPuzzleBtn.style.opacity = '0.3';
+      setTimeout(() => {
+        // Now slowly fade back to full opacity over 10s
+        newPuzzleBtn.style.transition = 'opacity 10s ease';
+        newPuzzleBtn.style.opacity = '1';
+      }, 500);
     }
   }
 
@@ -2210,7 +2223,7 @@ document.querySelectorAll('.diff-btn').forEach(b => {
 });
 
     // Change 1: Button becomes "Give Up?" — keep yellow (.primary) styling
-    newPuzzleBtn.innerHTML = '<span class="btn-icon"></span>Give Up?';
+    newPuzzleBtn.innerHTML = '<span class="btn-icon"></span>Forfeit?';
     newPuzzleBtn.classList.remove('give-up-active');
     // Keep .primary class so it stays yellow
 
@@ -2234,13 +2247,12 @@ document.querySelectorAll('.diff-btn').forEach(b => {
   b.classList.remove('locked');
 });
 
-    // Restore button text
+// Restore button text
     newPuzzleBtn.innerHTML = '<span class="btn-icon"></span> New Puzzle';
     newPuzzleBtn.classList.remove('give-up-active');
     penaltyEl.classList.remove('visible');
 
-    // Reset mistake boxes
-    resetMistakeBoxes();
+    // Mistake boxes persist until next puzzle starts (reset in lockGame)
   }
 
   // ─── Give up logic ────────────────────────────────────────────────────────
@@ -2414,10 +2426,11 @@ function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, 
     const gc = gradeColor(grade);
     const dc = difficultyColor(puzzleRating);
 
-    const mistakesDisplay = mistakeCount > 0 ? '\u2009'.repeat(4) + mistakeCount : '\u2009'.repeat(2) + '—';
+    const mistakesDisplay = mistakeCount > 0 ? '\u2009'.repeat(6) + mistakeCount : '\u2009'.repeat(6) + '—';
     const mistakesColor = mistakeCount > 0 ? 'var(--danger)' : 'var(--success)';
-    const penaltyDisplay = penaltySecs > 0 ? '+' + formatMMSS(penaltySecs) : '—'+'\u2009'.repeat(2);
-    const penaltyColor = penaltySecs > 0 ? 'var(--danger)' : 'var(--success)';
+    const autoForfeit = gaveUp && mistakeCount >= 3;
+    const penaltyDisplay = autoForfeit ? 'LOSS' : (penaltySecs > 0 ? '+' + formatMMSS(penaltySecs) : '—'+'\u2009'.repeat(6));
+    const penaltyColor = autoForfeit ? 'var(--danger)' : (penaltySecs > 0 ? 'var(--danger)' : 'var(--success)');
 
     // Change 2: show "N/A" for solve time when gave up
     const solveTimeDisplay = gaveUp ? 'N/A' : formatMMSS(solveTime);
@@ -2437,8 +2450,8 @@ function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, 
           <span class="result-stat-label">PENALTY</span>
         </div>
         <div class="result-stat-row">
-          <span class="result-stat-value" style="color:${mistakesColor}">${mistakesDisplay}</span>
-          <span class="result-stat-value" style="color:${penaltyColor}">${penaltyDisplay}</span>
+          <span class="result-stat-value" style="font-size:12pt; color:${mistakesColor}">${mistakesDisplay}</span>
+          <span class="result-stat-value" style="font-size:12pt; color:${penaltyColor}">${penaltyDisplay}</span>
         </div>
       </div>
       
@@ -2461,9 +2474,15 @@ function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, 
 
       ratingRowEl.style.display = 'flex';
       ratingRowEl.innerHTML = `
-        <span class="result-old-rating">${result.oldRating}</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+          <span style="font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--text-muted);">OLD RATING</span>
+          <span class="result-old-rating">${result.oldRating}</span>
+        </div>
         <span class="result-arrow">→</span>
-        <span class="result-new-rating" id="animNewRating">${result.oldRating}</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+          <span style="font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:0.18em;color:var(--text-muted);">NEW RATING</span>
+          <span class="result-new-rating" id="animNewRating">${result.oldRating}</span>
+        </div>
         <span class="result-delta ${deltaClass}">${deltaSign}${result.ratingDelta}</span>
       `;
       casualNoteEl.style.display = 'none';
