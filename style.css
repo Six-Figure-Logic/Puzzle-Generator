@@ -1111,6 +1111,9 @@ header h1 {
   cursor: not-allowed;
 }
 
+.mode-pill-btn:hover[data-mode="rated"] { border-color: var(--accent); color: var(--accent); }
+.mode-pill-btn:hover[data-mode="casual"] { border-color: var(--success); color: var(--success); }
+
 .mode-pill.locked {
   opacity: 0.45;
   pointer-events: none;
