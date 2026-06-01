@@ -15,6 +15,7 @@ let selectedDifficulty = 'easy'; // default
 //timer variables
 let timerInterval = null;
 let timerStart = 0;
+window._sflTimerStart = { get: () => timerStart, set: (v) => { timerStart = v; } };
 
 const timerEl = document.getElementById('timer');
 
@@ -145,6 +146,8 @@ function buildGridRows() {
 // ── Undo / Redo ──────────────────────────────────────────────────────────────
 const undoStack = [];
 const redoStack = [];
+window._sflUndoStack = undoStack;
+window._sflRedoStack = redoStack;
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
 
@@ -173,6 +176,7 @@ function pushHistory() {
 function updateUndoRedoBtns() {
   if (undoBtn) undoBtn.disabled = undoStack.length === 0;
   if (redoBtn) redoBtn.disabled = redoStack.length === 0;
+  window.updateUndoRedoBtns = updateUndoRedoBtns;
 }
 
 if (undoBtn) undoBtn.addEventListener('click', () => {
@@ -2523,10 +2527,16 @@ function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, 
   });
 
   // Expose for external access if needed
-  window._sfgame = {
+window._sfgame = {
     refreshRatingDisplay,
-    get gameActive() { return gameActive; }
-  };
+     get gameActive() { return gameActive; },
+     _setMistakeState(count, penaltyTxt) {
+       mistakeCount = count;
+       const match = penaltyTxt.match(/\+(\d+):(\d+)/);
+       penaltySecs  = match ? parseInt(match[1],10)*60 + parseInt(match[2],10) : 0;
+     },
+     _setMode(m) { setMode(m); }
+   };
 
 })();
 
