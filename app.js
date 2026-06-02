@@ -1506,7 +1506,7 @@ case 'no product': {
   //   C_norm  (avg clue complexity)  weight 0.15
   //
   //   Rating = round(800 + (E*0.30 + WED*0.55 + C*0.15) * 15.5)
-  //   Bands: Easy 800-1000 | Medium 1001-1300 | Hard 1301-1700 | Expert 1701+
+  //   Bands: Easy 800-1000 | Medium 1001-1350 | Hard 1351-1700 | Expert 1701+
   //
   //   NOTE: computePuzzleRating takes optional sol argument for WED.
   //   During generation screening (sol unknown) WED is skipped; only
@@ -1555,7 +1555,7 @@ case 'no product': {
 
   function ratingToDifficulty(rating) {
     if (rating <= 1000) return 'easy';
-    if (rating <= 1300) return 'medium';
+    if (rating <= 1350) return 'medium';
     if (rating <= 1700) return 'hard';
     return 'expert';
   }
@@ -1569,7 +1569,7 @@ case 'no product': {
   //   elim ≤  6  → E_norm = 0 → max rating = 800+(100×0.50)×15.5 = 1575
   //                → can never be Expert (needs 1701+)
   //   elim ≤ 12  → E_norm ≤ ~13 → max rating ≈ 800+(13×0.874+100×0.469)×15.5
-  //                ≈ 1300 → can never be Hard or Expert
+  //                ≈ 1350 → can never be Hard or Expert
 
 function difficultyFromElim(rawClues, elim) {
     return ratingToDifficulty(computePuzzleRating(rawClues, elim));
@@ -2396,20 +2396,21 @@ function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, 
 
   function difficultyColor(rating) {
     if (rating <= 1000) return '#00e5a0';
-    if (rating <= 1300) return 'var(--accent)';
+    if (rating <= 1350) return 'var(--accent)';
     if (rating <= 1700) return '#ffa032';
     return 'var(--danger)';
   }
 
   function difficultyLabel(rating) {
     if (rating <= 1000) return 'EASY';
-    if (rating <= 1300) return 'MEDIUM';
+    if (rating <= 1350) return 'MEDIUM';
     if (rating <= 1700) return 'HARD';
     return 'EXPERT';
   }
 
   // ─── Result popup ─────────────────────────────────────────────────────────
   function showResultPopup(solveTime, gaveUp) {
+    if (window._sflShareContext) window._sflShareContext.set(gaveUp, mistakeCount);
     const puzzleRating = (window.currentSolution && window.currentSolution._rating) || 1000;
     const isRated = gameMode === 'rated';
     const title   = document.getElementById('resultTitle');
@@ -2541,3 +2542,510 @@ window._sfgame = {
 })();
 
 
+/*═══════════════════════════════════════════════════════
+     Add this block at the bottom of app.js (before the closing of the
+     game-state IIFE is fine, or just append it after all other code).
+═════════════════════════════════════════════════════════ */
+
+(function () {
+  'use strict';
+
+  // ─── Emoji grid builder ─────────────────────────────────────────────────
+  // Renders a mini 6×5 cells grid as emoji blocks where filled = ⬛ and
+  // crossed = the faint block. We use solved=🟨 (accent yellow), wrong=🟥,
+  // and neutral=⬜ for un-touched cells.
+  // For the share card we just want a punchy one-liner scorecard.
+
+  function diffEmoji(puzzleRating) {
+    if (puzzleRating <= 1000) return '🟢';
+    if (puzzleRating <= 1300) return '🟡';
+    if (puzzleRating <= 1700) return '🟠';
+    return '🔴';
+  }
+
+  function gradeEmoji(grade) {
+    if (!grade || grade === 'F') return '💀';
+    if (grade.startsWith('A')) return '🏆';
+    if (grade.startsWith('B')) return '⚡';
+    if (grade.startsWith('C')) return '✅';
+    return '🎯';
+  }
+
+  function mistakeBar(n) {
+    // 3 boxes: filled X vs empty
+    let s = '';
+    for (let i = 0; i < 3; i++) s += (i < n ? '✗' : '○');
+    return s;
+  }
+
+  function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakeCount) {
+    const site = 'sixfigurelogic.com';
+    const diff = window._ratingToDifficulty
+      ? window._ratingToDifficulty(puzzleRating).toUpperCase()
+      : 'PUZZLE';
+
+    // Format time
+    const m = Math.floor(solveTime / 60);
+    const s = String(solveTime % 60).padStart(2, '0');
+    const timeStr = gaveUp ? '—' : `${m}:${s}`;
+
+    const de = diffEmoji(puzzleRating);
+    const ge = gradeEmoji(grade);
+    const mb = mistakeBar(mistakeCount);
+
+    if (gaveUp) {
+      return [
+        `Six-Figure Logic 🧩`,
+        ``,
+        `${de} ${diff}  ★ ${puzzleRating}`,
+        `⏱ ${timeStr}   ${mb}`,
+        `💀 Puzzle not solved`,
+        ``,
+        `Can you do better? → ${site}`
+      ].join('\n');
+    }
+
+    return [
+      `Six-Figure Logic 🧩`,
+      ``,
+      `${de} ${diff}  ★ ${puzzleRating}`,
+      `⏱ ${timeStr}   ${mb}`,
+      `${ge} Grade: ${grade}`,
+      ``,
+      `Try it → ${site}`
+    ].join('\n');
+  }
+
+  // ─── Wire share button ────────────────────────────────────────────────────
+  // We grab the grade from the DOM because it's already computed and rendered.
+
+  function getRenderedGrade() {
+    const el = document.querySelector('.result-grade-value');
+    return el ? el.textContent.trim() : '?';
+  }
+
+  function getRenderedSolveTime() {
+    // Find the SOLVE TIME stat value
+    const stats = document.getElementById('resultStats');
+    if (!stats) return 0;
+    const rows = stats.querySelectorAll('.result-stat-value');
+    // Second stat value is solve time (first is puzzle rating)
+    if (rows.length >= 2) {
+      const t = rows[1].textContent.trim();
+      if (t === 'N/A') return 0;
+      const parts = t.split(':');
+      if (parts.length === 2) return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    }
+    return 0;
+  }
+
+  let _shareGaveUp = false;
+  let _shareMistakeCount = 0;
+
+  // Hook into showResultPopup to capture context
+  // We expose a tiny setter that the game IIFE calls when showing the popup.
+  window._sflShareContext = {
+    set: function(gaveUp, mistakes) {
+      _shareGaveUp = gaveUp;
+      _shareMistakeCount = mistakes;
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const shareBtn = document.getElementById('resultShareBtn');
+    if (!shareBtn) return;
+
+    
+  });
+
+
+})();
+
+
+/*═══════════════════════ TUTORIAL WALKTHROUGH ════════════════════ -->*/
+
+(function () {
+  'use strict';
+
+  
+  /* ══════════════════════════════════════════
+     FEATURE A — Worked Example Sub-Modal
+  ══════════════════════════════════════════ */
+
+  const WE_ROWS = ['A','B','C','D','E','F'];
+  
+  let weGrid = [], weStep = 0;
+
+  function weMakeGrid() {
+    weGrid = WE_ROWS.map(() => {
+      const r = {};
+      for (let v = 1; v <= 10; v++) r[v] = 'open';
+      return r;
+    });
+  }
+
+  const WE_STEPS = [
+    {
+      title: 'Start with the clues',
+      body: `We have five clues and six unknowns. Every value must be a <strong>unique integer from 1–10</strong>. The grid starts fully open.`,
+      activeClues:[], doneClues:[], cross:{}, solve:{}, highlight:{}
+    },
+    {
+      title: 'Clue 2: B * C = 24',
+      body: `<code>B * C = 24</code> — valid pairs from 1–10 are <strong>[3×8]</strong> and <strong>[4×6]</strong>.<br>So B ∈ {3,4,6,8} and C ∈ {3,4,6,8}.`,
+      activeClues:[1], doneClues:[],
+      cross:{ 1:[1,2,5,7,9,10], 2:[1,2,5,7,9,10] },
+      solve:{}, highlight:{ 1:[3,4,6,8], 2:[3,4,6,8] }
+    },
+    {
+      title: 'Clue 4: D – E = 5  →  D ≥ 6',
+      body: `<code>D – E = 5</code>. Since E ≥ 1, D = E + 5 ≥ <strong>6</strong>.<br>So D ∈ {6,7,8,9,10} and E ∈ {1,2,3,4,5}.`,
+      activeClues:[3], doneClues:[],
+      cross:{ 3:[1,2,3,4,5], 4:[6,7,8,9,10] },
+      solve:{}, highlight:{ 3:[6,7,8,9,10], 4:[1,2,3,4,5] }
+    },
+    {
+      title: 'Clue 3: C > D  →  C = 8, B = 3',
+      body: `<code>C > D</code> and D ≥ 6, so C ≥ 7.<br>But C ∈ {3,4,6,8} — only value ≥ 7 is <span class="hl-green">C = 8</span>.<br>Then <code>B * 8 = 24</code> → <span class="hl-green">B = 3</span>.`,
+      activeClues:[2,1], doneClues:[1,2],
+      cross:{ 2:[1,2,3,4,5,6,7,9,10], 1:[1,2,4,5,6,7,8,9,10] },
+      solve:{ 2:8, 1:3 }, highlight:{}
+    },
+    {
+      title: 'Clue 1: A + B = 7  →  A = 4',
+      body: `<code>A + B = 7</code> and B = 3.<br>So A = 7 – 3 = <span class="hl-green">A = 4</span>.`,
+      activeClues:[0], doneClues:[0,1,2],
+      cross:{ 0:[1,2,3,5,6,7,8,9,10] },
+      solve:{ 0:4 }, highlight:{}
+    },
+    {
+      title: 'Clue 3 + 4: D ∈ {6,7}',
+      body: `C = 8 and <code>C > D</code> → D ≤ 7. Combined with D ≥ 6: <strong>D ∈ {6,7}</strong>.<br>From <code>D – E = 5</code>: D=6 → E=1; D=7 → E=2.`,
+      activeClues:[3,2], doneClues:[0,1,2],
+      cross:{ 3:[8,9,10], 4:[3,4,5] },
+      solve:{}, highlight:{ 3:[6,7], 4:[1,2] }
+    },
+    {
+      title: 'Clue 5: F + E = 6  →  F=5, E=1, D=6',
+      body: `<code>F + E = 6</code>, E ∈ {1,2} → F ∈ {5,4}.<br><span class="hl-red">A = 4 already</span> — no duplicates → <span class="hl-green">F ≠ 4</span>.<br>So <span class="hl-green">F = 5</span>, E = 6–5 = <span class="hl-green">E = 1</span>, D = 1+5 = <span class="hl-green">D = 6</span>.`,
+      activeClues:[4,3], doneClues:[0,1,2,3,4],
+      cross:{ 5:[1,2,3,4,6,7,8,9,10], 4:[2,3,4,5,6,7,8,9,10], 3:[7] },
+      solve:{ 5:5, 4:1, 3:6 }, highlight:{}
+    },
+    {
+      title: '✓ Solution found!',
+      body: `All six values uniquely determined:`,
+      activeClues:[], doneClues:[0,1,2,3,4],
+      cross:{}, solve:{}, highlight:{}, isFinal:true
+    }
+  ];
+
+  const WE_TOTAL = WE_STEPS.length - 1;
+
+  function weApplyStep(si) {
+    const s = WE_STEPS[si];
+    for (const [ri, vals] of Object.entries(s.cross))
+      vals.forEach(v => { if (weGrid[ri][v] !== 'solved') weGrid[ri][v] = 'crossed'; });
+    for (const [ri, val] of Object.entries(s.solve))
+      weGrid[ri][val] = 'solved';
+    for (let ri = 0; ri < 6; ri++)
+      for (let v = 1; v <= 10; v++)
+        if (weGrid[ri][v] === 'highlight') weGrid[ri][v] = 'open';
+    for (const [ri, vals] of Object.entries(s.highlight))
+      vals.forEach(v => { if (weGrid[ri][v] === 'open') weGrid[ri][v] = 'highlight'; });
+  }
+
+  function weRebuildTo(si) {
+    weMakeGrid();
+    for (let s = 1; s <= si; s++) weApplyStep(s);
+  }
+
+  function weRenderGrid() {
+    const container = document.getElementById('weGrid');
+    if (!container) return;
+    container.innerHTML = '';
+    // Column headers
+    const hrow = document.createElement('div');
+    hrow.className = 'we-row';
+    const sp = document.createElement('div');
+    sp.style.cssText = 'width:18px;flex-shrink:0';
+    hrow.appendChild(sp);
+    const hcells = document.createElement('div');
+    hcells.className = 'we-cells';
+    for (let v = 1; v <= 10; v++) {
+      const hc = document.createElement('div');
+      hc.style.cssText = 'width:28px;height:14px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;color:var(--text-muted);font-weight:700;flex-shrink:0';
+      hc.textContent = v;
+      hcells.appendChild(hc);
+    }
+    hrow.appendChild(hcells);
+    container.appendChild(hrow);
+
+    WE_ROWS.forEach((row, ri) => {
+      const rowDiv = document.createElement('div');
+      rowDiv.className = 'we-row';
+      const lbl = document.createElement('div');
+      lbl.className = 'we-row-label';
+      lbl.textContent = row;
+      rowDiv.appendChild(lbl);
+      const cells = document.createElement('div');
+      cells.className = 'we-cells';
+      for (let v = 1; v <= 10; v++) {
+        const cell = document.createElement('div');
+        cell.className = 'we-cell';
+        cell.textContent = v;
+        const st = weGrid[ri][v];
+        if (st === 'crossed')   cell.classList.add('we-crossed');
+        if (st === 'highlight') cell.classList.add('we-highlight');
+        if (st === 'solved')    cell.classList.add('we-solved');
+        cells.appendChild(cell);
+      }
+      rowDiv.appendChild(cells);
+      container.appendChild(rowDiv);
+    });
+  }
+
+  function weRenderStep(si) {
+    const s = WE_STEPS[si];
+    document.getElementById('weStepBadge').textContent = `STEP ${si} / ${WE_TOTAL}`;
+    const titleEl = document.getElementById('weStepTitle');
+    titleEl.textContent = s.title;
+    titleEl.className = 'we-step-title' + (s.isFinal ? ' is-final' : '');
+
+    let body = s.body;
+    if (s.isFinal) {
+      body += `<div class="we-solution-row">
+        <span class="we-sol-chip">A = 4</span><span class="we-sol-chip">B = 3</span>
+        <span class="we-sol-chip">C = 8</span><span class="we-sol-chip">D = 6</span>
+        <span class="we-sol-chip">E = 1</span><span class="we-sol-chip">F = 5</span>
+      </div>`;
+    }
+    document.getElementById('weStepBody').innerHTML = body;
+
+    document.querySelectorAll('.we-clues-list li').forEach((li, i) => {
+      li.classList.remove('we-clue-active','we-clue-done');
+      if (s.doneClues.includes(i))   li.classList.add('we-clue-done');
+      if (s.activeClues.includes(i)) li.classList.add('we-clue-active');
+    });
+
+    const dots = document.getElementById('weStepDots');
+    if (dots) {
+      dots.innerHTML = '';
+      for (let i = 0; i <= WE_TOTAL; i++) {
+        const d = document.createElement('div');
+        d.className = 'we-dot' + (i < si ? ' done' : i === si ? ' active' : '');
+        dots.appendChild(d);
+      }
+    }
+
+    document.getElementById('wePrevBtn').disabled = (si === 0);
+    const nxt = document.getElementById('weNextBtn');
+    if (si >= WE_TOTAL) {
+      nxt.innerHTML = 'Done ✓';
+      nxt.disabled = false; // "Done" closes the sub-modal
+      nxt.dataset.done = '1';
+    } else {
+      nxt.innerHTML = 'Next Step &#x2192;';
+      nxt.dataset.done = '';
+    }
+  }
+
+  function weGoTo(si) {
+    weStep = Math.max(0, Math.min(WE_TOTAL, si));
+    weRebuildTo(weStep);
+    weRenderGrid();
+    weRenderStep(weStep);
+  }
+
+function openWorkedExample() {
+  const overlay = document.getElementById('workedExampleModal');
+  if (!overlay) return;
+
+  overlay.classList.add('open');
+  weGoTo(0);
+}
+
+  function closeWorkedExample() {
+    const overlay = document.getElementById('workedExampleModal');
+    if (overlay) overlay.classList.remove('open');
+  }
+
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const openBtn    = document.getElementById('openWorkedExampleBtn');
+    const backBtn    = document.getElementById('weBackBtn');
+    const closeBtn   = document.getElementById('weCloseBtn');
+    const nextBtn    = document.getElementById('weNextBtn');
+    const prevBtn    = document.getElementById('wePrevBtn');
+    const restartBtn = document.getElementById('weRestartBtn');
+    const overlay    = document.getElementById('workedExampleModal');
+
+if (openBtn) openBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  openWorkedExample();
+});
+
+    if (backBtn)  backBtn.addEventListener('click',  closeWorkedExample);
+    if (closeBtn) closeBtn.addEventListener('click', closeWorkedExample);
+    if (overlay)  overlay.addEventListener('click', e => {
+      if (e.target === overlay) closeWorkedExample();
+    });
+
+    if (nextBtn) nextBtn.addEventListener('click', () => {
+      if (nextBtn.dataset.done === '1') { closeWorkedExample(); return; }
+      weGoTo(weStep + 1);
+    });
+    if (prevBtn)    prevBtn.addEventListener('click',    () => weGoTo(weStep - 1));
+    if (restartBtn) restartBtn.addEventListener('click', () => weGoTo(0));
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        const we = document.getElementById('workedExampleModal');
+        if (we && we.classList.contains('open')) { closeWorkedExample(); }
+      }
+    });
+  });
+
+
+  /* ══════════════════════════════════════════
+     FEATURE B — Share Popover
+  ══════════════════════════════════════════ */
+
+  let _shareGaveUp = false;
+  let _shareMistakes = 0;
+
+  window._sflShareContext = {
+    set: function(gaveUp, mistakes) {
+      _shareGaveUp = gaveUp;
+      _shareMistakes = mistakes;
+    }
+  };
+
+  function diffEmoji(r) {
+    if (r <= 1000) return '🟢'; if (r <= 1300) return '🟡';
+    if (r <= 1700) return '🟠'; return '🔴';
+  }
+  function gradeEmoji(g) {
+    if (!g || g === 'F') return '💀';
+    if (g.startsWith('A')) return '🏆';
+    if (g.startsWith('B')) return '⚡';
+    return '✅';
+  }
+  function mistakeBar(n) {
+    let s = ''; for (let i = 0; i < 3; i++) s += (i < n ? '✗' : '○'); return s;
+  }
+
+  function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakes) {
+    const site = 'sixfigurelogic.com';
+    const diff = (window._ratingToDifficulty ? window._ratingToDifficulty(puzzleRating) : 'puzzle').toUpperCase();
+    const m = Math.floor(solveTime / 60), s = String(solveTime % 60).padStart(2,'0');
+    const timeStr = gaveUp ? '—' : `${m}:${s}`;
+    const de = diffEmoji(puzzleRating), ge = gradeEmoji(grade), mb = mistakeBar(mistakes);
+    if (gaveUp) return `Six-Figure Logic 🧩\n\n${de} ${diff}  ★ ${puzzleRating}\n⏱ ${timeStr}   ${mb}\n💀 Puzzle not solved\n\nCan you do better? → ${site}`;
+    return `Six-Figure Logic 🧩\n\n${de} ${diff}  ★ ${puzzleRating}\n⏱ ${timeStr}   ${mb}\n${ge} Grade: ${grade}\n\nTry it → ${site}`;
+  }
+
+  function getRenderedGrade() {
+    const el = document.querySelector('.result-grade-value');
+    return el ? el.textContent.trim() : '?';
+  }
+  function getRenderedSolveTime() {
+    const stats = document.getElementById('resultStats');
+    if (!stats) return 0;
+    const rows = stats.querySelectorAll('.result-stat-value');
+    if (rows.length >= 2) {
+      const t = rows[1].textContent.trim();
+      if (t === 'N/A') return 0;
+      const parts = t.split(':');
+      if (parts.length === 2) return parseInt(parts[0],10)*60 + parseInt(parts[1],10);
+    }
+    return 0;
+  }
+
+  function isMobileDevice() {
+    return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const shareBtn  = document.getElementById('resultShareBtn');
+    const popover   = document.getElementById('sharePopover');
+    const copyBtn   = document.getElementById('shareCopyBtn');
+    const twitterA  = document.getElementById('shareTwitter');
+    const whatsappA = document.getElementById('shareWhatsapp');
+    const facebookA = document.getElementById('shareFacebook');
+    if (!shareBtn || !popover) return;
+
+    function getShareData() {
+      const puzzleRating = (window.currentSolution && window.currentSolution._rating) || 1000;
+      const grade = getRenderedGrade();
+      const solveTime = getRenderedSolveTime();
+      const text = buildShareText(solveTime, _shareGaveUp, puzzleRating, grade, _shareMistakes);
+      const url = 'https://sixfigurelogic.com';
+      return { text, url, puzzleRating };
+    }
+
+    shareBtn.addEventListener('click', async function (e) {
+      e.stopPropagation();
+
+      // Mobile: native share
+      if (isMobileDevice() && navigator.share) {
+        const { text } = getShareData();
+        try { await navigator.share({ text }); } catch(err) {}
+        return;
+      }
+
+      // Desktop: toggle popover
+      const isOpen = popover.classList.contains('open');
+      popover.classList.toggle('open', !isOpen);
+
+      if (!isOpen) {
+        // Populate share links
+        const { text, url } = getShareData();
+        const enc = encodeURIComponent(text);
+        if (twitterA)  twitterA.href  = `https://twitter.com/intent/tweet?text=${enc}`;
+        if (whatsappA) whatsappA.href = `https://wa.me/?text=${enc}`;
+        if (facebookA) facebookA.href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${enc}`;
+        // Reset copy btn
+        const copyLabel = document.getElementById('copyBtnLabel');
+        if (copyLabel) copyLabel.textContent = 'Copy Text';
+        if (copyBtn) copyBtn.classList.remove('copied');
+      }
+    });
+
+    // Copy button
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async function () {
+        const { text } = getShareData();
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch(e) {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+          document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); document.body.removeChild(ta);
+        }
+        const copyLabel = document.getElementById('copyBtnLabel');
+        if (copyLabel) copyLabel.textContent = '✓ Copied!';
+        copyBtn.classList.add('copied');
+        setTimeout(() => {
+          if (copyLabel) copyLabel.textContent = 'Copy Text';
+          copyBtn.classList.remove('copied');
+        }, 2500);
+      });
+    }
+
+    // Close popover on outside click
+    document.addEventListener('click', function (e) {
+      if (!popover.contains(e.target) && e.target !== shareBtn) {
+        popover.classList.remove('open');
+      }
+    });
+
+    // Also close when result overlay closes
+    const resultCloseBtn = document.getElementById('resultCloseBtn');
+    if (resultCloseBtn) resultCloseBtn.addEventListener('click', () => popover.classList.remove('open'));
+    const resultOverlay = document.getElementById('resultOverlay');
+    if (resultOverlay) resultOverlay.addEventListener('click', () => popover.classList.remove('open'));
+  });
+
+})();
