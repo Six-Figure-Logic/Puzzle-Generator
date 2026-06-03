@@ -2542,124 +2542,7 @@ window._sfgame = {
 })();
 
 
-/*═══════════════════════════════════════════════════════
-     Add this block at the bottom of app.js (before the closing of the
-     game-state IIFE is fine, or just append it after all other code).
-═════════════════════════════════════════════════════════ */
 
-(function () {
-  'use strict';
-
-  // ─── Emoji grid builder ─────────────────────────────────────────────────
-  // Renders a mini 6×5 cells grid as emoji blocks where filled = ⬛ and
-  // crossed = the faint block. We use solved=🟨 (accent yellow), wrong=🟥,
-  // and neutral=⬜ for un-touched cells.
-  // For the share card we just want a punchy one-liner scorecard.
-
-  function diffEmoji(puzzleRating) {
-    if (puzzleRating <= 1000) return '🟢';
-    if (puzzleRating <= 1300) return '🟡';
-    if (puzzleRating <= 1700) return '🟠';
-    return '🔴';
-  }
-
-  function gradeEmoji(grade) {
-    if (!grade || grade === 'F') return '💀';
-    if (grade.startsWith('A')) return '🏆';
-    if (grade.startsWith('B')) return '⚡';
-    if (grade.startsWith('C')) return '✅';
-    return '🎯';
-  }
-
-  function mistakeBar(n) {
-    // 3 boxes: filled X vs empty
-    let s = '';
-    for (let i = 0; i < 3; i++) s += (i < n ? '✗' : '○');
-    return s;
-  }
-
-  function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakeCount) {
-    const site = 'sixfigurelogic.com';
-    const diff = window._ratingToDifficulty
-      ? window._ratingToDifficulty(puzzleRating).toUpperCase()
-      : 'PUZZLE';
-
-    // Format time
-    const m = Math.floor(solveTime / 60);
-    const s = String(solveTime % 60).padStart(2, '0');
-    const timeStr = gaveUp ? '—' : `${m}:${s}`;
-
-    const de = diffEmoji(puzzleRating);
-    const ge = gradeEmoji(grade);
-    const mb = mistakeBar(mistakeCount);
-
-    if (gaveUp) {
-      return [
-        `Six-Figure Logic 🧩`,
-        ``,
-        `${de} ${diff}  ★ ${puzzleRating}`,
-        `⏱ ${timeStr}   ${mb}`,
-        `💀 Puzzle not solved`,
-        ``,
-        `Can you do better? → ${site}`
-      ].join('\n');
-    }
-
-    return [
-      `Six-Figure Logic 🧩`,
-      ``,
-      `${de} ${diff}  ★ ${puzzleRating}`,
-      `⏱ ${timeStr}   ${mb}`,
-      `${ge} Grade: ${grade}`,
-      ``,
-      `Try it → ${site}`
-    ].join('\n');
-  }
-
-  // ─── Wire share button ────────────────────────────────────────────────────
-  // We grab the grade from the DOM because it's already computed and rendered.
-
-  function getRenderedGrade() {
-    const el = document.querySelector('.result-grade-value');
-    return el ? el.textContent.trim() : '?';
-  }
-
-  function getRenderedSolveTime() {
-    // Find the SOLVE TIME stat value
-    const stats = document.getElementById('resultStats');
-    if (!stats) return 0;
-    const rows = stats.querySelectorAll('.result-stat-value');
-    // Second stat value is solve time (first is puzzle rating)
-    if (rows.length >= 2) {
-      const t = rows[1].textContent.trim();
-      if (t === 'N/A') return 0;
-      const parts = t.split(':');
-      if (parts.length === 2) return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-    }
-    return 0;
-  }
-
-  let _shareGaveUp = false;
-  let _shareMistakeCount = 0;
-
-  // Hook into showResultPopup to capture context
-  // We expose a tiny setter that the game IIFE calls when showing the popup.
-  window._sflShareContext = {
-    set: function(gaveUp, mistakes) {
-      _shareGaveUp = gaveUp;
-      _shareMistakeCount = mistakes;
-    }
-  };
-
-  document.addEventListener('DOMContentLoaded', function () {
-    const shareBtn = document.getElementById('resultShareBtn');
-    if (!shareBtn) return;
-
-    
-  });
-
-
-})();
 
 
 /*═══════════════════════ TUTORIAL WALKTHROUGH ════════════════════ -->*/
@@ -2669,7 +2552,7 @@ window._sfgame = {
 
   
   /* ══════════════════════════════════════════
-     FEATURE A — Worked Example Sub-Modal
+     Worked Example Sub-Modal
   ══════════════════════════════════════════ */
 
   const WE_ROWS = ['A','B','C','D','E','F'];
@@ -2906,6 +2789,7 @@ if (openBtn) openBtn.addEventListener('click', (e) => {
     });
   });
 
+  /*═══════════════════════ END OF TUTORIAL WALKTHROUGH ════════════════════ -->*/
 
   /* ══════════════════════════════════════════
      FEATURE B — Share Popover
@@ -2921,29 +2805,37 @@ if (openBtn) openBtn.addEventListener('click', (e) => {
     }
   };
 
-  function diffEmoji(r) {
-    if (r <= 1000) return '🟢'; if (r <= 1300) return '🟡';
-    if (r <= 1700) return '🟠'; return '🔴';
-  }
-  function gradeEmoji(g) {
-    if (!g || g === 'F') return '💀';
-    if (g.startsWith('A')) return '🏆';
-    if (g.startsWith('B')) return '⚡';
-    return '✅';
-  }
+function diffEmoji(r) {
+  if (r <= 1000) return '\uD83D\uDFE2';   // 🟢
+  if (r <= 1300) return '\uD83D\uDFE1';   // 🟡
+  if (r <= 1700) return '\uD83D\uDFE0';   // 🟠
+  return '\uD83D\uDD34';                   // 🔴
+}
+function gradeEmoji(g) {
+  if (!g || g === 'F') return '\uD83D\uDC80';           // 💀
+  if (g.startsWith('A')) return '\uD83C\uDFC6';         // 🏆
+  if (g.startsWith('B')) return '\u26A1';               // ⚡
+  return '\u2705';                                       // ✅
+}
   function mistakeBar(n) {
     let s = ''; for (let i = 0; i < 3; i++) s += (i < n ? '✗' : '○'); return s;
   }
 
-  function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakes) {
-    const site = 'sixfigurelogic.com';
-    const diff = (window._ratingToDifficulty ? window._ratingToDifficulty(puzzleRating) : 'puzzle').toUpperCase();
-    const m = Math.floor(solveTime / 60), s = String(solveTime % 60).padStart(2,'0');
-    const timeStr = gaveUp ? '—' : `${m}:${s}`;
-    const de = diffEmoji(puzzleRating), ge = gradeEmoji(grade), mb = mistakeBar(mistakes);
-    if (gaveUp) return `Six-Figure Logic 🧩\n\n${de} ${diff}  ★ ${puzzleRating}\n⏱ ${timeStr}   ${mb}\n💀 Puzzle not solved\n\nCan you do better? → ${site}`;
-    return `Six-Figure Logic 🧩\n\n${de} ${diff}  ★ ${puzzleRating}\n⏱ ${timeStr}   ${mb}\n${ge} Grade: ${grade}\n\nTry it → ${site}`;
+function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakes) {
+  const site = 'sixfigurelogic.com';
+  const diff = (window._ratingToDifficulty ? window._ratingToDifficulty(puzzleRating) : 'puzzle').toUpperCase();
+  const m = Math.floor(solveTime / 60), s = String(solveTime % 60).padStart(2,'0');
+  const timeStr = gaveUp ? '--:--' : `${m}:${s}`;
+  const de = diffEmoji(puzzleRating), ge = gradeEmoji(grade);
+
+  const mistakeWord = mistakes === 0 ? 'zero mistakes' : mistakes === 1 ? '1 mistake' : `${mistakes} mistakes`;
+
+  if (gaveUp) {
+    return `🧩 Six-Figure Logic\n\nThis ${diff} puzzle beat me today (rating ${puzzleRating}) — can you crack it?\n\n👉 ${site}`;
   }
+  const article = /^[AEIOU]/.test(diff) ? 'an' : 'a';
+  return `🧩 Six-Figure Logic\n\nJust solved ${article} ${diff} puzzle! ${de}\n\n• ⏱ ${timeStr}  \n• ${mistakeWord}  \n• Grade ${grade} ${ge}\n• Puzzle rating: ${puzzleRating}\n\n👉 ${site}`;
+}
 
   function getRenderedGrade() {
     const el = document.querySelector('.result-grade-value');
@@ -3003,8 +2895,37 @@ if (openBtn) openBtn.addEventListener('click', (e) => {
         const { text, url } = getShareData();
         const enc = encodeURIComponent(text);
         if (twitterA)  twitterA.href  = `https://twitter.com/intent/tweet?text=${enc}`;
-        if (whatsappA) whatsappA.href = `https://wa.me/?text=${enc}`;
-        if (facebookA) facebookA.href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${enc}`;
+        if (whatsappA) whatsappA.href = `https://wa.me/?text=${encodeURIComponent(text)}`;
+       if (facebookA) {
+  facebookA.removeAttribute('href');
+  facebookA.style.cursor = 'pointer';
+  facebookA.addEventListener('click', async function(e) {
+    e.preventDefault();
+    e.stopPropagation();  // ← prevent outside-click handler closing popover
+    const { text } = getShareData();
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch(err) {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+    }
+    // Flash green
+    const label = facebookA.querySelector('span');
+    facebookA.classList.add('copied');
+    if (label) label.textContent = '\u2713 Copied! Opening Facebook\u2026';
+    // Wait 1s then open Facebook
+    setTimeout(() => {
+      window.open('https://www.facebook.com/', '_blank', 'noopener');
+    }, 1000);
+    // Reset label after 3s
+    setTimeout(() => {
+      facebookA.classList.remove('copied');
+      if (label) label.textContent = 'Facebook (copy + open)';
+    }, 3000);
+  });
+}
         // Reset copy btn
         const copyLabel = document.getElementById('copyBtnLabel');
         if (copyLabel) copyLabel.textContent = 'Copy Text';
@@ -3014,25 +2935,26 @@ if (openBtn) openBtn.addEventListener('click', (e) => {
 
     // Copy button
     if (copyBtn) {
-      copyBtn.addEventListener('click', async function () {
-        const { text } = getShareData();
-        try {
-          await navigator.clipboard.writeText(text);
-        } catch(e) {
-          const ta = document.createElement('textarea');
-          ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
-          document.body.appendChild(ta); ta.select();
-          document.execCommand('copy'); document.body.removeChild(ta);
-        }
-        const copyLabel = document.getElementById('copyBtnLabel');
-        if (copyLabel) copyLabel.textContent = '✓ Copied!';
-        copyBtn.classList.add('copied');
-        setTimeout(() => {
-          if (copyLabel) copyLabel.textContent = 'Copy Text';
-          copyBtn.classList.remove('copied');
-        }, 2500);
-      });
+  copyBtn.addEventListener('click', async function (e) {
+    e.stopPropagation();  // ← ADD THIS LINE
+    const { text } = getShareData();
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch(e) {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
     }
+    const copyLabel = document.getElementById('copyBtnLabel');
+    if (copyLabel) copyLabel.textContent = '\u2713 Copied!';
+    copyBtn.classList.add('copied');
+    setTimeout(() => {
+      if (copyLabel) copyLabel.textContent = 'Copy Text';
+      copyBtn.classList.remove('copied');
+    }, 2500);
+  });
+}
 
     // Close popover on outside click
     document.addEventListener('click', function (e) {
