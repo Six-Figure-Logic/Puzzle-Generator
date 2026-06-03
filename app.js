@@ -787,9 +787,6 @@ function generatePuzzleJS(maxAttempts = 2000) {
   // then counts remaining cells. Fewer remaining = easier.
   // Thresholds (tunable): easy ≤20, medium ≤35, hard ≤45, expert >45
 
-  const DIFF_THRESHOLDS = { easy: 6, medium: 22, hard: 42 };
-  // remaining cells after full deduction:
-  // easy=6 (fully solved by clues), medium=7-22, hard=23-42, expert>42
 
   function scorePuzzle(clues, sol) {
     // Virtual grid: grid[varIdx 0..5][val 1..10] = true if candidate still alive
@@ -1512,46 +1509,27 @@ case 'no product': {
   //   During generation screening (sol unknown) WED is skipped; only
   //   E_norm + C_norm used for fast pre-screening via difficultyFromElim.
 
-  function computePuzzleRating(rawClues, elim, sol) {
-    // Step 1: E_norm
-    let E_norm;
-    if (elim <= 6) {
-      E_norm = 0;
-    } else if (elim <= 45) {
-      E_norm = Math.pow((elim - 6) / 39, 0.85) * 75;
-    } else {
-      E_norm = 75 + Math.pow((elim - 45) / 9, 0.60) * 25;
-    }
-
-    // Step 2: WED_norm (only when sol provided — deferred after display)
-    let WED_norm = 0;
-    let wedResult = null;
-    if (sol && rawClues.length > 0) {
-      wedResult = computeWED(rawClues, sol);
-      WED_norm = wedResult.wed_norm;
-    }
-
-    // Step 3: C_norm
-    const scores = rawClues.map(clueComplexityScore);
-    const avg    = scores.length > 0 ? scores.reduce((a,b)=>a+b,0) / scores.length : 1;
-    const C_norm = Math.max(0, (avg - 1) / 89) * 100;
-
-    // Step 4: rating
-    // When WED unavailable (screening), use E+C only with adjusted weights
-    let rating;
-    if (sol) {
-      rating = Math.round(800 + (E_norm * 0.50 + WED_norm * 0.50) * 18);
-    } else {
-      const clue_w = 0.50 - (E_norm / 100) * 0.30;
-      const elim_w = 1 - clue_w;
-      rating = Math.round(800 + (E_norm * elim_w + C_norm * clue_w) * 15.5);
-    }
-
-    // Stash debug info
-    computePuzzleRating._lastDebug = { wedResult, E_norm, WED_norm, C_norm, elim, rating };
-
-    return rating;
+function computePuzzleRating(rawClues, elim, sol) {
+  // E_norm
+  let E_norm;
+  if (elim <= 6) {
+    E_norm = 0;
+  } else if (elim <= 45) {
+    E_norm = Math.pow((elim - 6) / 39, 0.85) * 75;
+  } else {
+    E_norm = 75 + Math.pow((elim - 45) / 9, 0.60) * 25;
   }
+
+  // WED_norm
+  const wedResult = computeWED(rawClues, sol);
+  const WED_norm = wedResult.wed_norm;
+
+  // Rating
+  const rating = Math.round(800 + (E_norm * 0.50 + WED_norm * 0.50) * 18);
+
+  computePuzzleRating._lastDebug = { wedResult, E_norm, WED_norm, elim, rating };
+  return rating;
+}
 
   function ratingToDifficulty(rating) {
     if (rating <= 1000) return 'easy';
@@ -1560,35 +1538,11 @@ case 'no product': {
     return 'expert';
   }
 
-  // Early-exit difficulty: uses elim alone for fast pre-screening,
-  // falls back to full rating when elim is in the ambiguous middle range.
-  //
-  // Reasoning for exits:
-  //   elim ≥ 50  → E_norm ≥ ~87 → even all-easy clues (C_norm≈0) gives
-  //                rating ≥ 800+(87×0.826)×15.5 ≈ 1910 → always Expert
-  //   elim ≤  6  → E_norm = 0 → max rating = 800+(100×0.50)×15.5 = 1575
-  //                → can never be Expert (needs 1701+)
-  //   elim ≤ 12  → E_norm ≤ ~13 → max rating ≈ 800+(13×0.874+100×0.469)×15.5
-  //                ≈ 1350 → can never be Hard or Expert
-
-function difficultyFromElim(rawClues, elim) {
-    return ratingToDifficulty(computePuzzleRating(rawClues, elim));
-  }
-
-  // Legacy label kept so any older callers don't break
-  function difficultyLabel(remaining) {
-    if (remaining <= 6)  return 'easy';
-    if (remaining <= 22) return 'medium';
-    if (remaining <= 42) return 'hard';
-    return 'expert';
-  }
-
+ 
   // Expose
   window._scorePuzzle         = scorePuzzle;
-  window._difficultyLabel     = difficultyLabel;       // legacy
   window._computePuzzleRating = computePuzzleRating;
   window._ratingToDifficulty  = ratingToDifficulty;
-  window._difficultyFromElim  = difficultyFromElim;
 
   window.generatePuzzle    = generatePuzzleJS;
   window._checkCluePublic  = checkClue;

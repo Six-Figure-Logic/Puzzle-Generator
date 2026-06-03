@@ -616,71 +616,13 @@ header h1 {
   color: var(--accent);
 }
 
-/* ── Difficulty selector ── */
-.difficulty-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.difficulty-label {
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  color: var(--text-muted);
-}
-
-.difficulty-btns {
-  display: flex;
-  gap: 3px;
-}
-
-.diff-btn {
-  font-family: 'BankGothic', 'Oswald', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  padding: 5px 9px;
-  border-radius: 5px;
-  border: 1px solid var(--border-bright);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.12s ease;
-  white-space: nowrap;
-}
 
 .diff-btn.active[data-diff="easy"]   { background: rgba(0,229,160,0.15); color: #00e5a0; border-color: rgba(0,229,160,0.5); }
 .diff-btn.active[data-diff="medium"] { background: rgba(232,255,71,0.12); color: var(--accent); border-color: rgba(232,255,71,0.5); }
 .diff-btn.active[data-diff="hard"]   { background: rgba(255,160,50,0.15); color: #ffa032; border-color: rgba(255,160,50,0.5); }
 .diff-btn.active[data-diff="expert"] { background: rgba(255,77,106,0.15); color: var(--danger); border-color: rgba(255,77,106,0.5); }
 
-/* ── Responsive ── */
-@media (max-width: 700px) {
-  .main-layout {
-    flex-direction: column;
-  }
-  .clues-card {
-    width: 100%;
-  }
-  .answers-card {
-    width: 100%;
-  }
-  .answers-grid {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .answer-item {
-    flex: 1 1 calc(33% - 8px);
-    height: auto;
-  }
-  .cell {
-    font-size: 0.8rem;
-    height: 32px;
-  }
-}
+
 
 /* ══════════════════════════════════════════
    HEADER TOP ROW
