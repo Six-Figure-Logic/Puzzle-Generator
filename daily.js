@@ -55,51 +55,45 @@
   // values from the real PRNG to ensure daily generation never leaves the global
   // engine at the same state it was before — breaking any correlation with
   // subsequent random puzzle generation.
-  function generateDailyPuzzle(dateStr, difficulty) {
+function generateDailyPuzzle(dateStr, difficulty) {
     const band = DAILY_BANDS[difficulty];
     if (!band) return null;
 
     const seed = `${dateStr}-${difficulty}`;
     const seeded = makeSeededRandom(seed);
-
-    // Save real Math.random
     const origRandom = Math.random;
     Math.random = seeded;
 
     let result = null;
+    let fallbackCandidate = null;
     const gen = window.generatePuzzle;
     const score = window._scorePuzzle;
     const rate = window._computePuzzleRating;
 
     try {
-  for (let attempt = 0; attempt < 5000; attempt++) {
-    const candidate = gen();
-    if (!candidate || !candidate._rawClues) continue;
-
-    if (!fallbackCandidate) fallbackCandidate = candidate;
-
-    // CRITICAL: Rating calculations MUST happen while Math.random is still hijacked by 'seeded'
-    const elim = score(candidate._rawClues, candidate);
-    const rating = rate(candidate._rawClues, elim, candidate);
-    
-    if (rating >= band.min && rating <= band.max) {
-      candidate._rating = rating; // Lock it in
-      result = candidate;
-      break;
+      for (let attempt = 0; attempt < 5000; attempt++) {
+        const candidate = gen();
+        if (!candidate || !candidate._rawClues) continue;
+        if (!fallbackCandidate) fallbackCandidate = candidate;
+        const elim = score(candidate._rawClues, candidate);
+        const rating = rate(candidate._rawClues, elim, candidate);
+        candidate._rating = rating;
+        if (rating >= band.min && rating <= band.max) {
+          result = candidate;
+          break;
+        }
+      }
+      if (!result && fallbackCandidate) {
+        if (!fallbackCandidate._rating) {
+          const elim = score(fallbackCandidate._rawClues, fallbackCandidate);
+          fallbackCandidate._rating = rate(fallbackCandidate._rawClues, elim, fallbackCandidate);
+        }
+        result = fallbackCandidate;
+      }
+    } finally {
+      Math.random = origRandom;
+      for (let i = 0; i < 37; i++) origRandom();
     }
-  }
-
-  // Fallback assignment also happens under the seed safety net
-  if (!result && fallbackCandidate) {
-    const elim = score(fallbackCandidate._rawClues, fallbackCandidate);
-    fallbackCandidate._rating = rate(fallbackCandidate._rawClues, elim, fallbackCandidate);
-    result = fallbackCandidate;
-  }
-} finally {
-  // Restore global PRNG only AFTER all scoring loops are 100% complete
-  Math.random = origRandom;
-  for (let i = 0; i < 37; i++) origRandom();
-}
 
     return result;
   }
@@ -155,14 +149,23 @@
     getDateString: getESTDateString,
 
     // Returns a puzzle object for today + difficulty (may take a moment)
- getPuzzle: function(dateStr, difficulty) {
+getPuzzle: function(dateStr, difficulty) {
       const cacheKey = 'sfl_daily_puzzle_' + dateStr + '_' + difficulty;
       try {
         const cached = localStorage.getItem(cacheKey);
-        if (cached) return JSON.parse(cached);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          // Only return cache if rating is already frozen
+          if (parsed && parsed._rating) return parsed;
+        }
       } catch(e) {}
       const puzzle = generateDailyPuzzle(dateStr, difficulty);
       if (puzzle) {
+        // Rating must be frozen before caching
+        if (!puzzle._rating && puzzle._rawClues) {
+          const elim = window._scorePuzzle(puzzle._rawClues, puzzle);
+          puzzle._rating = window._computePuzzleRating(puzzle._rawClues, elim, puzzle);
+        }
         try { localStorage.setItem(cacheKey, JSON.stringify(puzzle)); } catch(e) {}
       }
       return puzzle;

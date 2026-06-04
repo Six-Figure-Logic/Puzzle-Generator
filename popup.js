@@ -61,14 +61,11 @@
 
   // ─── Popup open / close ──────────────────────────────────────────────────
 function openPopup() {
-  // Force clean state synchronization directly from the disk/memory registry
-  if (window.SFLDaily && typeof window.SFLDaily.getTodayRecord === 'function') {
-    window.SFLDaily.getTodayRecord(); 
-  }
-  
-  refreshDailyCards();
-  updateRangeDisplay();
-  popupOverlay.classList.add('open');
+  setTimeout(() => {
+    refreshDailyCards();
+    updateRangeDisplay();
+    popupOverlay.classList.add('open');
+  }, 350);
 }
 
   function closePopup() {
@@ -141,7 +138,7 @@ function openPopup() {
         actionEl.className = 'daily-card-action';
         card.classList.add('playable');
       } else if (rec.solved) {
-        statusEl.textContent = '✓';
+        statusEl.textContent = '✓ SOLVED';
         statusEl.className = 'daily-card-status solved';
         timeEl.textContent = formatTime(rec.time);
         if (rec.grade) {
@@ -152,7 +149,7 @@ function openPopup() {
         card.classList.add('completed-solved');
 } else {
         // gave up / failed — no solve time shown
-        statusEl.textContent = '✗';
+        statusEl.textContent = '✗ FAILED';
         statusEl.className = 'daily-card-status failed';
         timeEl.textContent = '';
         actionEl.textContent = 'REVIEW';
@@ -391,7 +388,15 @@ function openPopup() {
       }
 
       if (sol || tried >= MAX) {
-        if (!sol) { try { sol = gen(); } catch(e) {} }
+        if (!sol) {
+          try {
+            sol = gen();
+            if (sol && sol._rawClues) {
+              const elim = score(sol._rawClues, sol);
+              sol._rating = rate(sol._rawClues, elim, sol);
+            }
+          } catch(e) {}
+        }
         showLoading(false);
         if (sol) window.applyNewPuzzle(sol);
       } else {
@@ -668,7 +673,7 @@ function openPopup() {
         else {
           captureDailyCompletionState(solveTime, false, mistakes, 0, '');
         }
-      }, 50);
+      }, 300);
     };
 
     // Supplement: when result overlay opens after a SOLVE, update the grade

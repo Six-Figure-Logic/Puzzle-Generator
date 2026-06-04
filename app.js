@@ -1566,8 +1566,11 @@ function applyNewPuzzle(sol) {
   // Compute rating synchronously — WED runs inside generator loop now
   const ratingEl = document.getElementById('puzzleRating');
   if (ratingEl && sol._rawClues && sol._rawClues.length) {
-    const elim   = window._scorePuzzle(sol._rawClues, sol);
-    const rating = window._computePuzzleRating(sol._rawClues, elim, sol);
+    if (!sol._rating) {
+      const elim = window._scorePuzzle(sol._rawClues, sol);
+      sol._rating = window._computePuzzleRating(sol._rawClues, elim, sol);
+    }
+    const rating = sol._rating;
     document.getElementById('puzzleRatingValue').textContent = '  ★ ' + rating;
     ratingEl.className = 'puzzle-rating rating-' + window._ratingToDifficulty(rating);
     ratingEl.style.display = 'inline';
@@ -2261,10 +2264,9 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
     }
     _originalApply(sol);
     window.currentSolution = sol;
-    if (sol && sol._rawClues && sol._rawClues.length) {
-      const elim   = window._scorePuzzle(sol._rawClues, sol);
-      const rating = window._computePuzzleRating(sol._rawClues, elim, sol);
-      sol._rating = rating;
+    if (sol && sol._rawClues && sol._rawClues.length && !sol._rating) {
+      const elim = window._scorePuzzle(sol._rawClues, sol);
+      sol._rating = window._computePuzzleRating(sol._rawClues, elim, sol);
     }
     lockGame(sol._rating || 1000);
   };
