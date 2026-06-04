@@ -1370,6 +1370,8 @@ case 'no product': {
   const GLOBAL_OPS_WED = new Set(['no sum','no product','largest','smallest','not largest','not smallest']);
 
   function computeWED(rawClues, sol) {
+    // ─── Sort clues in-memory by ascending difficulty prior to WED calculation ───
+  rawClues = [...rawClues].sort((a, b) => clueComplexityScore(a) - clueComplexityScore(b));
     const clueCount = rawClues.length;
     const varNames6 = ['A','B','C','D','E','F'];
     const solArr = [
@@ -1494,7 +1496,7 @@ case 'no product': {
   //   C_norm  (avg clue complexity)  weight 0.15
   //
   //   Rating = round(800 + (E*0.30 + WED*0.55 + C*0.15) * 15.5)
-  //   Bands: Easy 800-1000 | Medium 1001-1400 | Hard 1401-1800 | Expert 1701+
+  //   Bands: Easy 800-1000 | Medium 1001-1400 | Hard 1401-1800 | Expert 1801+
   //
   //   NOTE: computePuzzleRating takes optional sol argument for WED.
   //   During generation screening (sol unknown) WED is skipped; only
@@ -2769,13 +2771,13 @@ function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakes) {
   const timeStr = gaveUp ? '--:--' : `${m}:${s}`;
   const de = diffEmoji(puzzleRating), ge = gradeEmoji(grade);
 
-  const mistakeWord = mistakes === 0 ? 'zero mistakes' : mistakes === 1 ? '1 mistake' : `${mistakes} mistakes`;
+  const mistakeWord = mistakes === 0 ? 'Zero mistakes' : mistakes === 1 ? '1 mistake' : `${mistakes} mistakes`;
 
   if (gaveUp) {
-    return `🧩 Six-Figure Logic\n\nThis ${diff} puzzle beat me today (rating ${puzzleRating}) — can you crack it?\n\n👉 ${site}`;
+    return `🔢 Six-Figure Logic\n\nThis ${diff} puzzle beat me today (rating ${puzzleRating}) — can you crack it?\n\n👉 ${site}`;
   }
   const article = /^[AEIOU]/.test(diff) ? 'an' : 'a';
-  return `🧩 Six-Figure Logic\n\nJust solved ${article} ${diff} puzzle! ${de}\n\n• ⏱ ${timeStr}  \n• ${mistakeWord}  \n• Grade ${grade} ${ge}\n• Puzzle rating: ${puzzleRating}\n\n👉 ${site}`;
+  return `🔢 Six-Figure Logic\n\nJust solved ${article} ${diff} puzzle! ${de}\n\n• Puzzle rating: ${puzzleRating}\n• ⏱ ${timeStr}  \n• ${mistakeWord}  \n• Grade ${grade} ${ge}\n\n👉 ${site}`;
 }
 
   function getRenderedGrade() {

@@ -60,11 +60,16 @@
   }
 
   // ─── Popup open / close ──────────────────────────────────────────────────
-  function openPopup() {
-    refreshDailyCards();
-    updateRangeDisplay();
-    popupOverlay.classList.add('open');
+function openPopup() {
+  // Force clean state synchronization directly from the disk/memory registry
+  if (window.SFLDaily && typeof window.SFLDaily.getTodayRecord === 'function') {
+    window.SFLDaily.getTodayRecord(); 
   }
+  
+  refreshDailyCards();
+  updateRangeDisplay();
+  popupOverlay.classList.add('open');
+}
 
   function closePopup() {
     popupOverlay.classList.remove('open');

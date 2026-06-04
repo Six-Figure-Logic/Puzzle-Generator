@@ -72,25 +72,34 @@
     const rate = window._computePuzzleRating;
 
     try {
-      // Try up to 3000 times to find a puzzle in band
-      for (let attempt = 0; attempt < 3000; attempt++) {
-        const candidate = gen();
-        if (!candidate || !candidate._rawClues) continue;
-        const elim = score(candidate._rawClues, candidate);
-        const rating = rate(candidate._rawClues, elim, candidate);
-        if (rating >= band.min && rating <= band.max) {
-          candidate._rating = rating;
-          result = candidate;
-          break;
-        }
-      }
-    } finally {
-      Math.random = origRandom;
-      // Consume entropy from the real PRNG so the global engine state after
-      // a daily generation is never the same as if no daily had been generated.
-      // This prevents the first random puzzle from matching a daily puzzle.
-      for (let i = 0; i < 37; i++) origRandom();
+  for (let attempt = 0; attempt < 5000; attempt++) {
+    const candidate = gen();
+    if (!candidate || !candidate._rawClues) continue;
+
+    if (!fallbackCandidate) fallbackCandidate = candidate;
+
+    // CRITICAL: Rating calculations MUST happen while Math.random is still hijacked by 'seeded'
+    const elim = score(candidate._rawClues, candidate);
+    const rating = rate(candidate._rawClues, elim, candidate);
+    
+    if (rating >= band.min && rating <= band.max) {
+      candidate._rating = rating; // Lock it in
+      result = candidate;
+      break;
     }
+  }
+
+  // Fallback assignment also happens under the seed safety net
+  if (!result && fallbackCandidate) {
+    const elim = score(fallbackCandidate._rawClues, fallbackCandidate);
+    fallbackCandidate._rating = rate(fallbackCandidate._rawClues, elim, fallbackCandidate);
+    result = fallbackCandidate;
+  }
+} finally {
+  // Restore global PRNG only AFTER all scoring loops are 100% complete
+  Math.random = origRandom;
+  for (let i = 0; i < 37; i++) origRandom();
+}
 
     return result;
   }
