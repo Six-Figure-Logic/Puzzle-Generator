@@ -237,7 +237,7 @@ function checkDuplicateAnswers() {
   const ValidProductsList = [];
 
   function initLookups() {
-    // primes 1..10 (VBA hardcoded)
+    if (ValidProductsList.length > 0) return; // already initialized
     PrimeLookup[1] = false;
     PrimeLookup[2] = true;
     PrimeLookup[3] = true;
@@ -249,8 +249,6 @@ function checkDuplicateAnswers() {
     PrimeLookup[9] = false;
     PrimeLookup[10] = false;
     for (let i = 1; i <= 10; i++) EvenLookup[i] = (i % 2 === 0);
-
-    // valid products (VBA list)
     const list = [6,8,9,10,12,14,15,16,18,20,21,24,27,28,30,32,35,36,40,42,45,48,50,54,56,60,63,70,72,80,90];
     for (let v of list) ValidProductsList.push(v);
   }
