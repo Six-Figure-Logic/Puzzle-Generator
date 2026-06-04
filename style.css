@@ -168,7 +168,7 @@ header h1 {
   justify-content: center;
 }
 
-.btn-icon { font-size: 15px; line-height: 1; }
+.btn-icon { font-size: 16pt; line-height: 1; }
 
 .btn.primary {
   background: var(--accent);

@@ -310,7 +310,7 @@
       // Grid stays interactive — player can toggle cells and check answers
       // Session saving is blocked separately via _sflPuzzleContext.isReview
     } else {
-      newPuzzleBtn.innerHTML = '<span class="btn-icon">&#x25B6;</span> Play';
+      newPuzzleBtn.innerHTML = '<span class="btn-icon">START</span>';
       newPuzzleBtn.dataset.backMode = '';
     }
   }
@@ -691,6 +691,9 @@
     // Initial render
     setPopupMode('casual');
     updateRangeDisplay();
+    // Hide mode badge until a puzzle is in progress
+    const badge = document.getElementById('modeDisplayBadge');
+    if (badge) badge.style.visibility = 'hidden';
   });
 
   // ─── Expose for external access ─────────────────────────────────────────

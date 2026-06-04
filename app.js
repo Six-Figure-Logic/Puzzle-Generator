@@ -2162,6 +2162,8 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
     mistakeCount = 0;
     penaltySecs  = 0;
     puzzlePenaltyPerMistake = window.SFLRating.penaltyPerMistake(puzzleRating);
+    const badge = document.getElementById('modeDisplayBadge');
+    if (badge) badge.style.visibility = 'visible';
 
     // Lock popup mode pill buttons while game is active
     const _pc = document.getElementById('popupModeCasual');
@@ -2190,7 +2192,7 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
     if (_pr2) _pr2.disabled = false;
 
     // Restore button text to "Play"
-    newPuzzleBtn.innerHTML = '<span class="btn-icon">&#x25B6;</span> Play';
+    newPuzzleBtn.innerHTML = '<span class="btn-icon">START</span>';
     newPuzzleBtn.classList.remove('give-up-active');
     penaltyEl.classList.remove('visible');
 
