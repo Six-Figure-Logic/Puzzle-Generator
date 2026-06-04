@@ -62,16 +62,14 @@ if (cluesList) {
   });
 }
 
-    // Mode
+    // Mode — pill is now inside the popup
     let mode = 'casual';
-    const casualBtn = document.getElementById('modeCasualBtn');
+    const casualBtn = document.getElementById('popupModeCasual');
     if (casualBtn && !casualBtn.classList.contains('active')) mode = 'rated';
 
-    // Difficulty
+    // Difficulty — diff-btns removed; use puzzle context if available
     let selectedDiff = 'easy';
-    document.querySelectorAll('.diff-btn').forEach(b => {
-      if (b.classList.contains('active')) selectedDiff = b.dataset.diff;
-    });
+    // (difficulty buttons no longer exist; selectedDiff kept for compat but unused)
 
     // Timer start epoch — read directly from the real closure variable
     const startEpoch = window._sflTimerStart ? window._sflTimerStart.get() : Date.now();
@@ -135,11 +133,8 @@ if (cluesList) {
       window._sfgame._setMode(state.mode || 'casual');
     }
 
-    // 2. Difficulty visual + global
-    document.querySelectorAll('.diff-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.diff === state.selectedDiff);
-    });
-    window.selectedDifficulty = state.selectedDiff;
+    // 2. Difficulty visual — diff-btns removed from main page; skip
+    // (popup.js owns difficulty selection now)
 
     // 3. Render puzzle (resets grid, starts timer, locks UI)
     window.applyNewPuzzle(state.solution);

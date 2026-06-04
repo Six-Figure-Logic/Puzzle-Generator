@@ -1014,10 +1014,10 @@ header h1 {
   border: 1px solid var(--border-bright);
   overflow: hidden;
   background: var(--surface2);
-  height: 20px;
+  height: 30px;
   flex-shrink: 0;
   transform: scaleX(0.84) translateY(12px);
-  transform-origin: left;
+  transform-origin: center;
 }
 
 .mode-pill-btn {
@@ -1059,6 +1059,14 @@ header h1 {
 .mode-pill.locked {
   opacity: 0.45;
   pointer-events: none;
+}
+
+.mode-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* or flex-start */
+  gap: 4px;
+
 }
 
 /* ── Penalty timer ── */
