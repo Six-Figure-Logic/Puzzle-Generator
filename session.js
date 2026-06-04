@@ -75,6 +75,7 @@ if (cluesList) {
     const startEpoch = window._sflTimerStart ? window._sflTimerStart.get() : Date.now();
 
     return {
+      puzzleContext:  window._sflPuzzleContext ? { ...window._sflPuzzleContext } : null,
       solution:       window.currentSolution,
       gridState,
       undoSnapshots,
@@ -138,6 +139,12 @@ if (cluesList) {
 
     // 3. Render puzzle (resets grid, starts timer, locks UI)
     window.applyNewPuzzle(state.solution);
+    // Restore daily context (applyNewPuzzle/lockGame resets it to non-daily)
+    if (state.puzzleContext && window._sflPuzzleContext) {
+      window._sflPuzzleContext.isDaily = state.puzzleContext.isDaily || false;
+      window._sflPuzzleContext.dailyDifficulty = state.puzzleContext.dailyDifficulty || null;
+      window._sflPuzzleContext.isReview = false; // never restore into review mode
+    }
 
     // 4. Fix timer — write the saved epoch directly into the real closure variable
     if (window._sflTimerStart) {

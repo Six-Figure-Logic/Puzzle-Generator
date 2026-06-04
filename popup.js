@@ -637,43 +637,28 @@ function openPopup() {
     const _origStopTimerPopup = window.stopTimer;
     window.stopTimer = function () {
       _origStopTimerPopup();
-      // Defer so app.js's stopTimer hook (which sets puzzleWasGivenUp etc.) runs first
-      setTimeout(() => {
-        const ctx = window._sflPuzzleContext;
-        if (!ctx.isDaily || !ctx.dailyDifficulty || ctx.isReview) return;
+      const ctx = window._sflPuzzleContext;
+      if (!ctx.isDaily || !ctx.dailyDifficulty || ctx.isReview) return;
 
-        // Read timer value (stopTimer just froze it)
-        const timerEl = document.getElementById('timer');
-        const timerText = timerEl ? timerEl.textContent : '00:00';
-        const parts = timerText.split(':');
-        const solveTime = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+      const timerEl = document.getElementById('timer');
+      const timerText = timerEl ? timerEl.textContent : '00:00';
+      const parts = timerText.split(':');
+      const solveTime = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
 
-        // Read mistake count
-        let mistakes = 0;
-        for (let i = 1; i <= 3; i++) {
-          const box = document.getElementById('mistakeBox' + i);
-          if (box && box.classList.contains('active')) mistakes++;
-        }
+      let mistakes = 0;
+      for (let i = 1; i <= 3; i++) {
+        const box = document.getElementById('mistakeBox' + i);
+        if (box && box.classList.contains('active')) mistakes++;
+      }
 
-        // Determine outcome from feedback text
-        const fb = document.getElementById('feedback');
-        const solved = fb && fb.classList.contains('correct');
-        const gaveUp = !solved;
-        const grade = solved ? (() => {
-          // Grade will be computed momentarily by showResultPopup; read it after a tick
-          return null; // filled in below
-        })() : 'F';
+      const fb = document.getElementById('feedback');
+      const solved = fb && fb.classList.contains('correct');
 
-        // For solves, grade is computed inside showResultPopup which fires after this.
-        // Use MutationObserver only for grade capture on solve; stopTimer handles the save.
-        if (!solved) {
-          captureDailyCompletionState(solveTime, true, mistakes, 0, 'F');
-        }
-        // For solves: save without grade first, then update with grade when popup opens
-        else {
-          captureDailyCompletionState(solveTime, false, mistakes, 0, '');
-        }
-      }, 300);
+      if (!solved) {
+        captureDailyCompletionState(solveTime, true, mistakes, 0, 'F');
+      } else {
+        captureDailyCompletionState(solveTime, false, mistakes, 0, '');
+      }
     };
 
     // Supplement: when result overlay opens after a SOLVE, update the grade

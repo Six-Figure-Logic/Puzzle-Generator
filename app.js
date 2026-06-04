@@ -255,6 +255,8 @@ function checkDuplicateAnswers() {
     for (let v of list) ValidProductsList.push(v);
   }
 
+  initLookups(); // initialize immediately so PrimeLookup/EvenLookup are ready for checkClue
+
   // --- Utilities ---
   function randInt(maxExclusive) { return Math.floor(Math.random() * maxExclusive); }
   function shuffle(arr) {
