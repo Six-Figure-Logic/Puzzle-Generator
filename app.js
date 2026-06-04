@@ -10,7 +10,10 @@ const inputs = {};
 inputIds.forEach(id => inputs[id] = document.getElementById(id));
 
 let currentSolution = null;
+<<<<<<< HEAD
 window._sflSetCurrentSolution = function(sol) { currentSolution = sol; };
+=======
+>>>>>>> 97152078e30bbccd87bee0598ecbbe50793a609a
 
 //timer variables
 let timerInterval = null;
@@ -2192,7 +2195,11 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
     if (_pr2) _pr2.disabled = false;
 
     // Restore button text to "Play"
+<<<<<<< HEAD
     newPuzzleBtn.innerHTML = '<span class="btn-icon">START</span>';
+=======
+    newPuzzleBtn.innerHTML = '<span class="btn-icon">&#x25B6;</span> Play';
+>>>>>>> 97152078e30bbccd87bee0598ecbbe50793a609a
     newPuzzleBtn.classList.remove('give-up-active');
     penaltyEl.classList.remove('visible');
 

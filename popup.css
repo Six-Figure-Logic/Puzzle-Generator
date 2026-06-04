@@ -371,12 +371,22 @@
 
 /* ── Play button — PLAY / FORFEIT / BACK states ───────────────── */
 /* Base .btn.primary already covers PLAY.
+<<<<<<< HEAD
    FORFEIT uses existing give-up styling.*/
 #newPuzzleBtn[data-back-mode="1"]  {
   color: var(--accent);
   background: var(--accent-dim);
   box-shadow: inset 0 0 8px var(--accent-glow);
   border-color: var(--accent);
+=======
+   FORFEIT uses existing give-up styling.
+   BACK gets a distinct ghost-left style. */
+#newPuzzleBtn[data-back-mode="1"] {
+  background: transparent !important;
+  border-color: var(--border-bright) !important;
+  color: var(--text-dim) !important;
+  box-shadow: none !important;
+>>>>>>> 97152078e30bbccd87bee0598ecbbe50793a609a
 }
 #newPuzzleBtn[data-back-mode="1"]:hover {
   background: var(--surface2) !important;

@@ -123,12 +123,16 @@
     // Prune old dates (keep last 7)
     const keys = Object.keys(store).sort();
     while (keys.length > 7) {
+<<<<<<< HEAD
       const oldDate = keys.shift();
       delete store[oldDate];
       // Also prune cached puzzle objects for that date
       ['easy','medium','hard','expert'].forEach(diff => {
         try { localStorage.removeItem('sfl_daily_puzzle_' + oldDate + '_' + diff); } catch(e) {}
       });
+=======
+      delete store[keys.shift()];
+>>>>>>> 97152078e30bbccd87bee0598ecbbe50793a609a
     }
     saveDailyStore(store);
   }
@@ -146,6 +150,7 @@
     getDateString: getESTDateString,
 
     // Returns a puzzle object for today + difficulty (may take a moment)
+<<<<<<< HEAD
  getPuzzle: function(dateStr, difficulty) {
       const cacheKey = 'sfl_daily_puzzle_' + dateStr + '_' + difficulty;
       try {
@@ -158,6 +163,9 @@
       }
       return puzzle;
     },
+=======
+    getPuzzle: generateDailyPuzzle,
+>>>>>>> 97152078e30bbccd87bee0598ecbbe50793a609a
 
     // State management
     getTodayRecord,
