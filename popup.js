@@ -85,7 +85,6 @@
     if (window._sfgame && typeof window._sfgame._setMode === 'function') {
       window._sfgame._setMode(mode);
     }
-<<<<<<< HEAD
     // Style the random launch button to match mode
     if (randomLaunchBtn) {
       if (mode === 'rated') {
@@ -98,8 +97,6 @@
         randomLaunchBtn.style.color = '#00e5a0';
       }
     }
-=======
->>>>>>> 97152078e30bbccd87bee0598ecbbe50793a609a
   }
 
   // ─── Daily card rendering ────────────────────────────────────────────────
@@ -168,12 +165,9 @@
     // Review mode: restore final state, show back button, no interaction
     if (isReview) {
       closePopup();
-<<<<<<< HEAD
       // Clear any saved session immediately so session.js cannot overwrite the review
       try { localStorage.removeItem('sfl_session_v1'); } catch(e) {}
       window._sflBlockSessionRestore = true;
-=======
->>>>>>> 97152078e30bbccd87bee0598ecbbe50793a609a
       showLoading(true);
       // Defer so loading overlay paints first
       setTimeout(() => {
@@ -218,13 +212,10 @@
     window._sflPuzzleContext.dailyDifficulty = difficulty;
     window._sflPuzzleContext.isReview = true;
 
-<<<<<<< HEAD
     // Prevent session.js from restoring a stale active-puzzle session
     // over the top of this review render.
     try { localStorage.removeItem('sfl_session_v1'); } catch(e) {}
 
-=======
->>>>>>> 97152078e30bbccd87bee0598ecbbe50793a609a
     // Regenerate the puzzle to get clues
     const today = window.SFLDaily.getDateString();
     const sol = window.SFLDaily.getPuzzle(today, difficulty);
@@ -314,20 +305,12 @@
   function setBackMode(active) {
     if (!newPuzzleBtn) return;
     if (active) {
-<<<<<<< HEAD
       newPuzzleBtn.innerHTML = '<span class="btn-icon" style="font-size: 48pt;">←</span>';
-=======
-      newPuzzleBtn.innerHTML = '<span class="btn-icon">←</span> Back';
->>>>>>> 97152078e30bbccd87bee0598ecbbe50793a609a
       newPuzzleBtn.dataset.backMode = '1';
       // Grid stays interactive — player can toggle cells and check answers
       // Session saving is blocked separately via _sflPuzzleContext.isReview
     } else {
-<<<<<<< HEAD
       newPuzzleBtn.innerHTML = '<span class="btn-icon">START</span>';
-=======
-      newPuzzleBtn.innerHTML = '<span class="btn-icon">&#x25B6;</span> Play';
->>>>>>> 97152078e30bbccd87bee0598ecbbe50793a609a
       newPuzzleBtn.dataset.backMode = '';
     }
   }
@@ -424,10 +407,7 @@
 
     // Reset grid display
     window.currentSolution = sol;
-<<<<<<< HEAD
     if (typeof window._sflSetCurrentSolution === 'function') window._sflSetCurrentSolution(sol);
-=======
->>>>>>> 97152078e30bbccd87bee0598ecbbe50793a609a
     const undoStack = window._sflUndoStack;
     const redoStack = window._sflRedoStack;
     if (undoStack) undoStack.length = 0;
@@ -711,12 +691,9 @@
     // Initial render
     setPopupMode('casual');
     updateRangeDisplay();
-<<<<<<< HEAD
     // Hide mode badge until a puzzle is in progress
     const badge = document.getElementById('modeDisplayBadge');
     if (badge) badge.style.visibility = 'hidden';
-=======
->>>>>>> 97152078e30bbccd87bee0598ecbbe50793a609a
   });
 
   // ─── Expose for external access ─────────────────────────────────────────
