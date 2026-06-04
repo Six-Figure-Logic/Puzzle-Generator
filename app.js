@@ -10,7 +10,7 @@ const inputs = {};
 inputIds.forEach(id => inputs[id] = document.getElementById(id));
 
 let currentSolution = null;
-let selectedDifficulty = 'easy'; // default
+window._sflSetCurrentSolution = function(sol) { currentSolution = sol; };
 
 //timer variables
 let timerInterval = null;
@@ -53,15 +53,6 @@ function resetTimer() {
   timerEl.className = 'timer';
 }
 
-
-// Difficulty button wiring
-document.querySelectorAll('.diff-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    selectedDifficulty = btn.dataset.diff;
-  });
-});
 
 // Build grid as rows A..F, columns 1..10 left-to-right
 function buildGridRows() {
@@ -685,7 +676,7 @@ function findSolutionsForClues(clues, maxSolutions = 2) {
   // --- Fixed: generatePuzzleJS ---
 // Strategy: always generate UP TO 8 clues first (not stopping early at uniqueness),
 // then prune exhaustively until no clue is redundant and count <= 6.
-function generatePuzzleJS(maxAttempts = 2000) {
+function generatePuzzleJS(maxAttempts = 5000) {
   initLookups();
 
   // Exhaustive greedy prune: repeatedly scan and remove any redundant clue
@@ -1503,7 +1494,7 @@ case 'no product': {
   //   C_norm  (avg clue complexity)  weight 0.15
   //
   //   Rating = round(800 + (E*0.30 + WED*0.55 + C*0.15) * 15.5)
-  //   Bands: Easy 800-1000 | Medium 1001-1350 | Hard 1351-1700 | Expert 1701+
+  //   Bands: Easy 800-1000 | Medium 1001-1400 | Hard 1401-1800 | Expert 1701+
   //
   //   NOTE: computePuzzleRating takes optional sol argument for WED.
   //   During generation screening (sol unknown) WED is skipped; only
@@ -1533,8 +1524,8 @@ function computePuzzleRating(rawClues, elim, sol) {
 
   function ratingToDifficulty(rating) {
     if (rating <= 1000) return 'easy';
-    if (rating <= 1350) return 'medium';
-    if (rating <= 1700) return 'hard';
+    if (rating <= 1400) return 'medium';
+    if (rating <= 1800) return 'hard';
     return 'expert';
   }
 
@@ -1686,6 +1677,10 @@ function checkAnswers() {
 
 // Wire events
 newPuzzleBtn.addEventListener('click', () => {
+  // Generation is now handled by popup.js — this listener only handles
+  // the forfeit case (when gameActive), which _sfgame intercepts via capture phase.
+  // If we reach here with no game active, popup.js capture phase already handled it.
+  return;
   const gen = window.generatePuzzle;
   if (typeof gen !== 'function') { alert('generatePuzzle is not defined.'); return; }
 
@@ -1711,7 +1706,7 @@ const originalText = newPuzzleBtn.innerHTML;
   // Run the search in small chunks separated by setTimeout(0) so the browser
   // can repaint between chunks — this is what actually makes the pulse visible.
   const CHUNK = 50;
-  const MAX_TRIES = 2000;
+  const MAX_TRIES = 5000;
   let tried = 0;
   let sol = null;
 
@@ -1724,8 +1719,6 @@ const originalText = newPuzzleBtn.innerHTML;
         if (!candidate || !candidate._rawClues) continue;
         const elim   = window._scorePuzzle(candidate._rawClues, candidate);
         const rating = window._computePuzzleRating(candidate._rawClues, elim, candidate);
-        const label  = window._ratingToDifficulty(rating);
-        if (label === selectedDifficulty) { sol = candidate; break; }
       } catch(err) {
         alert('Error: ' + err.message);
         finish();
@@ -2076,9 +2069,8 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
 
   // ─── DOM refs ─────────────────────────────────────────────────────────────
   const newPuzzleBtn   = document.getElementById('newPuzzleBtn');
-  const modePill       = document.getElementById('modePill');
-  const modeCasualBtn  = document.getElementById('modeCasualBtn');
-  const modeRatedBtn   = document.getElementById('modeRatedBtn');
+  // Mode pill is now inside the popup (popupModeCasual / popupModeRated)
+  // We reference them safely; if absent they're null and we guard all access.
   const penaltyEl      = document.getElementById('penaltyTime');
   const mistakeEl      = document.getElementById('mistakeCounter'); // kept for compat but hidden
   const ratingDisplayEl = document.getElementById('playerRatingValue');
@@ -2095,15 +2087,17 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
   refreshRatingDisplay();
 
   // ─── Mode pill ────────────────────────────────────────────────────────────
+  // Mode pill now lives in the popup; popup.js owns its visual state.
+  // _setMode() is called by popup.js before launching a puzzle.
   function setMode(mode) {
     gameMode = mode;
-    modeCasualBtn.classList.toggle('active', mode === 'casual');
-    modeRatedBtn.classList.toggle('active',  mode === 'rated');
+    // Sync popup pill if present
+    const c = document.getElementById('popupModeCasual');
+    const r = document.getElementById('popupModeRated');
+    if (c) c.classList.toggle('active', mode === 'casual');
+    if (r) r.classList.toggle('active', mode === 'rated');
   }
   setMode('casual');
-
-  modeCasualBtn.addEventListener('click', () => { if (!gameActive) setMode('casual'); });
-  modeRatedBtn.addEventListener('click',  () => { if (!gameActive) setMode('rated'); });
 
   // ─── Penalty helpers ──────────────────────────────────────────────────────
   function formatMMSS(secs) {
@@ -2169,21 +2163,15 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
     penaltySecs  = 0;
     puzzlePenaltyPerMistake = window.SFLRating.penaltyPerMistake(puzzleRating);
 
-    // Lock mode pill
-    modePill.classList.add('locked');
-    modeCasualBtn.disabled = true;
-    modeRatedBtn.disabled  = true;
+    // Lock popup mode pill buttons while game is active
+    const _pc = document.getElementById('popupModeCasual');
+    const _pr = document.getElementById('popupModeRated');
+    if (_pc) _pc.disabled = true;
+    if (_pr) _pr.disabled = true;
 
-    // Lock difficulty buttons
-document.querySelectorAll('.diff-btn').forEach(b => {
-  b.disabled = true;
-  b.classList.add('locked');
-});
-
-    // Change 1: Button becomes "Give Up?" — keep yellow (.primary) styling
+    // Button becomes "Forfeit?" while game is active
     newPuzzleBtn.innerHTML = '<span class="btn-icon"></span>Forfeit?';
     newPuzzleBtn.classList.remove('give-up-active');
-    // Keep .primary class so it stays yellow
 
     // Reset penalty display
     penaltyEl.textContent = '';
@@ -2195,18 +2183,14 @@ document.querySelectorAll('.diff-btn').forEach(b => {
 
   function unlockGame() {
     gameActive = false;
-    modePill.classList.remove('locked');
-    modeCasualBtn.disabled = false;
-    modeRatedBtn.disabled  = false;
+    // Re-enable popup mode pill buttons
+    const _pc2 = document.getElementById('popupModeCasual');
+    const _pr2 = document.getElementById('popupModeRated');
+    if (_pc2) _pc2.disabled = false;
+    if (_pr2) _pr2.disabled = false;
 
-// Unlock difficulty buttons
-document.querySelectorAll('.diff-btn').forEach(b => {
-  b.disabled = false;
-  b.classList.remove('locked');
-});
-
-// Restore button text
-    newPuzzleBtn.innerHTML = '<span class="btn-icon"></span> New Puzzle';
+    // Restore button text to "Play"
+    newPuzzleBtn.innerHTML = '<span class="btn-icon">&#x25B6;</span> Play';
     newPuzzleBtn.classList.remove('give-up-active');
     penaltyEl.classList.remove('visible');
 
@@ -2350,15 +2334,15 @@ function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, 
 
   function difficultyColor(rating) {
     if (rating <= 1000) return '#00e5a0';
-    if (rating <= 1350) return 'var(--accent)';
-    if (rating <= 1700) return '#ffa032';
+    if (rating <= 1400) return 'var(--accent)';
+    if (rating <= 1800) return '#ffa032';
     return 'var(--danger)';
   }
 
   function difficultyLabel(rating) {
     if (rating <= 1000) return 'EASY';
-    if (rating <= 1350) return 'MEDIUM';
-    if (rating <= 1700) return 'HARD';
+    if (rating <= 1400) return 'MEDIUM';
+    if (rating <= 1800) return 'HARD';
     return 'EXPERT';
   }
 
@@ -2484,14 +2468,15 @@ function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, 
   // Expose for external access if needed
 window._sfgame = {
     refreshRatingDisplay,
-     get gameActive() { return gameActive; },
-     _setMistakeState(count, penaltyTxt) {
-       mistakeCount = count;
-       const match = penaltyTxt.match(/\+(\d+):(\d+)/);
-       penaltySecs  = match ? parseInt(match[1],10)*60 + parseInt(match[2],10) : 0;
-     },
-     _setMode(m) { setMode(m); }
-   };
+    get gameActive() { return gameActive; },
+    _setMistakeState(count, penaltyTxt) {
+      mistakeCount = count;
+      const match = penaltyTxt.match(/\+(\d+):(\d+)/);
+      penaltySecs  = match ? parseInt(match[1],10)*60 + parseInt(match[2],10) : 0;
+    },
+    _setMode(m) { setMode(m); },
+    _getMode()  { return gameMode; },
+  };
 
 })();
 
@@ -2762,7 +2747,7 @@ if (openBtn) openBtn.addEventListener('click', (e) => {
 function diffEmoji(r) {
   if (r <= 1000) return '\uD83D\uDFE2';   // 🟢
   if (r <= 1300) return '\uD83D\uDFE1';   // 🟡
-  if (r <= 1700) return '\uD83D\uDFE0';   // 🟠
+  if (r <= 1800) return '\uD83D\uDFE0';   // 🟠
   return '\uD83D\uDD34';                   // 🔴
 }
 function gradeEmoji(g) {

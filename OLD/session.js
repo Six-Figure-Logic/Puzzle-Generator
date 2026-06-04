@@ -253,8 +253,8 @@ if (typeof checkDuplicateAnswers === 'function') {
       if (document.visibilityState === 'hidden') saveState();
     });
 
-const saved = loadState();
-    if (saved && !window._sflBlockSessionRestore) restoreSession(saved);
+    const saved = loadState();
+    if (saved) restoreSession(saved);
 
   }, 0);
 
