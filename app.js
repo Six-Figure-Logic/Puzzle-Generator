@@ -2767,20 +2767,47 @@ function gradeEmoji(g) {
   }
 
 function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakes) {
-  const site = 'sixfigurelogic.com';
-  const diff = (window._ratingToDifficulty ? window._ratingToDifficulty(puzzleRating) : 'puzzle').toUpperCase();
-  const m = Math.floor(solveTime / 60), s = String(solveTime % 60).padStart(2,'0');
-  const timeStr = gaveUp ? '--:--' : `${m}:${s}`;
-  const de = diffEmoji(puzzleRating), ge = gradeEmoji(grade);
+const site = 'sixfigurelogic.com';
+const diff = (window._ratingToDifficulty ? window._ratingToDifficulty(puzzleRating) : 'puzzle').toUpperCase();
+const m = Math.floor(solveTime / 60), s = String(solveTime % 60).padStart(2,'0');
+const timeStr = gaveUp ? '--:--' : `${m}:${s}`;
+const de = diffEmoji(puzzleRating), ge = gradeEmoji(grade);
 
-  const mistakeWord = mistakes === 0 ? 'Zero mistakes' : mistakes === 1 ? '1 mistake' : `${mistakes} mistakes`;
+const mistakeLine =
+mistakes === 0
+? '🎯 Perfect run'
+: mistakes === 1
+? '⚠️ 1 mistake'
+: `⚠️ ${mistakes} mistakes`;
 
-  if (gaveUp) {
-    return `🔢 Six-Figure Logic\n\nThis ${diff} puzzle beat me today (rating ${puzzleRating}) — can you crack it?\n\n👉 ${site}`;
-  }
-  const article = /^[AEIOU]/.test(diff) ? 'an' : 'a';
-  return `🔢 Six-Figure Logic\n\nJust solved ${article} ${diff} puzzle! ${de}\n\n• Puzzle rating: ${puzzleRating}\n• ⏱ ${timeStr}  \n• ${mistakeWord}  \n• Grade ${grade} ${ge}\n\n👉 ${site}`;
+if (gaveUp) {
+return `🔢 Six-Figure Logic
+
+This ${diff} puzzle destroyed me 💀
+
+📈 Puzzle Rating: ${puzzleRating}
+
+Think you can crack it? 🧠
+
+👉 ${site}`;
 }
+
+const article = /^[AEIOU]/.test(diff) ? 'an' : 'a';
+
+return `🔢 Six-Figure Logic
+
+Just cracked ${article} ${diff} puzzle ${de}
+
+⚡ Time: ${timeStr}
+${mistakeLine}
+🏆 Grade: ${grade} ${ge}
+📈 Puzzle Rating: ${puzzleRating}
+
+Think you can beat my time? ⏱️
+
+👉 ${site}`;
+}
+
 
   function getRenderedGrade() {
     const el = document.querySelector('.result-grade-value');
