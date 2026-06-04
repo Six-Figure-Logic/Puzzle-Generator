@@ -10,7 +10,7 @@
   'use strict';
 
   const SAVE_KEY         = 'sfl_session_v1';
-  const SAVE_INTERVAL_MS = 2000;
+  const SAVE_INTERVAL_MS = 1000;
 
   // ─── Capture ──────────────────────────────────────────────────────────────
 

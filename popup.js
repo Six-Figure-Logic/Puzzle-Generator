@@ -363,7 +363,7 @@ function openPopup() {
     const score = window._scorePuzzle;
     const rate  = window._computePuzzleRating;
 
-    const CHUNK = 50, MAX = 2000;
+    const CHUNK = 50, MAX = 5000;
     let tried = 0, sol = null;
 
     function runChunk() {
