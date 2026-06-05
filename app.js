@@ -1905,9 +1905,9 @@ populateAnswerSelects();
     return base * (puzzleRating / playerRating);
   }
 
-  // Penalty seconds per mistake (20% of equal-rating base time)
+  // Penalty seconds per mistake (25% of equal-rating base time)
   function penaltyPerMistake(puzzleRating) {
-    return Math.round(expectedBase(puzzleRating) * 0.20);
+    return Math.round(expectedBase(puzzleRating) * 0.25);
   }
 
   // ─── S (performance score) calculation ───────────────────────────────────
@@ -2752,26 +2752,21 @@ if (openBtn) openBtn.addEventListener('click', (e) => {
 
 function diffEmoji(r) {
   if (r <= 1000) return '\uD83D\uDFE2';   // 🟢
-  if (r <= 1300) return '\uD83D\uDFE1';   // 🟡
+  if (r <= 1400) return '\uD83D\uDFE1';   // 🟡
   if (r <= 1800) return '\uD83D\uDFE0';   // 🟠
   return '\uD83D\uDD34';                   // 🔴
 }
-function gradeEmoji(g) {
-  if (!g || g === 'F') return '\uD83D\uDC80';           // 💀
-  if (g.startsWith('A')) return '\uD83C\uDFC6';         // 🏆
-  if (g.startsWith('B')) return '\u26A1';               // ⚡
-  return '\u2705';                                       // ✅
-}
+
   function mistakeBar(n) {
     let s = ''; for (let i = 0; i < 3; i++) s += (i < n ? '✗' : '○'); return s;
   }
 
-function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakes) {
+function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakes, isDaily) {
 const site = 'sixfigurelogic.com';
 const diff = (window._ratingToDifficulty ? window._ratingToDifficulty(puzzleRating) : 'puzzle').toUpperCase();
 const m = Math.floor(solveTime / 60), s = String(solveTime % 60).padStart(2,'0');
 const timeStr = gaveUp ? '--:--' : `${m}:${s}`;
-const de = diffEmoji(puzzleRating), ge = gradeEmoji(grade);
+const de = diffEmoji(puzzleRating), 
 
 const mistakeLine =
 mistakes === 0
@@ -2792,15 +2787,15 @@ Think you can crack it? 🧠
 👉 ${site}`;
 }
 
-const article = /^[AEIOU]/.test(diff) ? 'an' : 'a';
+const article = isDaily ? "today's" : (/^[AEIOU]/.test(diff) ? 'an' : 'a');
 
 return `🔢 Six-Figure Logic
 
-Just cracked ${article} ${diff} puzzle ${de}
+Just cracked ${article} ${isDaily ? diff + ' daily' : diff} puzzle ${de}
 
 ⚡ Time: ${timeStr}
 ${mistakeLine}
-🏆 Grade: ${grade} ${ge}
+🏆 Performance: ${grade} 
 📈 Puzzle Rating: ${puzzleRating}
 
 Think you can beat my time? ⏱️
@@ -2839,14 +2834,15 @@ Think you can beat my time? ⏱️
     const facebookA = document.getElementById('shareFacebook');
     if (!shareBtn || !popover) return;
 
-    function getShareData() {
-      const puzzleRating = (window.currentSolution && window.currentSolution._rating) || 1000;
-      const grade = getRenderedGrade();
-      const solveTime = getRenderedSolveTime();
-      const text = buildShareText(solveTime, _shareGaveUp, puzzleRating, grade, _shareMistakes);
-      const url = 'https://sixfigurelogic.com';
-      return { text, url, puzzleRating };
-    }
+function getShareData() {
+  const puzzleRating = (window.currentSolution && window.currentSolution._rating) || 1000;
+  const grade = getRenderedGrade();
+  const solveTime = getRenderedSolveTime();
+  const isDaily = !!(window._sflPuzzleContext && window._sflPuzzleContext.isDaily);  // ADD THIS
+  const text = buildShareText(solveTime, _shareGaveUp, puzzleRating, grade, _shareMistakes, isDaily);  // ADD isDaily
+  const url = 'https://sixfigurelogic.com';
+  return { text, url, puzzleRating };
+}
 
     shareBtn.addEventListener('click', async function (e) {
       e.stopPropagation();
