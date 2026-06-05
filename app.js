@@ -2766,7 +2766,7 @@ const site = 'sixfigurelogic.com';
 const diff = (window._ratingToDifficulty ? window._ratingToDifficulty(puzzleRating) : 'puzzle').toUpperCase();
 const m = Math.floor(solveTime / 60), s = String(solveTime % 60).padStart(2,'0');
 const timeStr = gaveUp ? '--:--' : `${m}:${s}`;
-const de = diffEmoji(puzzleRating), 
+const de = diffEmoji(puzzleRating); 
 
 const mistakeLine =
 mistakes === 0
