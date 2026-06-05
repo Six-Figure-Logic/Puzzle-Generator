@@ -295,10 +295,10 @@
 .random-launch-btn {
   width: 100%;
   padding: 12px;
-  background: var(--accent-dim);
-  border: 1px solid rgba(232,255,71,0.35);
+  background: rgba(0,229,160,0.10);        
+  border: 1px solid rgba(0,229,160,0.35);  
   border-radius: 9px;
-  color: var(--accent);
+  color: #00e5a0;                         
   font-family: 'BankGothic', 'Oswald', sans-serif;
   font-size: 14px;
   font-weight: 700;
@@ -307,9 +307,9 @@
   transition: all 0.15s ease;
 }
 .random-launch-btn:hover {
-  background: rgba(232,255,71,0.16);
-  border-color: var(--accent);
-  box-shadow: 0 0 24px rgba(232,255,71,0.15);
+  background: rgba(0,229,160,0.18);       
+  border-color: #00e5a0;              
+  box-shadow: 0 0 24px rgba(0,229,160,0.15); 
 }
 .random-launch-btn:active { transform: scale(0.985); }
 
@@ -393,8 +393,9 @@
   border: 1px solid;
   white-space: nowrap;
   transition: color 0.2s, background 0.2s, border-color 0.2s;
-    width: 130px;
+  width: 130px;
   height: 20px;
+  visibility: hidden;
   text-align: center;
 }
 
