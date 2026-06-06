@@ -182,7 +182,9 @@
     showLoading(true);
     showGameLayout();
 
-    // Daily is always casual
+    setPopupMode('casual');
+
+    // Set game mode
     if (window._sfgame && typeof window._sfgame._setMode === 'function') {
       window._sfgame._setMode('casual');
     }
