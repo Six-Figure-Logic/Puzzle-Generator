@@ -183,6 +183,8 @@ function openPopup() {
     closePopup();
     showLoading(true);
 
+    setPopupMode('casual');
+
     // Set game mode
     if (window._sfgame && typeof window._sfgame._setMode === 'function') {
       window._sfgame._setMode(popupMode);
