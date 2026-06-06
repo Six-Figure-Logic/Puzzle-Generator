@@ -1774,7 +1774,6 @@ resetGridBtn.addEventListener('click', resetGrid);
 // MODAL
 // ══════════════════════════════════════════
 const modal        = document.getElementById('tutorialModal');
-const howToPlayBtn = document.getElementById('howToPlayBtn');
 const modalClose   = document.getElementById('modalClose');
 const modalTabs    = document.querySelectorAll('.modal-tab');
 const modalBodies  = document.querySelectorAll('.modal-body');
@@ -1782,10 +1781,11 @@ const modalBodies  = document.querySelectorAll('.modal-body');
 function openModal() { modal.classList.add('open'); }
 function closeModal() { modal.classList.remove('open'); }
 
-howToPlayBtn.addEventListener('click', openModal);
-modalClose.addEventListener('click', closeModal);
+if (modalClose) modalClose.addEventListener('click', closeModal);
 modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+});
 
 modalTabs.forEach(tab => {
   tab.addEventListener('click', () => {
@@ -2190,18 +2190,14 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
 
   function unlockGame() {
     gameActive = false;
-    // Re-enable popup mode pill buttons
     const _pc2 = document.getElementById('popupModeCasual');
     const _pr2 = document.getElementById('popupModeRated');
     if (_pc2) _pc2.disabled = false;
     if (_pr2) _pr2.disabled = false;
 
-    // Restore button text to "Play"
     newPuzzleBtn.innerHTML = '<span class="btn-icon">START</span>';
     newPuzzleBtn.classList.remove('give-up-active');
     penaltyEl.classList.remove('visible');
-
-    // Mistake boxes persist until next puzzle starts (reset in lockGame)
   }
 
   // ─── Give up logic ────────────────────────────────────────────────────────
@@ -2685,13 +2681,12 @@ window._sfgame = {
     weRenderStep(weStep);
   }
 
-function openWorkedExample() {
+window.openWorkedExample = window.openWorkedExample = function() {
   const overlay = document.getElementById('workedExampleModal');
   if (!overlay) return;
-
   overlay.classList.add('open');
   weGoTo(0);
-}
+};
 
   function closeWorkedExample() {
     const overlay = document.getElementById('workedExampleModal');

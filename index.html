@@ -16,16 +16,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Six-Figure Logic</title>
 
-  <!-- ═══════════════════════════════════════════════════════════════
-     META TAGS — paste these inside <head>, after the <title> tag
-═══════════════════════════════════════════════════════════════ -->
-
-<!-- Primary -->
 <meta name="description" content="A daily number-logic puzzle. Assign six unique values to satisfy all clues. Free to play — four difficulty levels, Glicko-2 rated." />
 <meta name="keywords" content="logic puzzle, number puzzle, deduction game, brain teaser, daily puzzle" />
 <meta name="author" content="Six-Figure Logic" />
 
-<!-- Open Graph (Facebook, Reddit, WhatsApp, LinkedIn) -->
 <meta property="og:type"        content="website" />
 <meta property="og:url"         content="https://sixfigurelogic.com/" />
 <meta property="og:title"       content="Six-Figure Logic — Logic Puzzles Designed for Fast Thinkers" />
@@ -35,26 +29,20 @@
 <meta property="og:image:height" content="630" />
 <meta property="og:site_name"   content="Six-Figure Logic" />
 
-<!-- Twitter / X Card -->
 <meta name="twitter:card"        content="summary_large_image" />
 <meta name="twitter:url"         content="https://sixfigurelogic.com/" />
 <meta name="twitter:title"       content="Six-Figure Logic — Logic Puzzles Designed for Fast Thinkers" />
 <meta name="twitter:description" content="Assign six unique numbers (1–10) to letters A–F so every clue holds. Build Critical Thinking Skills One Puzzle at a Time." />
 <meta name="twitter:image"       content="https://sixfigurelogic.com/og-image.png" />
 
-<!-- Canonical -->
 <link rel="canonical" href="https://sixfigurelogic.com/" />
-
-<!-- Theme colour (browser chrome on mobile) -->
 <meta name="theme-color" content="#0d0f14" />
-
-<!-- ═════════════════════════════════════════════════════════════════════════ -->
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="popup.css" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="popup.css" />
   <link rel="icon" type="image/png" href="favicon.png">
 </head>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -67,10 +55,6 @@
       <div class="header-top">
         <h1>SIX-FIGURE<span class="accent"> LOGIC</span></h1>
         <div class="header-right">
-          <!-- Change 5: removed width:100% / justify-content:center from inline; handled in CSS -->
-          <button id="howToPlayBtn" class="btn-help" >
-            <span  class="btn-help-icon">?</span> How to Play
-          </button>
           <div class="player-rating-inline">
             <span class="player-rating-label-inline">YOUR RATING</span>
             <span class="player-rating-value" id="playerRatingValue">1000</span>
@@ -81,114 +65,69 @@
     </header>
 
 
+    <!-- ── MAIN MENU ─────────────────────────────────────────────── -->
+    <div id="mainMenu" class="main-menu">
+      <div class="main-menu-top-row">
+        <button id="menuHowToPlayBtn" class="menu-btn menu-btn-secondary">
+          <span class="menu-btn-icon">?</span>HOW TO PLAY
+        </button>
+        <button id="menuTutorialBtn" class="menu-btn menu-btn-secondary">
+          <span class="menu-btn-icon">⊕</span>TUTORIAL
+        </button>
+      </div>
+      <button id="menuDailyBtn" class="menu-btn menu-btn-primary menu-btn-daily">
+        <i class="ti ti-calendar menu-btn-icon"></i>DAILY PUZZLES
+      </button>
+      <button id="menuRandomBtn" class="menu-btn menu-btn-primary menu-btn-random">
+        <i class="ti ti-dice menu-btn-icon"></i>RANDOM PUZZLE
+      </button>
+    </div>
+    <!-- ── END MAIN MENU ─────────────────────────────────────────── -->
+
+
     <!-- HOW TO PLAY MODAL -->
     <div id="tutorialModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="How to Play">
       <div class="modal-box">
         <button class="modal-close" id="modalClose" aria-label="Close">&times;</button>
 
-       <div class="modal-tabs">
-         <button class="modal-tab active" data-tab="howto">HOW TO PLAY</button>
+        <div class="modal-tabs">
+          <button class="modal-tab active" data-tab="howto">HOW TO PLAY</button>
           <button class="modal-tab" data-tab="clues">CLUE TYPES</button>
           <button class="modal-tab" data-tab="rating">RATING & MODES</button>
         </div>
 
-       <div class="modal-body" id="tab-howto">
-
-  <!-- Static rules block (unchanged) -->
-  <div class="modal-section">
-    <div class="modal-section-title">THE GOAL</div>
-    <ul><li>Assign values to each of the six letters A through F so as to satisfy all clues.</li></ul>
-  </div>
-  <div class="modal-section">
-    <div class="modal-section-title">THE RULES</div>
-    <ul>
-      <li>Each letter A–F must be assigned a <strong>different</strong> integer from 1 to 10.</li>
-      <li>Every letter must be assigned — even those that don't appear in any clue.</li>
-      <li>The solution must satisfy all clues simultaneously and the rules stated above.</li>
-      <li>Each puzzle has exactly one correct solution.</li>
-    </ul>
-  </div>
-  <div class="modal-section">
-    <div class="modal-section-title">THE ELIMINATION GRID</div>
-    <p>The grid shows values 1–10 for each letter. Use it to track which values are still possible.</p>
-    <div class="tip-grid">
-      <div class="tip-row"><span class="tip-key">Left click</span><span class="tip-desc">Assign this value — crosses out all other values in that row and that number in all other rows. Also fills the answer dropdown.</span></div>
-      <div class="tip-row"><span class="tip-key">Right click</span><span class="tip-desc">Manually toggle a single cell as eliminated.</span></div>
-      <div class="tip-row"><span class="tip-key">&#x21BA; Reset Grid</span><span class="tip-desc">Resets the grid to its initial state.</span></div>
-    </div>
-  </div>
-  <div class="modal-section">
-    <div class="modal-section-title">CHECKING YOUR ANSWER</div>
-    <ul>
-      <li>Set each letter's value via the grid or the dropdowns in the solution panel.</li>
-      <li>Clicking <span class="diff-chip easy">CHECK</span> compares your solution against the clues.</li>
-      <li>Each clue turns <span class="tip-green">green</span> if satisfied or <span class="tip-red">red</span> if contradicted.</li>
-    </ul>
-  </div>
-
-  <!-- A1: paste at bottom of #tab-howto div, before its closing </div> -->
-<div class="modal-section" style="align-items:center; padding-top:4px;">
-  <button class="btn-worked-example" id="openWorkedExampleBtn">
-    <span class="btn-we-icon">⊕</span>
-    TUTORIAL
-    <span class="btn-we-arrow">→</span>
-  </button>
-</div>
-
-  <!-- ── Interactive TUTORIAL ── -->
-
-<!-- A2: sub-modal overlay -->
-<div id="workedExampleModal" class="we-overlay" role="dialog" aria-modal="true" aria-label="Worked Example">
-  <div class="we-box">
-
-    <div class="we-header">
-      <button class="we-back-btn" id="weBackBtn" aria-label="Back to How to Play">
-        ← Back
-      </button>
-      <span class="we-title">WORKED EXAMPLE</span>
-      <button class="modal-close we-close-btn" id="weCloseBtn" aria-label="Close">&times;</button>
-    </div>
-
-    <!-- Example clues -->
-    <div class="we-clues-block">
-      <div class="we-clues-label">PUZZLE CLUES</div>
-      <ul class="we-clues-list" id="weCluesList">
-        <li id="weClue0">A + B = 7</li>
-        <li id="weClue1">B * C = 24</li>
-        <li id="weClue2">C &gt; D</li>
-        <li id="weClue3">D – E = 5</li>
-        <li id="weClue4">F + E = 6</li>
-      </ul>
-    </div>
-
-    <!-- Mini elimination grid -->
-    <div class="we-grid-wrap">
-      <div class="we-grid" id="weGrid" aria-label="Example elimination grid"></div>
-    </div>
-
-    <!-- Step narrative -->
-    <div class="we-step-card" id="weStepCard">
-      <div class="we-step-header">
-        <span class="we-step-badge" id="weStepBadge">STEP 0 / 7</span>
-        <div class="we-step-dots" id="weStepDots"></div>
-      </div>
-      <div class="we-step-title" id="weStepTitle">Ready to begin</div>
-      <div class="we-step-body" id="weStepBody">
-        Press <strong>Next Step</strong> to start the walk-through.
-        Watch the grid update as each deduction is made.
-      </div>
-    </div>
-
-    <!-- Navigation -->
-    <div class="we-nav">
-      <button class="btn ghost we-nav-btn" id="wePrevBtn" disabled>&#x2190; Prev</button>
-      <button class="btn ghost we-nav-btn we-restart-btn" id="weRestartBtn" title="Restart">&#x21BA;</button>
-      <button class="btn primary we-nav-btn" id="weNextBtn">Next Step &#x2192;</button>
-    </div>
-
-  </div>
-</div>
-</div><!-- /#tab-howto -->
+        <div class="modal-body" id="tab-howto">
+          <div class="modal-section">
+            <div class="modal-section-title">THE GOAL</div>
+            <ul><li>Assign values to each of the six letters A through F so as to satisfy all clues.</li></ul>
+          </div>
+          <div class="modal-section">
+            <div class="modal-section-title">THE RULES</div>
+            <ul>
+              <li>Each letter A–F must be assigned a <strong>different</strong> integer from 1 to 10.</li>
+              <li>Every letter must be assigned — even those that don't appear in any clue.</li>
+              <li>The solution must satisfy all clues simultaneously and the rules stated above.</li>
+              <li>Each puzzle has exactly one correct solution.</li>
+            </ul>
+          </div>
+          <div class="modal-section">
+            <div class="modal-section-title">THE ELIMINATION GRID</div>
+            <p>The grid shows values 1–10 for each letter. Use it to track which values are still possible.</p>
+            <div class="tip-grid">
+              <div class="tip-row"><span class="tip-key">Left click</span><span class="tip-desc">Assign this value — crosses out all other values in that row and that number in all other rows. Also fills the answer dropdown.</span></div>
+              <div class="tip-row"><span class="tip-key">Right click</span><span class="tip-desc">Manually toggle a single cell as eliminated.</span></div>
+              <div class="tip-row"><span class="tip-key">&#x21BA; Reset Grid</span><span class="tip-desc">Resets the grid to its initial state.</span></div>
+            </div>
+          </div>
+          <div class="modal-section">
+            <div class="modal-section-title">CHECKING YOUR ANSWER</div>
+            <ul>
+              <li>Set each letter's value via the grid or the dropdowns in the solution panel.</li>
+              <li>Clicking <span class="diff-chip easy">CHECK</span> compares your solution against the clues.</li>
+              <li>Each clue turns <span class="tip-green">green</span> if satisfied or <span class="tip-red">red</span> if contradicted.</li>
+            </ul>
+          </div>
+        </div><!-- /#tab-howto -->
 
         <div class="modal-body hidden" id="tab-clues">
           <div class="clue-table">
@@ -223,52 +162,99 @@
           </div>
         </div>
 
-
-
-
-
         <div class="modal-body hidden" id="tab-rating">
-  <div class="modal-section">
-    <div class="modal-section-title">GAME MODES</div>
-    <ul>
-      <li>In <span class="tip-green">CASUAL</span> mode, your rating is never affected — play freely.</li>
-      <li>In <em>RATED</em> mode, your rating updates after every puzzle, win or loss.</li>
-    </ul>
-  </div>
-  <div class="modal-section">
-    <div class="modal-section-title">EXPECTED SOLVE TIME</div>
-    <ul>
-      <li>Each puzzle has an <em>expected solve time</em> based on its rating relative to yours.</li>
-      <li>A puzzle rated equal to you has a baseline time. A harder puzzle (higher rating) gives you <em>more</em> time; an easier one (lower rating) gives you <em>less</em>.</li>
-      <li>Finishing <em>faster</em> than expected <span class="tip-green">raises</span> your rating. Finishing <em>slower</em> <span class="tip-red">lowers</span> it.</li>
-    </ul>
-  </div>
-  <div class="modal-section">
-    <div class="modal-section-title">MISTAKES & PENALTIES</div>
-    <ul>
-      <li>Each incorrect <span class="diff-chip easy">CHECK</span> adds a <span class="tip-red">time penalty</span> to your effective solve time — counted against you even if you finish quickly.</li>
-      <li>Three mistakes triggers an <span class="tip-red">automatic forfeit</span>, which counts as a loss regardless of progress.</li>
-      <li>Giving up in <em>RATED</em> mode always counts as a loss.</li>
-    </ul>
-  </div>
-  <div class="modal-section">
-    <div class="modal-section-title">RATING UNCERTAINTY (±RD)</div>
-    <ul>
-      <li>Your rating starts at <strong>1000 ± 350</strong>. The ±RD reflects how confident the system is in your rating.</li>
-      <li>±RD shrinks as you play more rated puzzles, making each result have less impact.</li>
-      <li>During inactivity, ±RD slowly rises — the system becomes less certain, and results carry more weight again.</li>
-    </ul>
-  </div>
-  <div class="modal-section">
-    <div class="modal-section-title">DIFFICULTY</div>
-    <div class="diff-legend"><span class="diff-chip easy">EASY</span> Rating 800–1000. Solvable through a sequence of single-clue deductions.</div>
-    <div class="diff-legend"><span class="diff-chip medium">MEDIUM</span> Rating 1001–1350. Some steps require combining two or more clues.</div>
-    <div class="diff-legend"><span class="diff-chip hard">HARD</span> Rating 1351–1700. Several multi-clue deduction chains required.</div>
-    <div class="diff-legend"><span class="diff-chip expert">EXPERT</span> Rating 1701+. Complex clue combinations and critical logical leaps throughout.</div>
-  </div>
-</div>
+          <div class="modal-section">
+            <div class="modal-section-title">GAME MODES</div>
+            <ul>
+              <li>In <span class="tip-green">CASUAL</span> mode, your rating is never affected — play freely.</li>
+              <li>In <em>RATED</em> mode, your rating updates after every puzzle, win or loss.</li>
+            </ul>
+          </div>
+          <div class="modal-section">
+            <div class="modal-section-title">EXPECTED SOLVE TIME</div>
+            <ul>
+              <li>Each puzzle has an <em>expected solve time</em> based on its rating relative to yours.</li>
+              <li>A puzzle rated equal to you has a baseline time. A harder puzzle (higher rating) gives you <em>more</em> time; an easier one (lower rating) gives you <em>less</em>.</li>
+              <li>Finishing <em>faster</em> than expected <span class="tip-green">raises</span> your rating. Finishing <em>slower</em> <span class="tip-red">lowers</span> it.</li>
+            </ul>
+          </div>
+          <div class="modal-section">
+            <div class="modal-section-title">MISTAKES & PENALTIES</div>
+            <ul>
+              <li>Each incorrect <span class="diff-chip easy">CHECK</span> adds a <span class="tip-red">time penalty</span> to your effective solve time — counted against you even if you finish quickly.</li>
+              <li>Three mistakes triggers an <span class="tip-red">automatic forfeit</span>, which counts as a loss regardless of progress.</li>
+              <li>Giving up in <em>RATED</em> mode always counts as a loss.</li>
+            </ul>
+          </div>
+          <div class="modal-section">
+            <div class="modal-section-title">RATING UNCERTAINTY (±RD)</div>
+            <ul>
+              <li>Your rating starts at <strong>1000 ± 350</strong>. The ±RD reflects how confident the system is in your rating.</li>
+              <li>±RD shrinks as you play more rated puzzles, making each result have less impact.</li>
+              <li>During inactivity, ±RD slowly rises — the system becomes less certain, and results carry more weight again.</li>
+            </ul>
+          </div>
+          <div class="modal-section">
+            <div class="modal-section-title">DIFFICULTY</div>
+            <div class="diff-legend"><span class="diff-chip easy">EASY</span> Rating 800–1000. Solvable through a sequence of single-clue deductions.</div>
+            <div class="diff-legend"><span class="diff-chip medium">MEDIUM</span> Rating 1001–1350. Some steps require combining two or more clues.</div>
+            <div class="diff-legend"><span class="diff-chip hard">HARD</span> Rating 1351–1700. Several multi-clue deduction chains required.</div>
+            <div class="diff-legend"><span class="diff-chip expert">EXPERT</span> Rating 1701+. Complex clue combinations and critical logical leaps throughout.</div>
+          </div>
+        </div>
+
       </div>
     </div>
+    <!-- END HOW TO PLAY MODAL -->
+
+
+    <!-- TUTORIAL SUB-MODAL (standalone, opened from main menu) -->
+    <div id="workedExampleModal" class="we-overlay" role="dialog" aria-modal="true" aria-label="Worked Example">
+      <div class="we-box">
+        <div class="we-header">
+          <button class="we-back-btn" id="weBackBtn" aria-label="Back to main menu">
+            ← Back
+          </button>
+          <span class="we-title">WORKED EXAMPLE</span>
+          <button class="modal-close we-close-btn" id="weCloseBtn" aria-label="Close">&times;</button>
+        </div>
+
+        <div class="we-clues-block">
+          <div class="we-clues-label">PUZZLE CLUES</div>
+          <ul class="we-clues-list" id="weCluesList">
+            <li id="weClue0">A + B = 7</li>
+            <li id="weClue1">B * C = 24</li>
+            <li id="weClue2">C &gt; D</li>
+            <li id="weClue3">D – E = 5</li>
+            <li id="weClue4">F + E = 6</li>
+          </ul>
+        </div>
+
+        <div class="we-grid-wrap">
+          <div class="we-grid" id="weGrid" aria-label="Example elimination grid"></div>
+        </div>
+
+        <div class="we-step-card" id="weStepCard">
+          <div class="we-step-header">
+            <span class="we-step-badge" id="weStepBadge">STEP 0 / 7</span>
+            <div class="we-step-dots" id="weStepDots"></div>
+          </div>
+          <div class="we-step-title" id="weStepTitle">Ready to begin</div>
+          <div class="we-step-body" id="weStepBody">
+            Press <strong>Next Step</strong> to start the walk-through.
+            Watch the grid update as each deduction is made.
+          </div>
+        </div>
+
+        <div class="we-nav">
+          <button class="btn ghost we-nav-btn" id="wePrevBtn" disabled>&#x2190; Prev</button>
+          <button class="btn ghost we-nav-btn we-restart-btn" id="weRestartBtn" title="Restart">&#x21BA;</button>
+          <button class="btn primary we-nav-btn" id="weNextBtn">Next Step &#x2192;</button>
+        </div>
+
+      </div>
+    </div>
+    <!-- END TUTORIAL SUB-MODAL -->
 
 
     <!-- BOOK SIDEBAR -->
@@ -310,84 +296,70 @@
           <!-- filled by JS -->
         </div>
 
-        <!-- Rated: rating change row -->
         <div class="result-rating-row" id="resultRatingRow" style="display:none;">
           <!-- filled by JS -->
         </div>
 
-        <!-- Casual: simple note -->
         <div class="result-casual-note" id="resultCasualNote" style="display:none;">
           Casual mode — rating unaffected
         </div>
 
-<!-- B1: replace old result-share-btn with this entire block -->
-<div class="share-btn-wrap" id="shareBtnWrap">
-  <button class="result-share-btn" id="resultShareBtn" aria-label="Share result">
-    <span class="share-btn-inner">
-      <svg class="share-icon" width="15" height="15" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
-           aria-hidden="true">
-        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-      </svg>
-      <span id="shareBtnLabel">SHARE RESULT</span>
-    </span>
-    <span class="share-copied-flash" id="shareCopiedFlash" aria-live="polite"></span>
-  </button>
+        <div class="share-btn-wrap" id="shareBtnWrap">
+          <button class="result-share-btn" id="resultShareBtn" aria-label="Share result">
+            <span class="share-btn-inner">
+              <svg class="share-icon" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+                   aria-hidden="true">
+                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+              <span id="shareBtnLabel">SHARE RESULT</span>
+            </span>
+            <span class="share-copied-flash" id="shareCopiedFlash" aria-live="polite"></span>
+          </button>
 
-  <!-- Desktop share popover -->
-  <div class="share-popover" id="sharePopover" role="dialog" aria-label="Share options">
-    <div class="share-popover-arrow"></div>
-    <div class="share-popover-label">SHARE VIA</div>
-    <div class="share-popover-btns">
-
-      <!-- Twitter / X -->
-      <a class="share-social-btn share-twitter" id="shareTwitter" target="_blank" rel="noopener" aria-label="Share on X / Twitter">
-        <i class="ti ti-brand-x" aria-hidden="true"></i>
-<span>X / Twitter</span>
-      </a>
-
-      <!-- WhatsApp -->
-      <a class="share-social-btn share-whatsapp" id="shareWhatsapp" target="_blank" rel="noopener" aria-label="Share on WhatsApp">
-        <i class="ti ti-brand-whatsapp" aria-hidden="true"></i>
-        <span>WhatsApp</span>
-      </a>
-
-      <!-- Facebook -->
-      <a class="share-social-btn share-facebook" id="shareFacebook" target="_blank" rel="noopener" aria-label="Share on Facebook">
-        <i class="ti ti-brand-facebook" aria-hidden="true"></i>
-        <span>Facebook (copy + open)</span>
-      </a>
-
-      <!-- Copy -->
-      <button class="share-social-btn share-copy" id="shareCopyBtn" aria-label="Copy to clipboard">
-        <i class="ti ti-clipboard" aria-hidden="true"></i>
-        <span id="copyBtnLabel">Copy Text</span>
-      </button>
-      
-    </div>
-  </div>
-</div>
-
+          <div class="share-popover" id="sharePopover" role="dialog" aria-label="Share options">
+            <div class="share-popover-arrow"></div>
+            <div class="share-popover-label">SHARE VIA</div>
+            <div class="share-popover-btns">
+              <a class="share-social-btn share-twitter" id="shareTwitter" target="_blank" rel="noopener" aria-label="Share on X / Twitter">
+                <i class="ti ti-brand-x" aria-hidden="true"></i>
+                <span>X / Twitter</span>
+              </a>
+              <a class="share-social-btn share-whatsapp" id="shareWhatsapp" target="_blank" rel="noopener" aria-label="Share on WhatsApp">
+                <i class="ti ti-brand-whatsapp" aria-hidden="true"></i>
+                <span>WhatsApp</span>
+              </a>
+              <a class="share-social-btn share-facebook" id="shareFacebook" target="_blank" rel="noopener" aria-label="Share on Facebook">
+                <i class="ti ti-brand-facebook" aria-hidden="true"></i>
+                <span>Facebook (copy + open)</span>
+              </a>
+              <button class="share-social-btn share-copy" id="shareCopyBtn" aria-label="Copy to clipboard">
+                <i class="ti ti-clipboard" aria-hidden="true"></i>
+                <span id="copyBtnLabel">Copy Text</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         <button class="result-close-btn" id="resultCloseBtn">Continue</button>
       </div>
     </div>
 
 
-    <!-- MAIN LAYOUT -->
-    <div class="main-layout">
+    <!-- MAIN LAYOUT (hidden until game starts) -->
+    <div class="main-layout hidden">
 
       <!-- [1,1] clues topbar -->
-    <div class="topbar topbar-clues">
-      <button id="newPuzzleBtn" class="btn primary" style="margin-top:1em;">
-        <span class="btn-icon">START</span>
-      </button>
-    </div>
+      <div class="topbar topbar-clues hidden">
+        <button id="newPuzzleBtn" class="btn primary" style="margin-top:1em;">
+          <span class="btn-icon">START</span>
+        </button>
+      </div>
 
-<!-- [1,2] answers topbar — Change 4: mistake boxes stacked above check btn -->
-      <div class="topbar topbar-answers">
+      <!-- [1,2] answers topbar -->
+      <div class="topbar topbar-answers hidden">
         <div class="mistake-boxes" id="mistakeBoxes">
           <div class="mistake-box" id="mistakeBox1"></div>
           <div class="mistake-box" id="mistakeBox2"></div>
@@ -398,18 +370,16 @@
         </button>
       </div>
 
-<!-- [1,3] grid topbar -->
-<div class="topbar topbar-grid">
-  <div class="mode-controls">
-    <span class="mode-display-badge" id="modeDisplayBadge">CASUAL</span>
-    <button id="resetGridBtn" class="btn ghost">
-      <span class="btn-icon">&#x21BA;</span> Reset Grid
-    </button>
-  </div>
-
-  <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
-
-  <div class="timer-wrap">
+      <!-- [1,3] grid topbar -->
+      <div class="topbar topbar-grid hidden">
+        <div class="mode-controls">
+          <span class="mode-display-badge" id="modeDisplayBadge">CASUAL</span>
+          <button id="resetGridBtn" class="btn ghost">
+            <span class="btn-icon">&#x21BA;</span> Reset Grid
+          </button>
+        </div>
+        <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+        <div class="timer-wrap">
           <div id="timer" class="timer">00:00</div>
           <span id="penaltyTime" class="penalty-time"></span>
         </div>
@@ -458,83 +428,77 @@
 
   </main>
 
-  
-<!-- ── PUZZLE SELECT POPUP ──────────────────────────────────────── -->
-<div id="puzzleSelectOverlay" class="puzzle-select-overlay" role="dialog" aria-modal="true" aria-label="Select a puzzle">
-  <div class="puzzle-select-box" id="puzzleSelectBox">
 
-    <!-- Header -->
-    <div class="popup-header">
-      <button class="popup-close" id="popupClose" aria-label="Close">&times;</button>
-      <span class="popup-title">SELECT MODE</span>
-          </div>
-
-    <!-- Mode pill -->
-    <div class="popup-mode-row">
-      <div class="mode-pill" id="popupModePill" role="group" aria-label="Game mode">
-        <button class="mode-pill-btn active" id="popupModeCasual" data-mode="casual">CASUAL</button>
-        <button class="mode-pill-btn"        id="popupModeRated"  data-mode="rated">RATED</button>
+  <!-- ── DAILY PUZZLE POPUP ──────────────────────────────────────── -->
+  <div id="dailySelectOverlay" class="puzzle-select-overlay" role="dialog" aria-modal="true" aria-label="Daily Puzzles">
+    <div class="puzzle-select-box" id="dailySelectBox">
+      <div class="popup-header">
+        <button class="popup-close" id="dailyPopupClose" aria-label="Close">&times;</button>
+        <span class="popup-title">DAILY PUZZLES</span>
+      </div>
+      <div class="popup-section-label">
+        <span>TODAY'S PUZZLES</span>
+        <span class="popup-daily-date" id="popupDailyDate"></span>
+      </div>
+      <div class="daily-cards-grid">
+        <div class="daily-card diff-tier-easy" id="daily-card-easy" role="button" tabindex="0" aria-label="Easy daily puzzle">
+          <span class="daily-card-diff">EASY</span>
+          <span class="daily-card-status"></span>
+          <span class="daily-card-time"></span>
+          <span class="daily-card-action">PLAY</span>
+        </div>
+        <div class="daily-card diff-tier-medium" id="daily-card-medium" role="button" tabindex="0" aria-label="Medium daily puzzle">
+          <span class="daily-card-diff">MEDIUM</span>
+          <span class="daily-card-status"></span>
+          <span class="daily-card-time"></span>
+          <span class="daily-card-action">PLAY</span>
+        </div>
+        <div class="daily-card diff-tier-hard" id="daily-card-hard" role="button" tabindex="0" aria-label="Hard daily puzzle">
+          <span class="daily-card-diff">HARD</span>
+          <span class="daily-card-status"></span>
+          <span class="daily-card-time"></span>
+          <span class="daily-card-action">PLAY</span>
+        </div>
+        <div class="daily-card diff-tier-expert" id="daily-card-expert" role="button" tabindex="0" aria-label="Expert daily puzzle">
+          <span class="daily-card-diff">EXPERT</span>
+          <span class="daily-card-status"></span>
+          <span class="daily-card-time"></span>
+          <span class="daily-card-action">PLAY</span>
+        </div>
       </div>
     </div>
-
-    <!-- Daily section -->
-    <div class="popup-section-label">
-      DAILY PUZZLES
-      <span class="popup-daily-date" id="popupDailyDate"></span>
-    </div>
-    <div class="daily-cards-grid">
-
-      <div class="daily-card diff-tier-easy" id="daily-card-easy" role="button" tabindex="0" aria-label="Easy daily puzzle">
-        <span class="daily-card-diff">EASY</span>
-        <span class="daily-card-status"></span>
-        <span class="daily-card-time"></span>
-        <span class="daily-card-action">PLAY</span>
-      </div>
-
-      <div class="daily-card diff-tier-medium" id="daily-card-medium" role="button" tabindex="0" aria-label="Medium daily puzzle">
-        <span class="daily-card-diff">MEDIUM</span>
-        <span class="daily-card-status"></span>
-        <span class="daily-card-time"></span>
-        <span class="daily-card-action">PLAY</span>
-      </div>
-
-      <div class="daily-card diff-tier-hard" id="daily-card-hard" role="button" tabindex="0" aria-label="Hard daily puzzle">
-        <span class="daily-card-diff">HARD</span>
-        <span class="daily-card-status"></span>
-        <span class="daily-card-time"></span>
-        <span class="daily-card-action">PLAY</span>
-      </div>
-
-      <div class="daily-card diff-tier-expert" id="daily-card-expert" role="button" tabindex="0" aria-label="Expert daily puzzle">
-        <span class="daily-card-diff">EXPERT</span>
-        <span class="daily-card-status"></span>
-        <span class="daily-card-time"></span>
-        <span class="daily-card-action">PLAY</span>
-      </div>
-
-    </div>
-
-    <hr class="popup-divider" />
-
-    <!-- Random section -->
-    <div class="popup-section-label">RANDOM PUZZLE</div>
-
-    <div class="random-range-row">
-      <button class="range-arrow-btn" id="rangeLeftBtn" aria-label="Lower range">&#x2039;</button>
-      <div class="random-range-display" id="randomRangeDisplay">
-        <span class="random-range-label" id="rangeLabel">800–1000</span>
-        <span class="random-range-tier rating-easy" id="rangeTier">EASY</span>
-      </div>
-      <button class="range-arrow-btn" id="rangeRightBtn" aria-label="Higher range">&#x203a;</button>
-    </div>
-
-    <button class="random-launch-btn" id="randomLaunchBtn">
-      GENERATE RANDOM PUZZLE
-    </button>
-
   </div>
-</div>
-<!-- ── END PUZZLE SELECT POPUP ───────────────────────────────────── -->
+  <!-- ── END DAILY PUZZLE POPUP ───────────────────────────────────── -->
+
+
+  <!-- ── RANDOM PUZZLE POPUP ──────────────────────────────────────── -->
+  <div id="randomSelectOverlay" class="puzzle-select-overlay" role="dialog" aria-modal="true" aria-label="Random Puzzle">
+    <div class="puzzle-select-box" id="randomSelectBox">
+      <div class="popup-header">
+        <button class="popup-close" id="randomPopupClose" aria-label="Close">&times;</button>
+        <span class="popup-title">RANDOM PUZZLE</span>
+      </div>
+      <div class="popup-mode-row">
+        <div class="mode-pill" id="popupModePill" role="group" aria-label="Game mode">
+          <button class="mode-pill-btn active" id="popupModeCasual" data-mode="casual">CASUAL</button>
+          <button class="mode-pill-btn"        id="popupModeRated"  data-mode="rated">RATED</button>
+        </div>
+      </div>
+      <div class="popup-section-label">SELECT DIFFICULTY</div>
+      <div class="random-range-row">
+        <button class="range-arrow-btn" id="rangeLeftBtn" aria-label="Lower range">&#x2039;</button>
+        <div class="random-range-display" id="randomRangeDisplay">
+          <span class="random-range-label" id="rangeLabel">800–1000</span>
+          <span class="random-range-tier rating-easy" id="rangeTier">EASY</span>
+        </div>
+        <button class="range-arrow-btn" id="rangeRightBtn" aria-label="Higher range">&#x203a;</button>
+      </div>
+      <button class="random-launch-btn" id="randomLaunchBtn">
+        GENERATE RANDOM PUZZLE
+      </button>
+    </div>
+  </div>
+  <!-- ── END RANDOM PUZZLE POPUP ───────────────────────────────────── -->
 
 
   <script src="app.js"></script>

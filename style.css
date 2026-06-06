@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
 @font-face {
   font-family: 'BankGothic';
   src: url('Fonts/bgothm.ttf') format('truetype');
@@ -1953,4 +1955,104 @@ header h1 {
   border-color: var(--success);
   color: var(--success);
   background: rgba(0,229,160,0.07);
+}
+
+/* ══════════════════════════════════════════
+   MAIN MENU
+══════════════════════════════════════════ */
+.main-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 48px 0 0;
+}
+
+.main-menu-top-row {
+  display: flex;
+  gap: 14px;
+  width: 340px;
+}
+
+.menu-btn {
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  border-radius: 10px;
+  border: 1px solid;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.menu-btn:hover {
+  transform: translateY(-3px);
+}
+
+.menu-btn-secondary {
+  flex: 1;
+  padding: 14px 10px;
+  font-size: 12px;
+  background: var(--surface2);
+  border-color: var(--border-bright);
+  color: var(--text-dim);
+}
+.menu-btn-secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 6px 28px var(--accent-glow);
+}
+
+.menu-btn-primary {
+  width: 340px;
+  padding: 18px 24px;
+  font-size: 17px;
+}
+
+.menu-btn-daily {
+  background: rgba(0, 229, 160, 0.10);
+  border-color: rgba(0, 229, 160, 0.35);
+  color: #00e5a0;
+}
+.menu-btn-daily:hover {
+  background: rgba(0, 229, 160, 0.18);
+  border-color: #00e5a0;
+  box-shadow: 0 6px 32px rgba(0, 229, 160, 0.22);
+  animation: menu-pulse-green 1.4s ease-in-out infinite;
+}
+
+.menu-btn-random {
+  background: rgba(232, 255, 71, 0.08);
+  border-color: rgba(232, 255, 71, 0.3);
+  color: var(--accent);
+}
+.menu-btn-random:hover {
+  background: rgba(232, 255, 71, 0.15);
+  border-color: var(--accent);
+  box-shadow: 0 6px 32px var(--accent-glow);
+  animation: menu-pulse-yellow 1.4s ease-in-out infinite;
+}
+
+@keyframes menu-pulse-green {
+  0%, 100% { box-shadow: 0 6px 20px rgba(0,229,160,0.18); }
+  50%       { box-shadow: 0 6px 38px rgba(0,229,160,0.38); }
+}
+@keyframes menu-pulse-yellow {
+  0%, 100% { box-shadow: 0 6px 20px rgba(232,255,71,0.18); }
+  50%       { box-shadow: 0 6px 38px rgba(232,255,71,0.32); }
+}
+
+.menu-btn-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Hide game layout until in-game */
+.main-layout.hidden,
+.topbar.hidden {
+  display: none !important;
 }
