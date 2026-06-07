@@ -2195,7 +2195,7 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
     if (_pc2) _pc2.disabled = false;
     if (_pr2) _pr2.disabled = false;
 
-    newPuzzleBtn.innerHTML = '<span class="btn-icon">START</span>';
+    newPuzzleBtn.innerHTML = '<span class="btn-icon">< BACK</span>';
     newPuzzleBtn.classList.remove('give-up-active');
     penaltyEl.classList.remove('visible');
   }
@@ -2493,7 +2493,7 @@ window._sfgame = {
 
   
   /* ══════════════════════════════════════════
-     Worked Example Sub-Modal
+     STEP BY STEP Example Sub-Modal
   ══════════════════════════════════════════ */
 
   const WE_ROWS = ['A','B','C','D','E','F'];

@@ -2056,3 +2056,432 @@ header h1 {
 .topbar.hidden {
   display: none !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   popup.css — Play Popup styles for Six-Figure Logic
+   Covers: overlay, daily cards, range selector, loading, readonly
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Overlay ──────────────────────────────────────────────────── */
+.puzzle-select-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 12, 0.88);
+  backdrop-filter: blur(7px);
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+.puzzle-select-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ── Popup box ────────────────────────────────────────────────── */
+.puzzle-select-box {
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 480px;
+  padding: 24px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.65);
+  position: relative;
+  align-items: center;
+  text-align: center;
+}
+
+.popup-mode-row { justify-content: center; margin-top: -18px; margin-bottom: 24px; }
+.daily-cards-grid { width: 100%; }
+.random-range-row { width: 100%; }
+.random-launch-btn { width: 100%; }
+.popup-section-label { width: 100%; text-align: left; }
+
+/* ── Header row ───────────────────────────────────────────────── */
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.popup-title {
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+}
+
+.popup-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s;
+  padding: 0 2px;
+    position: absolute;
+  top: 12px;
+  right: 12px;
+}
+.popup-close:hover { color: var(--text); }
+
+/* ── Mode pill row ────────────────────────────────────────────── */
+.popup-mode-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.popup-mode-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* Reuse existing .mode-pill styles — no override needed */
+
+/* ── Section label ────────────────────────────────────────────── */
+.popup-section-label {
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--text-muted);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+
+/* ── Daily cards grid ─────────────────────────────────────────── */
+.daily-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.daily-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-bright);
+  background: var(--surface2);
+  cursor: pointer;
+  transition: all 0.16s ease;
+  position: relative;
+  user-select: none;
+  min-height: 88px;
+  justify-content: center;
+}
+
+.daily-card:hover {
+  border-color: currentColor;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+
+.daily-card:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Tier colors */
+.daily-card.diff-tier-easy   { color: #00e5a0; }
+.daily-card.diff-tier-medium { color: var(--accent); }
+.daily-card.diff-tier-hard   { color: #ffa032; }
+.daily-card.diff-tier-expert { color: var(--danger); }
+
+.daily-card.diff-tier-easy   { border-color: rgba(0,229,160,0.25); }
+.daily-card.diff-tier-medium { border-color: rgba(232,255,71,0.25); }
+.daily-card.diff-tier-hard   { border-color: rgba(255,160,50,0.25); }
+.daily-card.diff-tier-expert { border-color: rgba(255,77,106,0.25); }
+
+.daily-card.diff-tier-easy:hover   { background: rgba(0,229,160,0.10); }
+.daily-card.diff-tier-medium:hover { background: rgba(232,255,71,0.08); }
+.daily-card.diff-tier-hard:hover   { background: rgba(255,160,50,0.10); }
+.daily-card.diff-tier-expert:hover { background: rgba(255,77,106,0.10); }
+
+/* Completed states */
+.daily-card.completed-solved {
+  border-color: rgba(0,229,160,0.5) !important;
+  background: rgba(0,229,160,0.07) !important;
+}
+.daily-card.completed-failed {
+  border-color: rgba(255,77,106,0.35) !important;
+  background: rgba(255,77,106,0.06) !important;
+}
+
+/* Card inner elements */
+.daily-card-diff {
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: inherit;
+  text-align: center;
+}
+
+.daily-card-status {
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 700;
+}
+.daily-card-status.solved { color: #00e5a0; }
+.daily-card-status.failed { color: var(--danger); }
+
+.daily-card-time {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-align: center;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+
+.daily-card-action {
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: inherit;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+.daily-card-action.review {
+  color: var(--text-muted);
+}
+
+/* ── Divider ──────────────────────────────────────────────────── */
+.popup-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0;
+}
+
+/* ── Random range selector ────────────────────────────────────── */
+.random-range-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.range-arrow-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  border: 1px solid var(--border-bright);
+  background: var(--surface2);
+  color: var(--text-dim);
+  font-size: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.12s ease;
+  line-height: 1;
+  padding: 0;
+  font-family: var(--mono);
+}
+.range-arrow-btn:hover:not(:disabled) {
+  background: var(--accent-dim);
+  border-color: rgba(232,255,71,0.4);
+  color: var(--accent);
+}
+.range-arrow-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.random-range-display {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface2);
+  border: 1px solid var(--border-bright);
+  border-radius: 8px;
+  padding: 7px 12px;
+  min-height: 52px;
+  justify-content: center;
+}
+
+.random-range-label {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  /* color overridden inline by JS */
+}
+
+.random-range-tier {
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid;
+  /* tier classes from existing rating-* system */
+}
+
+/* Inherit existing rating-* chip colors */
+.random-range-tier.rating-easy   { color: #00e5a0; background: rgba(0,229,160,0.12); border-color: rgba(0,229,160,0.35); }
+.random-range-tier.rating-medium { color: var(--accent); background: rgba(232,255,71,0.10); border-color: rgba(232,255,71,0.35); }
+.random-range-tier.rating-hard   { color: #ffa032; background: rgba(255,160,50,0.12); border-color: rgba(255,160,50,0.35); }
+.random-range-tier.rating-expert { color: var(--danger); background: rgba(255,77,106,0.12); border-color: rgba(255,77,106,0.35); }
+
+/* ── Random launch button ─────────────────────────────────────── */
+.random-launch-btn {
+  width: 100%;
+  padding: 12px;
+  background: rgba(0,229,160,0.10);        
+  border: 1px solid rgba(0,229,160,0.35);  
+  border-radius: 9px;
+  color: #00e5a0;                         
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.random-launch-btn:hover {
+  background: rgba(0,229,160,0.18);       
+  border-color: #00e5a0;              
+  box-shadow: 0 0 24px rgba(0,229,160,0.15); 
+}
+.random-launch-btn:active { transform: scale(0.985); }
+
+/* ── Loading overlay ──────────────────────────────────────────── */
+.puzzle-loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 12, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 2500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.puzzle-loading-overlay.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.puzzle-loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border-bright);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+.puzzle-loading-text {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+/* ── Review mode banner ───────────────────────────────────────── */
+.review-banner {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  background: var(--surface2);
+  border: 1px solid var(--border-bright);
+  border-radius: 5px;
+  padding: 4px 10px;
+  display: inline-block;
+}
+
+/* ── Play button — PLAY / FORFEIT / BACK states ───────────────── */
+/* Base .btn.primary already covers PLAY.
+   FORFEIT uses existing give-up styling.*/
+#newPuzzleBtn[data-back-mode="1"]  {
+  color: var(--accent);
+  background: var(--accent-dim);
+  box-shadow: inset 0 0 8px var(--accent-glow);
+  border-color: var(--accent);
+}
+#newPuzzleBtn[data-back-mode="1"]:hover {
+  background: var(--surface2) !important;
+  color: var(--text) !important;
+}
+
+.mode-display-badge {
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  padding: 2px 10px;
+  border-radius: 4px;
+  border: 1px solid;
+  white-space: nowrap;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+  width: 130px;
+  height: 20px;
+  visibility: hidden;
+  text-align: center;
+}
+
+.mode-display-casual {
+  color: #00e5a0;
+  background: rgba(0,229,160,0.10);
+  border-color: rgba(0,229,160,0.35);
+}
+
+.mode-display-rated {
+  color: var(--accent);
+  background: rgba(232,255,71,0.10);
+  border-color: rgba(232,255,71,0.35);
+}
+
+/* ── Daily date in popup section label ────────────────────────── */
+.popup-section-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.popup-daily-date {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  opacity: 0.7;
+}

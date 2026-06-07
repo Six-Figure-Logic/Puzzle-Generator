@@ -286,7 +286,7 @@
   function setBackMode(active) {
     if (!newPuzzleBtn) return;
     if (active) {
-      newPuzzleBtn.innerHTML = '<span class="btn-icon" style="font-size:48pt;">←</span>';
+      newPuzzleBtn.innerHTML = '<span class="btn-icon">< Back</span>';
       newPuzzleBtn.dataset.backMode = '1';
     } else {
       newPuzzleBtn.innerHTML = '<span class="btn-icon">START</span>';
