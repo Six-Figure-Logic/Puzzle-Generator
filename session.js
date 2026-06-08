@@ -261,7 +261,12 @@ if (typeof checkDuplicateAnswers === 'function') {
     });
 
 const saved = loadState();
-    if (saved && !window._sflBlockSessionRestore) restoreSession(saved);
+    if (saved && !window._sflBlockSessionRestore) {
+      restoreSession(saved);
+      if (window.SFLPopup && typeof window.SFLPopup.showGame === 'function') {
+        window.SFLPopup.showGame();
+      }
+    }
 
   }, 0);
 

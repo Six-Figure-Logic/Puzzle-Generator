@@ -617,10 +617,7 @@
     const resultCloseBtn = document.getElementById('resultCloseBtn');
     if (resultCloseBtn) {
       resultCloseBtn.addEventListener('click', () => {
-        // If not in review mode and game is done, return to main menu
-        if (!window._sfgame || !window._sfgame.gameActive) {
-          showMainMenu();
-        }
+        // Stay on the puzzle/game screen — do not return to main menu
       });
     }
 
@@ -632,9 +629,10 @@
 
   // ─── Expose ──────────────────────────────────────────────────────────────
   window.SFLPopup = {
-    openDaily:  openDailyPopup,
-    openRandom: openRandomPopup,
-    showMenu:   showMainMenu,
+    openDaily:   openDailyPopup,
+    openRandom:  openRandomPopup,
+    showMenu:    showMainMenu,
+    showGame:    showGameLayout,
   };
 
 })();

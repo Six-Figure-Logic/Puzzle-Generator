@@ -42,6 +42,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="popup.css" />
   <link rel="icon" type="image/png" href="favicon.png">
 </head>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -53,16 +54,16 @@
     <header>
       <div class="header-top">
         <h1>SIX-FIGURE<span class="accent"> LOGIC</span></h1>
-        <div class="header-right">
-          <div class="player-rating-inline">
-            <span class="player-rating-label-inline">YOUR RATING</span>
-            <span class="player-rating-value" id="playerRatingValue">1000</span>
-            <span class="player-rating-rd" id="playerRatingRd">± 350</span>
-          </div>
-        </div>
+        <div class="header-right" style="display:none;"></div>
       </div>
     </header>
 
+
+    <div class="player-rating-inline" style="margin-bottom:8px;">
+      <span class="player-rating-label-inline">YOUR RATING</span>
+      <span class="player-rating-value" id="playerRatingValue">1000</span>
+      <span class="player-rating-rd" id="playerRatingRd">± 350</span>
+    </div>
 
     <!-- ── MAIN MENU ─────────────────────────────────────────────── -->
     <div id="mainMenu" class="main-menu">
@@ -163,24 +164,32 @@
 
         <div class="modal-body hidden" id="tab-rating">
           <div class="modal-section">
+            <div class="modal-section-title">DAILY PUZZLES</div>
+            <ul>
+              <li>Four new puzzles every day — one per difficulty tier. Reset at midnight Eastern Time.</li>
+              <li>Daily puzzles are always played in <span class="tip-green">CASUAL</span> mode. Your rating is never affected.</li>
+              <li>Completed dailies can be reviewed at any time from the Daily Puzzles menu.</li>
+            </ul>
+          </div>
+          <div class="modal-section">
             <div class="modal-section-title">GAME MODES</div>
             <ul>
               <li>In <span class="tip-green">CASUAL</span> mode, your rating is never affected — play freely.</li>
-              <li>In <em>RATED</em> mode, your rating updates after every puzzle, win or loss.</li>
+              <li>In <em>RATED</em> mode, your rating updates after every puzzle based on how you performed.</li>
             </ul>
           </div>
           <div class="modal-section">
             <div class="modal-section-title">EXPECTED SOLVE TIME</div>
             <ul>
-              <li>Each puzzle has an <em>expected solve time</em> based on its rating relative to yours.</li>
-              <li>A puzzle rated equal to you has a baseline time. A harder puzzle (higher rating) gives you <em>more</em> time; an easier one (lower rating) gives you <em>less</em>.</li>
-              <li>Finishing <em>faster</em> than expected <span class="tip-green">raises</span> your rating. Finishing <em>slower</em> <span class="tip-red">lowers</span> it.</li>
+              <li>Each puzzle has an <em>expected solve time</em> based on its difficulty rating relative to yours — there is no countdown.</li>
+              <li>A puzzle rated equal to you has a baseline time. A harder puzzle (higher rating) expects you to take longer; an easier one (lower rating) expects you to be faster.</li>
+              <li>Finishing <em>faster</em> than expected <span class="tip-green">raises</span> your rating. Finishing <em>slower</em> <span class="tip-red">lowers</span> it. Solve at your own pace.</li>
             </ul>
           </div>
           <div class="modal-section">
             <div class="modal-section-title">MISTAKES & PENALTIES</div>
             <ul>
-              <li>Each incorrect <span class="diff-chip easy">CHECK</span> adds a <span class="tip-red">time penalty</span> to your effective solve time — counted against you even if you finish quickly.</li>
+              <li>Each incorrect <span class="diff-chip easy">CHECK</span> adds a <span class="tip-red">time penalty</span> to your recorded solve time, counted against your performance score.</li>
               <li>Three mistakes triggers an <span class="tip-red">automatic forfeit</span>, which counts as a loss regardless of progress.</li>
               <li>Giving up in <em>RATED</em> mode always counts as a loss.</li>
             </ul>
@@ -196,9 +205,9 @@
           <div class="modal-section">
             <div class="modal-section-title">DIFFICULTY</div>
             <div class="diff-legend"><span class="diff-chip easy">EASY</span> Rating 800–1000. Solvable through a sequence of single-clue deductions.</div>
-            <div class="diff-legend"><span class="diff-chip medium">MEDIUM</span> Rating 1001–1350. Some steps require combining two or more clues.</div>
-            <div class="diff-legend"><span class="diff-chip hard">HARD</span> Rating 1351–1700. Several multi-clue deduction chains required.</div>
-            <div class="diff-legend"><span class="diff-chip expert">EXPERT</span> Rating 1701+. Complex clue combinations and critical logical leaps throughout.</div>
+            <div class="diff-legend"><span class="diff-chip medium">MEDIUM</span> Rating 1001–1400. Some steps require combining two or more clues.</div>
+            <div class="diff-legend"><span class="diff-chip hard">HARD</span> Rating 1401–1800. Several multi-clue deduction chains required.</div>
+            <div class="diff-legend"><span class="diff-chip expert">EXPERT</span> Rating 1801+. Complex clue combinations and critical logical leaps throughout.</div>
           </div>
         </div>
 
