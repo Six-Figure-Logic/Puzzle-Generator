@@ -624,7 +624,7 @@
     // Initial state
     setPopupMode('casual');
     updateRangeDisplay();
-    showMainMenu();
+    if (!window._sflSessionRestored) showMainMenu();
   });
 
   // ─── Expose ──────────────────────────────────────────────────────────────

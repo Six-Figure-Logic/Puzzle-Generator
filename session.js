@@ -262,6 +262,7 @@ if (typeof checkDuplicateAnswers === 'function') {
 
 const saved = loadState();
     if (saved && !window._sflBlockSessionRestore) {
+      window._sflSessionRestored = true;
       restoreSession(saved);
       if (window.SFLPopup && typeof window.SFLPopup.showGame === 'function') {
         window.SFLPopup.showGame();
