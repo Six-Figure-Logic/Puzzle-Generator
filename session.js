@@ -12,6 +12,17 @@
   const SAVE_KEY         = 'sfl_session_v1';
   const SAVE_INTERVAL_MS = 1000;
 
+  // Set flag synchronously so popup.js DOMContentLoaded always sees it
+  try {
+    const _peek = localStorage.getItem(SAVE_KEY);
+    if (_peek && !window._sflBlockSessionRestore) {
+      const _peekParsed = JSON.parse(_peek);
+      if (_peekParsed && _peekParsed.solution) {
+        window._sflSessionRestored = true;
+      }
+    }
+  } catch(e) {}
+
   // ─── Capture ──────────────────────────────────────────────────────────────
 
   function captureState() {
@@ -262,7 +273,6 @@ if (typeof checkDuplicateAnswers === 'function') {
 
 const saved = loadState();
     if (saved && !window._sflBlockSessionRestore) {
-      window._sflSessionRestored = true;
       restoreSession(saved);
       if (window.SFLPopup && typeof window.SFLPopup.showGame === 'function') {
         window.SFLPopup.showGame();
