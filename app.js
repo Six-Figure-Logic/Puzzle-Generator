@@ -84,6 +84,7 @@ function buildGridRows() {
       cell.addEventListener('click', (e) => {
         e.preventDefault();
         pushHistory();
+        if (e.ctrlKey || e.metaKey) { toggleCell(cell); return; }
         const lockedRow = cell.dataset.row;
         const lockedVal = cell.dataset.value;
 
@@ -2933,4 +2934,39 @@ function getShareData() {
     if (resultOverlay) resultOverlay.addEventListener('click', () => popover.classList.remove('open'));
   });
 
+})();
+
+// ── Modal page navigation ──────────────────────────────────────────────────
+(function () {
+  const TABS = [
+    { id: 'howto', pages: 4 },
+    { id: 'rating', pages: 5 },
+  ];
+
+  TABS.forEach(({ id, pages }) => {
+    let current = 0;
+
+    const prevBtn   = document.getElementById(`${id}-prev`);
+    const nextBtn   = document.getElementById(`${id}-next`);
+    const indicator = document.getElementById(`${id}-indicator`);
+
+    function update() {
+      for (let i = 0; i < pages; i++) {
+        const p = document.getElementById(`${id}-page-${i}`);
+        if (p) p.style.display = i === current ? '' : 'none';
+      }
+      if (prevBtn)   prevBtn.disabled   = current === 0;
+      if (nextBtn)   nextBtn.disabled   = current === pages - 1;
+      if (indicator) indicator.textContent = `${current + 1} / ${pages}`;
+    }
+
+    if (prevBtn) prevBtn.addEventListener('click', () => { if (current > 0) { current--; update(); } });
+    if (nextBtn) nextBtn.addEventListener('click', () => { if (current < pages - 1) { current++; update(); } });
+
+    // Reset to page 0 when tab is clicked
+    const tabBtn = document.querySelector(`.modal-tab[data-tab="${id}"]`);
+    if (tabBtn) tabBtn.addEventListener('click', () => { current = 0; update(); });
+
+    update();
+  });
 })();

@@ -695,9 +695,9 @@ header h1 {
   backdrop-filter: blur(6px);
   z-index: 1000;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 20px;
+  padding: 60px 20px 20px;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
@@ -767,12 +767,16 @@ header h1 {
 /* ── Modal body ── */
 .modal-body {
   overflow-y: auto;
-  padding: 20px 24px 28px;
+  padding: 12px 24px 28px;
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 .modal-body.hidden { display: none; }
+
+.modal-page {
+  overflow-y: auto;
+}
 
 .modal-section { display: flex; flex-direction: column; gap: 8px; }
 
@@ -2055,4 +2059,50 @@ header h1 {
 .main-layout.hidden,
 .topbar.hidden {
   display: none !important;
+}
+
+/* ── Modal page navigation ── */
+.modal-page-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.modal-page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border-bright);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  padding: 6px 12px;
+  font-family: 'BankGothic', 'Oswald', sans-serif;
+}
+.modal-page-btn:hover:not(:disabled) {
+  background: var(--surface2);
+  color: var(--accent);
+  border-color: rgba(232,255,71,0.4);
+}
+.modal-page-btn:disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
+.modal-page-indicator {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
 }

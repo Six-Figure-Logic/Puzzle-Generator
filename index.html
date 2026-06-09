@@ -96,36 +96,59 @@
           <button class="modal-tab" data-tab="rating">RATING & MODES</button>
         </div>
 
+
         <div class="modal-body" id="tab-howto">
-          <div class="modal-section">
+          <div class="modal-page-nav">
+            <button class="modal-page-btn" id="howto-prev" disabled>< BACK</button>
+            <span class="modal-page-indicator" id="howto-indicator"></span>
+            <button class="modal-page-btn" id="howto-next">NEXT ></button>
+          </div>
+
+          <div class="modal-page" id="howto-page-0">
             <div class="modal-section-title">THE GOAL</div>
-            <ul><li>Assign values to each of the six letters A through F so as to satisfy all clues.</li></ul>
-          </div>
-          <div class="modal-section">
-            <div class="modal-section-title">THE RULES</div>
-            <ul>
-              <li>Each letter A–F must be assigned a <strong>different</strong> integer from 1 to 10.</li>
-              <li>Every letter must be assigned — even those that don't appear in any clue.</li>
-              <li>The solution must satisfy all clues simultaneously and the rules stated above.</li>
-              <li>Each puzzle has exactly one correct solution.</li>
-            </ul>
-          </div>
-          <div class="modal-section">
-            <div class="modal-section-title">THE ELIMINATION GRID</div>
-            <p>The grid shows values 1–10 for each letter. Use it to track which values are still possible.</p>
-            <div class="tip-grid">
-              <div class="tip-row"><span class="tip-key">Left click</span><span class="tip-desc">Assign this value — crosses out all other values in that row and that number in all other rows. Also fills the answer dropdown.</span></div>
-              <div class="tip-row"><span class="tip-key">Right click</span><span class="tip-desc">Manually toggle a single cell as eliminated.</span></div>
-              <div class="tip-row"><span class="tip-key">&#x21BA; Reset Grid</span><span class="tip-desc">Resets the grid to its initial state.</span></div>
+            <div class="modal-section">
+              <ul>
+              <li>Assign a unique integer (1–10) to each letter A–F so that <em>every clue</em> is satisfied simultaneously.</li>
+              <li>Each puzzle has <em>exactly one</em> correct solution.</li>
+              </ul>
             </div>
           </div>
-          <div class="modal-section">
+
+          <div class="modal-page" id="howto-page-1" style="display:none">
+            <div class="modal-section-title">THE RULES</div>
+            <div class="modal-section">
+              <ul>
+                <li>Each of A–F must be assigned a <strong>different</strong> integer from 1–10.</li>
+                <li>All six letters must be assigned, even if they don't appear in any clue.</li>
+                <li>All clues must be satisfied in order to have a valid solution.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="modal-page" id="howto-page-2" style="display:none">
+            <div class="modal-section-title">THE ELIMINATION GRID</div>
+            <div class="modal-section">
+              <p style="margin-bottom:10px">The grid tracks which values (1–10) are still possible for each letter.</p>
+              <div class="tip-grid">
+                <div class="tip-row"><span class="tip-key">Left click</span><span class="tip-desc">Assign this value — clears all other values in that row and column.</span></div>
+                <div class="tip-row"><span class="tip-key">Right click</span><span class="tip-desc">Toggle a single cell as eliminated.</span></div>
+                <div class="tip-row"><span class="tip-key">Ctrl + left click</span><span class="tip-desc">Same as right click — toggle a single cell.</span></div>
+                <div class="tip-row"><span class="tip-key">&#x21BA; Reset Grid</span><span class="tip-desc">Restore the grid to its initial state.</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-page" id="howto-page-3" style="display:none">
             <div class="modal-section-title">CHECKING YOUR ANSWER</div>
-            <ul>
-              <li>Set each letter's value via the grid or the dropdowns in the solution panel.</li>
-              <li>Clicking <span class="diff-chip easy">CHECK</span> compares your solution against the clues.</li>
-              <li>Each clue turns <span class="tip-green">green</span> if satisfied or <span class="tip-red">red</span> if contradicted.</li>
-            </ul>
+            <div class="modal-section">
+              <ul>
+                <li>Set each letter's value using the grid or the answer dropdowns.</li>
+                <li>Press <span class="diff-chip easy">CHECK</span> to evaluate your solution.</li>
+                <li>Each clue turns <span class="tip-green">green</span> if satisfied or <span class="tip-red">red</span> if contradicted.</li>
+                <li>If your all clues turn green, you have solved the puzzle!. If any clue is contracdicted by your inputs, you will receive a strike.</li>
+                <li>Three strikes (mistakes) is an automatic forfeit.  You can still keep trying to solve the puzzle, unless you click 'back'.</li>
+              </ul>
+            </div>
           </div>
         </div><!-- /#tab-howto -->
 
@@ -162,54 +185,75 @@
           </div>
         </div>
 
+
         <div class="modal-body hidden" id="tab-rating">
-          <div class="modal-section">
+          <div class="modal-page-nav">
+            <button class="modal-page-btn" id="rating-prev" disabled>< BACK</button>
+            <span class="modal-page-indicator" id="howto-indicator"></span>
+            <button class="modal-page-btn" id="rating-next">NEXT ></button>
+
+          </div>
+
+          <div class="modal-page" id="rating-page-0">
             <div class="modal-section-title">DAILY PUZZLES</div>
-            <ul>
-              <li>Four new puzzles every day — one per difficulty tier. Reset at midnight Eastern Time.</li>
-              <li>Daily puzzles are always played in <span class="tip-green">CASUAL</span> mode. Your rating is never affected.</li>
-              <li>Completed dailies can be reviewed at any time from the Daily Puzzles menu.</li>
-            </ul>
+            <div class="modal-section">
+              <ul>
+                <li>Four new puzzles every day — one per difficulty. Resets at midnight Eastern time.</li>
+                <li>Dailies are always <span class="tip-green">CASUAL</span> — your rating is never affected.</li>
+                <li>Completed dailies can be reviewed any time from the Daily Puzzles menu.</li>
+              </ul>
+            </div>
           </div>
-          <div class="modal-section">
+
+          <div class="modal-page" id="rating-page-1" style="display:none">
             <div class="modal-section-title">GAME MODES</div>
-            <ul>
-              <li>In <span class="tip-green">CASUAL</span> mode, your rating is never affected — play freely.</li>
-              <li>In <em>RATED</em> mode, your rating updates after every puzzle based on how you performed.</li>
-            </ul>
+            <div class="modal-section">
+              <ul>
+                <li><span class="tip-green">CASUAL</span> — play freely, no rating impact.</li>
+                <li><em>RATED</em> — rating updates after every puzzle based on your performance.</li>
+              </ul>
+            </div>
+            <div class="modal-section-title" style="margin-top:14px">EXPECTED SOLVE TIME</div>
+            <div class="modal-section">
+              <ul>
+                <li>Each puzzle has an <em>expected solve time</em> based on its rating vs. yours.</li>
+                <li>Finishing <em>faster</em> <span class="tip-green">raises</span> your rating. Finishing <em>slower</em> <span class="tip-red">lowers</span> it.</li>
+              </ul>
+            </div>
           </div>
-          <div class="modal-section">
-            <div class="modal-section-title">EXPECTED SOLVE TIME</div>
-            <ul>
-              <li>Each puzzle has an <em>expected solve time</em> based on its difficulty rating relative to yours — there is no countdown.</li>
-              <li>A puzzle rated equal to you has a baseline time. A harder puzzle (higher rating) expects you to take longer; an easier one (lower rating) expects you to be faster.</li>
-              <li>Finishing <em>faster</em> than expected <span class="tip-green">raises</span> your rating. Finishing <em>slower</em> <span class="tip-red">lowers</span> it. Solve at your own pace.</li>
-            </ul>
+
+          <div class="modal-page" id="rating-page-2" style="display:none">
+            <div class="modal-section-title">MISTAKES &amp; PENALTIES</div>
+            <div class="modal-section">
+              <ul>
+                <li>Each wrong <span class="diff-chip easy">CHECK</span> adds a <span class="tip-red">time penalty</span> to your effective solve time.</li>
+                <li>Three mistakes triggers an <span class="tip-red">automatic forfeit</span> — a loss regardless of progress.</li>
+                <li>Giving up in <em>RATED</em> mode always counts as a loss.</li>
+              </ul>
+            </div>
           </div>
-          <div class="modal-section">
-            <div class="modal-section-title">MISTAKES & PENALTIES</div>
-            <ul>
-              <li>Each incorrect <span class="diff-chip easy">CHECK</span> adds a <span class="tip-red">time penalty</span> to your recorded solve time, counted against your performance score.</li>
-              <li>Three mistakes triggers an <span class="tip-red">automatic forfeit</span>, which counts as a loss regardless of progress.</li>
-              <li>Giving up in <em>RATED</em> mode always counts as a loss.</li>
-            </ul>
-          </div>
-          <div class="modal-section">
+
+          <div class="modal-page" id="rating-page-3" style="display:none">
             <div class="modal-section-title">RATING UNCERTAINTY (±RD)</div>
-            <ul>
-              <li>Your rating starts at <strong>1000 ± 350</strong>. The ±RD reflects how confident the system is in your rating.</li>
-              <li>±RD shrinks as you play more rated puzzles, making each result have less impact.</li>
-              <li>During inactivity, ±RD slowly rises — the system becomes less certain, and results carry more weight again.</li>
-            </ul>
+            <div class="modal-section">
+              <ul>
+                <li>Starts at <strong>1000 ± 350</strong>. ±RD reflects confidence in your rating.</li>
+                <li>±RD shrinks as you play more rated puzzles.</li>
+                <li>During inactivity, ±RD rises — higher RD results in larger rating swings after solving/failing a rated puzzle.</li>
+              </ul>
+            </div>
           </div>
-          <div class="modal-section">
+
+          <div class="modal-page" id="rating-page-4" style="display:none">
             <div class="modal-section-title">DIFFICULTY</div>
-            <div class="diff-legend"><span class="diff-chip easy">EASY</span> Rating 800–1000. Solvable through a sequence of single-clue deductions.</div>
-            <div class="diff-legend"><span class="diff-chip medium">MEDIUM</span> Rating 1001–1400. Some steps require combining two or more clues.</div>
-            <div class="diff-legend"><span class="diff-chip hard">HARD</span> Rating 1401–1800. Several multi-clue deduction chains required.</div>
-            <div class="diff-legend"><span class="diff-chip expert">EXPERT</span> Rating 1801+. Complex clue combinations and critical logical leaps throughout.</div>
+            <div class="modal-section">
+              <div class="diff-legend"><span class="diff-chip easy">EASY</span> 800–1000 · Single-clue are sufficient to solve the puzzles.</div>
+              <div class="diff-legend"><span class="diff-chip medium">MEDIUM</span> 1001–1400 · Some two-clue combinations needed.</div>
+              <div class="diff-legend"><span class="diff-chip hard">HARD</span> 1401–1800 · Multi-clue deduction chains throughout.</div>
+              <div class="diff-legend"><span class="diff-chip expert">EXPERT</span> 1801+ · Complex clue combinations and challenging logical leaps.</div>
+            </div>
           </div>
-        </div>
+        </div><!-- /#tab-rating -->
 
       </div>
     </div>
