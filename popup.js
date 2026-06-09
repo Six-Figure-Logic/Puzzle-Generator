@@ -624,7 +624,14 @@
     // Initial state
     setPopupMode('casual');
     updateRangeDisplay();
-    if (!window._sflSessionRestored) showMainMenu();
+    // Check localStorage directly — flag-based approach loses races on hard refresh
+    try {
+      const _s = localStorage.getItem('sfl_session_v1');
+      const _hasSave = _s && (function(){ try { const p = JSON.parse(_s); return !!(p && p.solution); } catch(e) { return false; } })();
+      if (!_hasSave && !window._sflSessionRestored) showMainMenu();
+    } catch(e) {
+      if (!window._sflSessionRestored) showMainMenu();
+    }
   });
 
   // ─── Expose ──────────────────────────────────────────────────────────────
