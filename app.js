@@ -2883,11 +2883,11 @@ function getShareData() {
     setTimeout(() => {
       window.open('https://www.facebook.com/', '_blank', 'noopener');
     }, 1000);
-    // Reset label after 3s
+    // Reset label after 1.5s
     setTimeout(() => {
       facebookA.classList.remove('copied');
       if (label) label.textContent = 'Facebook (copy + open)';
-    }, 3000);
+    }, 1500);
   });
 }
         // Reset copy btn
@@ -2900,7 +2900,7 @@ function getShareData() {
     // Copy button
     if (copyBtn) {
   copyBtn.addEventListener('click', async function (e) {
-    e.stopPropagation();  // ← ADD THIS LINE
+    e.stopPropagation();  
     const { text } = getShareData();
     try {
       await navigator.clipboard.writeText(text);
@@ -2916,7 +2916,7 @@ function getShareData() {
     setTimeout(() => {
       if (copyLabel) copyLabel.textContent = 'Copy Text';
       copyBtn.classList.remove('copied');
-    }, 2500);
+    }, 1500);
   });
 }
 

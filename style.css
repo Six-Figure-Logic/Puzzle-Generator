@@ -990,7 +990,7 @@ header h1 {
 
 .player-rating-label-inline {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 24px;
   font-weight: 700;
   letter-spacing: 0.2em;
   color: var(--accent);
@@ -1008,7 +1008,7 @@ header h1 {
 
 .player-rating-rd {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 16px;
   color: var(--text-muted);
   letter-spacing: 0.06em;
 }
@@ -1028,7 +1028,7 @@ header h1 {
 
 .mode-pill-btn {
   font-family: 'BankGothic', 'Oswald', sans-serif;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.1em;
   padding: 0 16px;
@@ -2214,7 +2214,7 @@ header h1 {
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 2px;
-  justify-content: center;
+  justify-content: left;
 }
 
 /* ── Daily cards grid ─────────────────────────────────────────── */
@@ -2524,7 +2524,7 @@ header h1 {
 /* ── Daily date in popup section label ────────────────────────── */
 .popup-section-label {
   display: flex;
-  align-items: center;
+  align-items: left;
   justify-content: space-between;
 }
 
@@ -2535,4 +2535,5 @@ header h1 {
   letter-spacing: 0.08em;
   color: var(--text-muted);
   opacity: 0.7;
+    text-align: right;
 }
