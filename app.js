@@ -1856,6 +1856,7 @@ populateAnswerSelects();
   const MIN_RD        = 50;
   const MAX_RD        = 350;
   const RD_DECAY_PER_DAY = 3;        // RD added per 24h inactivity
+  const RD_DECAY_PER_GAME = 0.9143;  // exponential decay per rated game: 350→100 after 20, →~58 after 40
   const MS_PER_DAY    = 86400000;
 
   // ─── Storage helpers ─────────────────────────────────────────────────────
@@ -1903,7 +1904,7 @@ populateAnswerSelects();
 
   function expectedTime(puzzleRating, playerRating) {
     const base = expectedBase(puzzleRating);
-    return base * (puzzleRating / playerRating);
+    return Math.max(40, base * Math.pow(puzzleRating / playerRating, 1.1990));
   }
 
   // Penalty seconds per mistake (25% of equal-rating base time)
@@ -2035,7 +2036,7 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
       const oldRd     = Math.round(p.rd);
 
       p.rating     = result.newRating;
-      p.rd         = result.newRd;
+      p.rd         = Math.max(MIN_RD, Math.round(MIN_RD + (result.newRd - MIN_RD) * RD_DECAY_PER_GAME));
       p.vol        = result.newVol;
       p.lastPlayed = Date.now();
       p.gamesPlayed++;
