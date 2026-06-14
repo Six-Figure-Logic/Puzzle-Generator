@@ -64,10 +64,10 @@ if (cluesList) {
   });
 }
 
-    // Mode — pill is now inside the popup
-    let mode = 'casual';
-    const casualBtn = document.getElementById('popupModeCasual');
-    if (casualBtn && !casualBtn.classList.contains('active')) mode = 'rated';
+    // Mode — read from game state directly, not popup DOM (popup may be hidden)
+    let mode = (window._sfgame && typeof window._sfgame._getMode === 'function')
+      ? window._sfgame._getMode()
+      : 'casual';
 
     // Difficulty — diff-btns removed; use puzzle context if available
     let selectedDiff = 'easy';
@@ -132,8 +132,23 @@ if (cluesList) {
     if (!state || !state.solution) return;
 
     // 1. Mode — must set before applyNewPuzzle calls lockGame
+    const restoredMode = state.mode || 'casual';
     if (window._sfgame && typeof window._sfgame._setMode === 'function') {
-      window._sfgame._setMode(state.mode || 'casual');
+      window._sfgame._setMode(restoredMode);
+    }
+    // Sync pill button visual
+    const casualBtn = document.getElementById('popupModeCasual');
+    const ratedBtn  = document.getElementById('popupModeRated');
+    if (casualBtn && ratedBtn) {
+      casualBtn.classList.toggle('active', restoredMode === 'casual');
+      ratedBtn.classList.toggle('active',  restoredMode === 'rated');
+    }
+    // Sync mode badge above reset button
+const badge = document.getElementById('modeDisplayBadge');
+    if (badge) {
+      badge.textContent = restoredMode === 'rated' ? 'RATED' : 'CASUAL';
+      badge.className   = 'mode-display-badge ' + (restoredMode === 'rated' ? 'mode-display-rated' : 'mode-display-casual');
+      badge.style.visibility = 'visible';
     }
 
     // 2. Difficulty visual — diff-btns removed from main page; skip
