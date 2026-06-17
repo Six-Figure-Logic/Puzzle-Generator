@@ -2451,47 +2451,27 @@ header h1 {
   /* ───────── GAME LAYOUT ───────── */
 
   .main-layout {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(8, auto);
+    gap: 10px;
+    align-items: center;
   }
 
   /* Desired order:
+     Start
      Clues
      Solutions
-     Check
-     Reset+Mode
+     [Mode]   [Mistakes]
+     [Reset]  [Check]
+     Timer (full width)
+     Feedback (full width, below timer)
      Grid
   */
 
-  .topbar-clues {
-    order: 1;
-    justify-content: center;
-  }
-
-  .clues-card {
-    order: 2;
-  }
-
-  .answers-card {
-    order: 3;
-  }
-
-  .topbar-answers {
-    order: 4;
-  }
-
-  .topbar-grid {
-    order: 5;
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .grid-card {
-    order: 6;
-  }
+  .topbar-clues   { grid-column: 1 / -1; grid-row: 1; justify-content: center; }
+  .clues-card     { grid-column: 1 / -1; grid-row: 2; }
+  .answers-card   { grid-column: 1 / -1; grid-row: 3; }
 
   .clues-card,
   .answers-card,
@@ -2500,20 +2480,53 @@ header h1 {
     max-height: none;
   }
 
-  .topbar-clues,
-  .topbar-answers {
-    justify-content: center;
-    align-items: center;
+  /* Lift each topbar's children into the grid individually */
+  .topbar-answers,
+  .topbar-grid,
+  .mode-controls {
+    display: contents !important;
+  }
+
+  .mode-display-badge {
+    grid-column: 1;
+    grid-row: 4;
+    justify-self: start;
+  }
+
+  .mistake-boxes {
+    grid-column: 2;
+    grid-row: 4;
+  }
+
+  #resetGridBtn {
+    grid-column: 1;
+    grid-row: 5;
+    width: 100%;
+  }
+
+  #checkBtn {
+    grid-column: 2;
+    grid-row: 5;
+    width: 100%;
   }
 
   .timer-wrap {
+    grid-column: 1 / -1;
+    grid-row: 6;
     margin-left: 0;
     justify-content: center;
   }
 
   #feedback {
+    grid-column: 1 / -1;
+    grid-row: 7;
     width: 100%;
     text-align: center;
+  }
+
+  .grid-card {
+    grid-column: 1 / -1;
+    grid-row: 8;
   }
 
 /* ───────── ANSWERS ───────── */
