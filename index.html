@@ -193,28 +193,56 @@
 
           </div>
 
-                    <div class="modal-page" id="rating-page-0" style="display:none">
-            <div class="modal-section-title">MODE SELECTION (for random puzzles only)</div>
-            <div class="modal-section">
-              <ul>
-                <li><span class="tip-green">CASUAL</span> — Your rating is never affected.</li>
-                <li><em>RATED</em> — Your rating updates after every puzzle based on your solve time.</li>
-              </ul>
-            </div>
-            </div>
+<div class="modal-page" id="rating-page-0" style="display:none">
+  <div class="modal-section-title">MODE SELECTION (for random puzzles only)</div>
+  <div class="modal-section">
+    <ul>
+      <li><span class="tip-green">CASUAL</span> — Your rating is never affected.</li>
+      <li><em>RATED</em> — Your rating updates after every puzzle based on your solve time and mistakes.</li>
+    </ul>
+  </div>
+</div>
 
-                    <div class="modal-page" id="rating-page-1" style="display:none">
-            <div class="modal-section-title">EXPECTED SOLVE TIME</div>
+ <div class="modal-page" id="rating-page-1" style="display:none">
+  <div class="modal-section-title">EXPECTED SOLVE TIME</div>
+  <div class="modal-section">
+    <ul>
+      <li>Each puzzle has an <em>expected solve time (EST)</em> based on its rating — harder puzzles have longer ESTs.</li>
+      <li>Solving <em>faster</em> than the EST <span class="tip-green">boosts</span> the puzzle's effective rating for that game; solving <em>slower</em> than the EST <span class="tip-red">reduces</span> the puzzle's effective rating.</li>
+      <li>In <em>RATED</em> mode, upon solving/failing a puzzle, your rating updates against this effective rating.</li>
+      <li>For example, if you solve a 1000-rated puzzle in half the EST with 0 mistakes, it will be treated as if you solved a 1247-rated puzzle.</li>
+      <li>Conversely, solving the same puzzle in 2x the EST would be treated as though you solved an 830-rated puzzle.</li>
+      <li>Rating adjustments are calculated based on the "Glicko-2" system.</li>
+    </ul>
+  </div>
+</div>
+
+ <div class="modal-page" id="rating-page-2" style="display:none">
+  <div class="modal-section-title">MISTAKES &amp; PERFORMANCE</div>
+  <div class="modal-section">
+    <ul>
+      <li>Each wrong <span class="diff-chip easy">CHECK</span> adds a strike, a <span class="tip-red">time penalty</span>, and directly lowers your performance score for that puzzle.</li>
+      <li>Puzzle solved with 0 mistakes = 100% Win</li>
+       <li>Puzzle solved with 1 mistake = 75% Win</li>
+        <li>Puzzle solved with 2 mistakes = Draw</li>
+         <li>3 mistakes triggers an <span class="tip-red">automatic forfeit</span> — i.e. a loss.</li>
+      <li>Giving up (forfeiting) always counts as a loss.</li>
+    </ul>
+  </div>
+</div>
+
+          <div class="modal-page" id="rating-page-3" style="display:none">
+            <div class="modal-section-title">RATING UNCERTAINTY (±RD)</div>
             <div class="modal-section">
               <ul>
-                <li>Each puzzle has an <em>expected solve time</em> as a function of its rating and your current rating.</li>
-                <li>Finishing <em>faster</em> than your expected solve time <span class="tip-green">raises</span> your rating. Finishing <em>slower</em> than your expected solve time <span class="tip-red">lowers</span> it.</li>
-                <li>Note: higher rated players have a lower expected solve time, while higer rated puzzles have a higher expected solve time.</li>
+                <li>Your rating starts at <strong>1000 ± 350</strong>. ±RD reflects confidence in your rating.</li>
+                <li>±RD shrinks as you play more rated puzzles.</li>
+                <li>During inactivity, ±RD rises — higher RD results in larger rating swings after solving/failing a rated puzzle.</li>
               </ul>
             </div>
           </div>
 
-          <div class="modal-page" id="rating-page-2" style="display:none">
+          <div class="modal-page" id="rating-page-4" style="display:none">
             <div class="modal-section-title">DAILY PUZZLES</div>
             <div class="modal-section">
               <ul>
@@ -225,29 +253,6 @@
             </div>
           </div>
 
-
-
-          <div class="modal-page" id="rating-page-3" style="display:none">
-            <div class="modal-section-title">MISTAKES &amp; PENALTIES</div>
-            <div class="modal-section">
-              <ul>
-                <li>Each wrong <span class="diff-chip easy">CHECK</span> adds a strike and a <span class="tip-red">time penalty</span> to your total solve time.</li>
-                <li>Three mistakes triggers an <span class="tip-red">automatic forfeit</span> — a failed puzzle regardless of progress.</li>
-                <li>Giving up in <em>RATED</em> mode always counts as a loss.</li>
-              </ul>
-            </div>
-          </div>
-
-          <div class="modal-page" id="rating-page-4" style="display:none">
-            <div class="modal-section-title">RATING UNCERTAINTY (±RD)</div>
-            <div class="modal-section">
-              <ul>
-                <li>Your rating starts at <strong>1000 ± 350</strong>. ±RD reflects confidence in your rating.</li>
-                <li>±RD shrinks as you play more rated puzzles.</li>
-                <li>During inactivity, ±RD rises — higher RD results in larger rating swings after solving/failing a rated puzzle.</li>
-              </ul>
-            </div>
-          </div>
 
           <div class="modal-page" id="rating-page-5" style="display:none">
             <div class="modal-section-title">DIFFICULTY</div>
@@ -482,6 +487,13 @@
       </section>
 
     </div><!-- /main-layout -->
+
+<footer class="site-footer">
+  &copy; 2026 Six-Figure Logic &nbsp;·&nbsp;
+  <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">All rights reserved</a>
+  &nbsp;·&nbsp;
+  <a href="mailto:6figurelogic@gmail.com">Contact</a>
+</footer>
 
   </main>
 

@@ -1888,49 +1888,76 @@ populateAnswerSelects();
     return p;
   }
 
-  // ─── Expected time formula ────────────────────────────────────────────────
-  // Equal-rating baseline (player = puzzle):
-  //   ≤2000: base = 180 + (puzzleRating - 800) × 0.15  seconds
-  //   >2000: base = 360 + (puzzleRating - 2000) × 1.8  seconds
-  // Then scaled by (puzzleRating / playerRating):
-  //   expectedTime = base × (puzzleRating / playerRating)
+  // ─── Expected Solve Time (EST) ────────────────────────────────────────────
+  // Purely puzzle-rating based — no player-rating scaling.
+  // ≤2000: EST = 120 + (puzzleRating - 800) × 0.30  (2min@800, 4min@1200, 6min@1600, 8min@2000)
+  // >2000: EST = 480 + (puzzleRating - 2000) × 1.80 (+3min per 100 pts: 11/14/17/20/23min @2100-2500)
   function expectedBase(puzzleRating) {
     if (puzzleRating <= 2000) {
-      return 180 + (puzzleRating - 800) * 0.15;
+      return 120 + (puzzleRating - 800) * 0.30;
     } else {
-      return 360 + (puzzleRating - 2000) * 1.8;
+      return 480 + (puzzleRating - 2000) * 1.8;
     }
   }
 
-  function expectedTime(puzzleRating, playerRating) {
-    const base = expectedBase(puzzleRating);
-    return Math.max(40, base * Math.pow(puzzleRating / playerRating, 1.1990));
+  // Alias kept so callers that pass playerRating still work (second arg ignored).
+  function expectedTime(puzzleRating /*, playerRating — ignored */) {
+    return expectedBase(puzzleRating);
   }
 
-  // Penalty seconds per mistake (25% of equal-rating base time)
+  // Penalty seconds per mistake: 25% of EST.
   function penaltyPerMistake(puzzleRating) {
     return Math.round(expectedBase(puzzleRating) * 0.25);
+  }
+
+  // ─── Effective Puzzle Rating ──────────────────────────────────────────────
+  // effectiveTime = solveSeconds + mistakes × penaltyPerMistake
+  // ratio = effectiveTime / EST
+  //   ratio ≤ 1.0 : multiplier = 1.33 - ratio × 0.99   (caps at 1.33 when ratio→0)
+  //   ratio > 1.0 : multiplier = 1.00 - (ratio - 1.0) × 0.17
+  //   Clamped to [0.66, 1.33]
+  // If S = 0 (gave up / 3 mistakes) pass the base rating directly — call site handles this.
+  // ratio ≤ 0.333 (3× faster than EST): multiplier = 1.33 (flat cap)
+  // 0.333 < ratio ≤ 1.0 (on time): linear from 1.33 down to 1.00
+  // 1.0 < ratio ≤ 3.0 (3× slower): linear from 1.00 down to 0.66
+  // ratio > 3.0: multiplier = 0.66 (flat floor)
+  function computeEffectivePuzzleRating(puzzleBaseRating, solveSeconds, mistakes) {
+    const est       = expectedBase(puzzleBaseRating);
+    const penalty   = penaltyPerMistake(puzzleBaseRating);
+    const effective = solveSeconds + mistakes * penalty;
+    const ratio     = effective / est;
+
+    let multiplier;
+    if (ratio <= 0.333) {
+      multiplier = 1.33;
+    } else if (ratio <= 1.0) {
+      // slope from (0.333, 1.33) to (1.0, 1.00)
+      const slope = (1.00 - 1.33) / (1.0 - 0.333);
+      multiplier = 1.33 + (ratio - 0.333) * slope;
+    } else {
+      // slope from (1.0, 1.00) to (3.0, 0.66)
+      const slope = (0.66 - 1.00) / (3.0 - 1.0);
+      multiplier = 1.00 + (ratio - 1.0) * slope;
+    }
+    multiplier = Math.max(0.66, Math.min(1.33, multiplier));
+
+    return Math.round(
+      Math.max(puzzleBaseRating * 0.66,
+        Math.min(puzzleBaseRating * 1.33,
+          puzzleBaseRating * multiplier))
+    );
   }
 
   // ─── S (performance score) calculation ───────────────────────────────────
   // S = clamp(0.5 - 0.35 × ln(effectiveTime / expectedTime), 0.05, 1.25)
   // Give up / 3 mistakes before solve → S = 0 (hard loss)
-function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
-    const penalty    = penaltyPerMistake(puzzleRating);
-    const effective  = solveSeconds + mistakes * penalty;
-    const expected   = expectedTime(puzzleRating, playerRating);
-    const ratio      = effective / expected;
-    const time_score = Math.max(0.05, Math.min(1.25, 0.5 - 0.491 * Math.log(ratio)));
-
-    // Remap so "solved in expected time" is always neutral (zero rating change),
-    // regardless of the rating gap between player and puzzle.
-    const mu    = (playerRating - 1500) / 173.7178;
-    const mu_j  = (puzzleRating - 1500) / 173.7178;
-    const phi_j = 350 / 173.7178;
-    function g(p) { return 1 / Math.sqrt(1 + 3 * p * p / (Math.PI * Math.PI)); }
-    const E_j = 1 / (1 + Math.exp(-g(phi_j) * (mu - mu_j)));
-
-    return Math.max(0.0, Math.min(1.25, E_j + (time_score - 0.5)));
+// S is determined solely by mistakes. Time affects effective puzzle rating, not S.
+  // mistakes=0 → 1.00, mistakes=1 → 0.75, mistakes=2 → 0.50, gave up/3 mistakes → 0.00
+  function computeS(mistakes, gaveUp) {
+    if (gaveUp || mistakes >= 3) return 0.00;
+    if (mistakes === 2) return 0.50;
+    if (mistakes === 1) return 0.75;
+    return 1.00;
   }
 
   // ─── Glicko-2 update ─────────────────────────────────────────────────────
@@ -1941,11 +1968,11 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
   const PUZZLE_RD = 200;
 
   function glicko2Update(profile, puzzleRating, S) {
-    const mu    = (profile.rating - 1500) / 173.7178;
+    const mu    = (profile.rating - INIT_RATING) / 173.7178;
     const phi   = profile.rd / 173.7178;
     const sigma = profile.vol;
 
-    const mu_j  = (puzzleRating - 1500) / 173.7178;
+    const mu_j  = (puzzleRating - INIT_RATING) / 173.7178;
     const phi_j = PUZZLE_RD / 173.7178;
 
     function g(phi) {
@@ -1999,7 +2026,7 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
     const newPhi = 1 / Math.sqrt(1 / (phiStar * phiStar) + 1 / v);
     const newMu  = mu + newPhi * newPhi * g_j * (S - E_j);
 
-    const newRating = Math.round(173.7178 * newMu + 1500);
+    const newRating = Math.round(173.7178 * newMu + INIT_RATING);
     const newRd     = Math.max(MIN_RD, Math.min(MAX_RD, Math.round(173.7178 * newPhi)));
 
     return { newRating, newRd, newVol: newSigma, expectedS: E_j, v, delta };
@@ -2029,8 +2056,12 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
       let p = loadProfile();
       applyRdDrift(p);
 
-      const S = gaveUp ? 0 : computeS(solveSeconds, mistakes, puzzleRating, p.rating);
-      const result = glicko2Update(p, puzzleRating, S);
+      const S = computeS(mistakes, gaveUp);
+      // When S=0, time is irrelevant — use base rating so forfeit is a clean loss.
+      const effectiveRating = (S === 0)
+        ? puzzleRating
+        : computeEffectivePuzzleRating(puzzleRating, solveSeconds, mistakes);
+      const result = glicko2Update(p, effectiveRating, S);
 
       const oldRating = Math.round(p.rating);
       const oldRd     = Math.round(p.rd);
@@ -2306,26 +2337,40 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
 
   // ─── Letter grade from performance ───────────────────────────────────────
 function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, gaveUp) {
-    if (gaveUp) return 'F';
-    // Grade is based purely on time performance, independent of rating gap.
-    // E_j remapping is only for Glicko rating changes, not for grading.
-    const penalty   = window.SFLRating.penaltyPerMistake(puzzleRating);
-    const effective = solveSeconds + mistakes * penalty;
-    const expected  = window.SFLRating.expectedTime(puzzleRating, playerRating);
-    const ratio     = effective / expected;
-    const time_score = Math.max(0.05, Math.min(1.25, 0.5 - 0.491 * Math.log(ratio)));
-    if (time_score >= 0.95) return 'A+';
-    if (time_score >= 0.87) return 'A';
-    if (time_score >= 0.80) return 'A−';
-    if (time_score >= 0.72) return 'B+';
-    if (time_score >= 0.64) return 'B';
-    if (time_score >= 0.49) return 'B−';
-    if (time_score >= 0.42) return 'C+';
-    if (time_score >= 0.35) return 'C';
-    if (time_score >= 0.28) return 'C−';
-    if (time_score >= 0.21) return 'D+';
-    if (time_score >= 0.14) return 'D';
-    return 'D−';
+    if (gaveUp || mistakes >= 3) return 'F';
+
+    const est   = window.SFLRating.expectedTime(puzzleRating);
+    const ratio = solveSeconds / est;   // raw time only — no penalty added for grading
+
+    if (mistakes === 0) {
+      // A+ to B-  (ratio: lower = faster = better)
+      if (ratio <= 0.50) return 'A+';
+      if (ratio <= 0.65) return 'A';
+      if (ratio <= 0.80) return 'A−';
+      if (ratio <= 1.00) return 'B+';
+      if (ratio <= 1.25) return 'B';
+      return 'B−';
+    }
+
+    if (mistakes === 1) {
+      // B to C-
+      if (ratio <= 0.66) return 'B';
+      if (ratio <= 1.00) return 'B−';
+      if (ratio <= 1.25) return 'C+';
+      if (ratio <= 1.50) return 'C';
+      return 'C−';
+    }
+
+    if (mistakes === 2) {
+      // C to D-
+      if (ratio <= 0.75) return 'C';
+      if (ratio <= 1.00) return 'C−';
+      if (ratio <= 1.50) return 'D+';
+      if (ratio <= 2.00) return 'D';
+      return 'D−';
+    }
+
+    return 'F';
   }
 
   function gradeColor(grade) {
@@ -2480,6 +2525,16 @@ window._sfgame = {
     },
     _setMode(m) { setMode(m); },
     _getMode()  { return gameMode; },
+    // Silently abandon the in-progress puzzle WITHOUT recording any rating result
+    // and without showing any popup. Used when the player navigates away into a
+    // daily review or a fresh random puzzle while a different puzzle is still live.
+    _forceEndGame() {
+      if (!gameActive) return;
+      gameActive = false;
+      puzzleWasGivenUp = true; // prevents stopTimer's hook from firing a result later
+      stopTimer();
+      unlockGame();
+    },
   };
 
 })();

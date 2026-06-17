@@ -166,6 +166,13 @@
     const isReview = rec && (rec.solved || rec.gaveUp);
 
     if (isReview) {
+      // Force-neutralize any live in-progress puzzle before repurposing shared UI
+      // (mistake boxes, newPuzzleBtn, gameActive) for an unrelated completed daily.
+      // Without this, gameActive stays true and the "< Back" button collides with
+      // app.js's own Forfeit?/Give-Up capture listener on the same element.
+      if (window._sfgame && window._sfgame.gameActive && typeof window._sfgame._forceEndGame === 'function') {
+        window._sfgame._forceEndGame();
+      }
       closeDailyPopup();
       try { localStorage.removeItem('sfl_session_v1'); } catch(e) {}
       window._sflBlockSessionRestore = true;
@@ -178,6 +185,9 @@
       return;
     }
 
+    if (window._sfgame && window._sfgame.gameActive && typeof window._sfgame._forceEndGame === 'function') {
+      window._sfgame._forceEndGame();
+    }
     closeDailyPopup();
     showLoading(true);
     showGameLayout();
@@ -324,6 +334,9 @@
 
   // ─── Launch random puzzle ────────────────────────────────────────────────
   function launchRandom() {
+    if (window._sfgame && window._sfgame.gameActive && typeof window._sfgame._forceEndGame === 'function') {
+      window._sfgame._forceEndGame();
+    }
     closeRandomPopup();
     showLoading(true);
     showGameLayout();
