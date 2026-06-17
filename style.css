@@ -404,14 +404,6 @@ header h1 {
   white-space: nowrap;
 }
 
-/* ── Responsive ── */
-@media (max-width: 700px) {
-  .main-layout { display: flex; flex-direction: column; }
-  .clues-card, .answers-card, .grid-card { width: 100%; }
-  .answers-grid { flex-direction: row; flex-wrap: wrap; gap: 8px; }
-  .answer-item { flex: 1 1 calc(33% - 8px); height: auto; }
-  .cell { font-size: 0.8rem; height: 32px; }
-}
 
 /* ── Clues list items ── */
 #cluesList li {
@@ -2371,4 +2363,160 @@ header h1 {
 
 .main-layout:not(.hidden) ~ .site-footer {
   display: none;
+}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE STYLES
+   (Mobile optimizations + layout changes)*/
+   
+  /* overall menu */
+  
+@media (max-width: 900px) {
+
+  .main-menu {
+    width: 100%;
+    max-width: 100%;
+    padding: 20px 16px;
+  }
+
+  /* top row buttons */
+  .main-menu-top-row {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .menu-btn {
+    min-height: 64px;
+    font-size: 18px;
+    letter-spacing: 0.08em;
+  }
+
+  .menu-btn-secondary {
+    flex: 1;
+  }
+
+  .menu-btn-primary {
+    width: 100%;
+    min-height: 72px;
+    font-size: 22px;
+  }
+
+  .menu-btn-icon {
+    font-size: 24px;
+  }
+
+  /* logo */
+  header h1 {
+    font-size: clamp(2.4rem, 10vw, 4rem);
+  }
+
+  /* rating */
+  .player-rating-label-inline,
+  .player-rating-value {
+    font-size: 24px;
+  }
+
+  .player-rating-rd {
+    font-size: 16px;
+  }
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+
+  html, body { overflow-x: hidden; }
+
+  .container { margin: 0 auto; width: 100%; }
+
+  .books-sidebar { display: none; }
+
+  header h1 {
+    white-space: normal;
+    font-size: clamp(1.7rem, 8vw, 2.6rem);
+    line-height: 1.15;
+  }
+
+  .player-rating-inline { flex-wrap: wrap; gap: 6px; }
+  .player-rating-label-inline { font-size: 13px; }
+  .player-rating-value { font-size: 16px; }
+  .player-rating-rd { font-size: 11px; }
+
+  .main-menu { padding: 24px 0 0; }
+  .main-menu-top-row,
+  .menu-btn-primary { width: 100%; max-width: 340px; }
+
+  /* Reordered so Reset Grid sits directly above the grid */
+  .main-layout { display: flex; flex-direction: column; }
+  .topbar-clues   { order: 1; justify-content: center; }
+  .clues-card     { order: 2; }
+  .topbar-grid    { order: 3; flex-direction: column; align-items: center; gap: 8px; }
+  .grid-card      { order: 4; }
+  .answers-card   { order: 5; }
+  .topbar-answers { order: 6; }
+
+  .clues-card, .answers-card, .grid-card { width: 100%; }
+  .topbar-clues, .topbar-answers { justify-content: center; }
+  .timer-wrap { margin-left: 0; justify-content: center; }
+  #feedback { width: 100%; text-align: center; }
+
+  .answers-grid { flex-direction: row; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .answer-item { flex: 1 1 calc(33% - 8px); height: auto; }
+
+  .row-header { width: 22px; font-size: 11px; }
+  .row-cells { gap: 3px; }
+  .cell { font-size: 0.75rem; height: 30px; }
+
+  .daily-cards-grid { grid-template-columns: repeat(2, 1fr); }
+
+  .clue-row { display: flex; flex-direction: column; gap: 2px; }
+  .clue-note { text-align: left; max-width: none; }
+}
+
+@media (max-width: 900px) {
+
+  .modal-overlay {
+    padding: 8px;
+  }
+
+  .modal-box {
+    width: 100%;
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 10px;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .modal-tab {
+    font-size: 14px;
+    padding: 14px 8px;
+  }
+
+  .modal-section-title {
+    font-size: 18px;
+  }
+
+  .modal-section p,
+  .modal-section li {
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  .modal-close {
+    font-size: 32px;
+  }
+}
+
+@media (max-width: 900px) {
+
+  .daily-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-card {
+    min-height: 90px;
+  }
 }
