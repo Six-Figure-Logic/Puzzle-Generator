@@ -2447,6 +2447,7 @@ header h1 {
     min-height: 70px;
     font-size: 22px;
   }
+  
 
   /* ───────── GAME LAYOUT ───────── */
 
@@ -2636,9 +2637,20 @@ header h1 {
   /* ───────── TUTORIAL ───────── */
 
   .we-box {
-    height: auto;
-    max-height: none;
-    overflow: visible;
+    height: 92vh;
+    max-height: 92vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 16px;
+  }
+
+  .we-nav {
+    flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    background: var(--surface);
+    padding-top: 8px;
+    margin-top: 4px;
   }
 
   .we-clues-block {
@@ -2646,9 +2658,15 @@ header h1 {
   }
 
   .we-clues-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .we-clues-list li {
+    text-align: center;
+    padding: 4px 6px;
+    font-size: 11px;
   }
 
   .we-grid {
@@ -2664,6 +2682,52 @@ header h1 {
   .we-step-card {
     min-height: auto;
   }
+
+/* ───────── PUZZLE COMPLETION MODAL ───────── */
+
+.result-box {
+    padding: 20px 16px 18px;
+    max-width: 100%;
+  }
+
+  .result-title {
+    font-size: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .result-stat-value {
+    font-size: 20px;
+  }
+
+  .result-grade-value {
+    font-size: 32px;
+  }
+
+  .result-rating-row {
+    gap: 8px;
+    padding: 12px 0 4px;
+  }
+
+  .result-old-rating {
+    font-size: 20px;
+  }
+
+  .result-new-rating {
+    font-size: 24px;
+  }
+
+  .result-arrow {
+    font-size: 14px;
+  }
+
+  .result-delta {
+    font-size: 11px;
+    padding: 2px 6px;
+    white-space: nowrap;
+  }
+
 }
 
 /* extra-small phones */
