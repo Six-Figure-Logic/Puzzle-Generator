@@ -1126,7 +1126,7 @@ header h1 {
 
 .result-stat-grade {
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .result-grade-value {
@@ -1149,13 +1149,19 @@ header h1 {
 
 .result-old-rating {
   font-family: 'BankGothic', 'Oswald', sans-serif;
-  font-size: 28px;
+  font-size: 36px;
   font-weight: 700;
   color: var(--text-dim);
   letter-spacing: 0.06em;
+  line-height: 1;
 }
 
-.result-arrow { font-size: 18px; color: var(--text-muted); }
+.result-arrow {
+  font-size: 18px;
+  color: var(--text-muted);
+  align-self: flex-end;
+  margin-bottom: 4px;
+}
 
 .result-new-rating {
   font-family: 'BankGothic', 'Oswald', sans-serif;
@@ -1164,6 +1170,7 @@ header h1 {
   color: var(--accent);
   letter-spacing: 0.06em;
   transition: color 0.3s ease;
+  line-height: 1;
 }
 
 .result-delta {
@@ -1173,6 +1180,9 @@ header h1 {
   letter-spacing: 0.06em;
   padding: 3px 8px;
   border-radius: 5px;
+  line-height: 1;
+  align-self: flex-end;
+  margin-bottom: 4px;
 }
 
 .result-delta.positive {
