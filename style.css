@@ -2738,6 +2738,10 @@ header h1 {
     white-space: nowrap;
   }
 
+  .puzzle-rating {
+    white-space: nowrap;
+  }
+
 }
 
 /* extra-small phones */
