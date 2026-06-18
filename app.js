@@ -2418,10 +2418,10 @@ function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, 
     const gc = gradeColor(grade);
     const dc = difficultyColor(puzzleRating);
 
-    const mistakesDisplay = mistakeCount > 0 ? '\u2009'.repeat(6) + mistakeCount : '\u2009'.repeat(6) + '—';
+    const mistakesDisplay = mistakeCount > 0 ? mistakeCount : '—';
     const mistakesColor = mistakeCount > 0 ? 'var(--danger)' : 'var(--success)';
     const autoForfeit = gaveUp && mistakeCount >= 3;
-    const penaltyDisplay = autoForfeit ? 'LOSS' : (penaltySecs > 0 ? '+' + formatMMSS(penaltySecs) : '—'+'\u2009'.repeat(6));
+    const penaltyDisplay = autoForfeit ? 'LOSS' : (penaltySecs > 0 ? '+' + formatMMSS(penaltySecs) : '');
     const penaltyColor = autoForfeit ? 'var(--danger)' : (penaltySecs > 0 ? 'var(--danger)' : 'var(--success)');
 
     // Change 2: show "N/A" for solve time when gave up
@@ -2435,15 +2435,11 @@ function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, 
       <div class="result-stat result-stat-grade">
         <span class="result-stat-label">SOLVE TIME</span>
         <span class="result-stat-value">${solveTimeDisplay}</span>
+        <span class="result-stat-value" style="font-size:12pt; color:${penaltyColor}">${penaltyDisplay}</span>
       </div>
-      <div class="result-stat result-stat-combined">
-        <div class="result-stat-row">
+      <div class="result-stat result-stat-grade">
           <span class="result-stat-label">MISTAKES</span>
-          <span class="result-stat-label">PENALTY</span>
-        </div>
-        <div class="result-stat-row">
-          <span class="result-stat-value" style="font-size:12pt; color:${mistakesColor}">${mistakesDisplay}</span>
-          <span class="result-stat-value" style="font-size:12pt; color:${penaltyColor}">${penaltyDisplay}</span>
+          <span class="result-stat-value" style="color:${mistakesColor}">${mistakesDisplay}</span>
         </div>
       </div>
       
