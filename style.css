@@ -970,7 +970,7 @@ header h1 {
   font-style: italic;
   text-align: right;
   line-height: 1.4;
-  max-width: 180px;
+  max-width: 220px;
 }
 
 /* ── Clue hover tooltips ── */
@@ -2287,14 +2287,15 @@ header h1 {
 
 /* ── Play button — PLAY / FORFEIT / BACK states ── */
 #newPuzzleBtn[data-back-mode="1"] {
-  color: var(--accent);
-  background: var(--accent-dim);
-  box-shadow: inset 0 0 8px var(--accent-glow);
+  background: var(--accent);
+  color: #0d0f14;
   border-color: var(--accent);
+  -webkit-text-stroke-width: 1px;
+  -webkit-text-stroke-color: #0d0f14;
 }
 #newPuzzleBtn[data-back-mode="1"]:hover {
-  background: var(--surface2) !important;
-  color: var(--text) !important;
+  background: #f5ff7a;
+  box-shadow: 0 0 40px var(--accent-glow);
 }
 
 /* ── Mode display badge ── */

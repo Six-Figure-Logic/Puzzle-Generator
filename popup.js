@@ -626,13 +626,19 @@
       observer.observe(resultOverlay, { attributes: true, attributeFilter: ['class'] });
     }
 
-    // ── When game ends, going back to main menu should show it ───────────
-    const resultCloseBtn = document.getElementById('resultCloseBtn');
-    if (resultCloseBtn) {
-      resultCloseBtn.addEventListener('click', () => {
-        // Stay on the puzzle/game screen — do not return to main menu
-      });
+// ── When game ends, return to daily popup if it was a daily ─────────
+const resultCloseBtn = document.getElementById('resultCloseBtn');
+if (resultCloseBtn) {
+  resultCloseBtn.addEventListener('click', () => {
+    const ctx = window._sflPuzzleContext;
+    if (ctx && ctx.isDaily && !ctx.isReview) {
+      setBackMode(false);
+      ctx.isReview = false;
+      showMainMenu();
+      setTimeout(openDailyPopup, 50);
     }
+  });
+}
 
     // Initial state
     setPopupMode('casual');
