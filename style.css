@@ -37,6 +37,7 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 20px 10px 0px;
   overflow-x: hidden;
 }
@@ -897,6 +898,9 @@ header h1 {
 .tip-desc { font-family: var(--mono); font-size: 12px; color: var(--text-dim); line-height: 1.5; }
 .tip-green { color: var(--success); font-weight: 700; }
 .tip-red   { color: var(--danger);  font-weight: 700; }
+
+.tip-input-mobile { display: none; }
+.tip-row-desktop-only { display: flex; }
 
 /* difficulty legend */
 .diff-legend {
@@ -2643,6 +2647,12 @@ header h1 {
   .modal-close {
     font-size: 32px;
   }
+
+  /* ───────── HOW TO USE GRID ───────── */
+
+.tip-input-desktop { display: none; }
+.tip-input-mobile { display: inline; }
+.tip-row-desktop-only { display: none; }
 
   /* ───────── TUTORIAL ───────── */
 
