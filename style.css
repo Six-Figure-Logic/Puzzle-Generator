@@ -2707,6 +2707,10 @@ header h1 {
     text-overflow: ellipsis;
   }
 
+  .result-stat-label {
+    white-space: nowrap;
+  }
+
   .result-stat-value {
     font-size: 20px;
   }
@@ -2735,10 +2739,6 @@ header h1 {
   .result-delta {
     font-size: 11px;
     padding: 2px 6px;
-    white-space: nowrap;
-  }
-
-  .puzzle-rating {
     white-space: nowrap;
   }
 
