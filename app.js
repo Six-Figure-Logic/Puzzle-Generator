@@ -2336,7 +2336,10 @@ populateAnswerSelects();
   });
 
   // ─── Letter grade from performance ───────────────────────────────────────
-function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, gaveUp) {
+window._computeLetterGrade = function(solveSeconds, mistakes, puzzleRating, playerRating, gaveUp) {
+    return computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, gaveUp);
+  };
+  function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, gaveUp) {
     if (gaveUp || mistakes >= 3) return 'F';
 
     const est   = window.SFLRating.expectedTime(puzzleRating);
@@ -2344,9 +2347,9 @@ function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, 
 
     if (mistakes === 0) {
       // A+ to B-  (ratio: lower = faster = better)
-      if (ratio <= 0.50) return 'A+';
-      if (ratio <= 0.65) return 'A';
-      if (ratio <= 0.80) return 'A−';
+      if (ratio <= 0.40) return 'A+';
+      if (ratio <= 0.50) return 'A';
+      if (ratio <= 0.75) return 'A−';
       if (ratio <= 1.00) return 'B+';
       if (ratio <= 1.25) return 'B';
       return 'B−';

@@ -4,6 +4,46 @@
 // Must be loaded AFTER app.js and daily.js
 
 // popup.js — Play popup for Six-Figure Logic
+// ── History storage ──────────────────────────────────────────────────────────
+(function () {
+  'use strict';
+
+  const HISTORY_KEY = 'sfl_history_v1';
+  const HISTORY_CAP = 200;
+
+  function loadHistory() {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch(e) { return []; }
+  }
+
+  function saveHistory(arr) {
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(arr)); } catch(e) {}
+  }
+
+  window.SFLHistory = {
+    record(entry) {
+      // entry: { puzzleRating, mode, solveTime, mistakes, grade, gaveUp, date,
+      //          sol, gridState, answerState, clueStates, mistakeBoxes, penaltyText }
+      // Cap is per-mode: 100 casual + 100 rated stored separately in one array.
+      const arr = loadHistory();
+      arr.unshift({ ...entry, savedAt: Date.now() });
+      // Count entries per mode and drop oldest of the same mode if over cap
+      const modeCounts = {};
+      const trimmed = [];
+      for (const e of arr) {
+        const m = e.mode || 'casual';
+        modeCounts[m] = (modeCounts[m] || 0) + 1;
+        if (modeCounts[m] <= HISTORY_CAP) trimmed.push(e);
+        // else: skip (this is the oldest entry for that mode, dropped)
+      }
+      saveHistory(trimmed);
+    },
+    getAll() { return loadHistory(); },
+  };
+})();
+
 (function () {
   'use strict';
 
@@ -560,13 +600,19 @@
     // ── New Puzzle / Back button ─────────────────────────────────────────
     if (newPuzzleBtn) {
       newPuzzleBtn.addEventListener('click', function (e) {
-        // Back/review mode — return to daily popup
+        // Back/review mode — return to history or daily popup
         if (newPuzzleBtn.dataset.backMode === '1') {
           e.stopImmediatePropagation();
           setBackMode(false);
-          window._sflPuzzleContext.isReview = false;
+          const fromHistory = window._sflPuzzleContext.fromHistory;
+          window._sflPuzzleContext.isReview    = false;
+          window._sflPuzzleContext.fromHistory = false;
           showMainMenu();
-          setTimeout(openDailyPopup, 50);
+          if (fromHistory) {
+            setTimeout(openHistoryOverlay, 50);
+          } else {
+            setTimeout(openDailyPopup, 50);
+          }
           return;
         }
         // Game active — let app.js forfeit handler run (don't intercept)
@@ -585,12 +631,13 @@
       return result;
     };
 
-    // ── stopTimer hook (daily completion save) ───────────────────────────
+    // ── stopTimer hook (daily completion save + history record) ──────────
     const _origStopTimer = window.stopTimer;
     window.stopTimer = function () {
       _origStopTimer();
       const ctx = window._sflPuzzleContext;
-      if (!ctx.isDaily || !ctx.dailyDifficulty || ctx.isReview) return;
+      if (ctx.isReview) return;
+
       const timerEl = document.getElementById('timer');
       const timerText = timerEl ? timerEl.textContent : '00:00';
       const parts = timerText.split(':');
@@ -602,7 +649,73 @@
       }
       const fb = document.getElementById('feedback');
       const solved = fb && fb.classList.contains('correct');
-      captureDailyCompletionState(solveTime, !solved, mistakes, 0, solved ? '' : 'F');
+      const gaveUp = !solved;
+
+      // Daily completion save
+      if (ctx.isDaily && ctx.dailyDifficulty) {
+        captureDailyCompletionState(solveTime, gaveUp, mistakes, 0, solved ? '' : 'F');
+      }
+
+      // History record — capture full puzzle state for replay
+      setTimeout(() => {
+        const sol = window.currentSolution;
+        if (!sol) return;
+        const puzzleRating = sol._rating || 1000;
+        const mode = (window._sfgame && window._sfgame._getMode) ? window._sfgame._getMode() : 'casual';
+        const grade = (() => {
+          if (typeof window._computeLetterGrade === 'function') {
+            return window._computeLetterGrade(solveTime, mistakes, puzzleRating, 1000, gaveUp);
+          }
+          return gaveUp ? 'F' : '?';
+        })();
+
+        const gridEl = document.getElementById('grid');
+        const gridState = {};
+        if (gridEl) {
+          gridEl.querySelectorAll('.cell').forEach(cell => {
+            gridState[cell.dataset.row + '-' + cell.dataset.value] = cell.classList.contains('crossed');
+          });
+        }
+        const answerState = {};
+        ['A','B','C','D','E','F'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) answerState[id] = el.value;
+        });
+        const clueStates = [];
+        const cluesList = document.getElementById('cluesList');
+        if (cluesList) {
+          cluesList.querySelectorAll('li').forEach(li => {
+            clueStates.push(li.classList.contains('clue-ok') ? 'ok' : li.classList.contains('clue-fail') ? 'fail' : '');
+          });
+        }
+        const mistakeBoxes = [false, false, false];
+        for (let i = 1; i <= 3; i++) {
+          const box = document.getElementById('mistakeBox' + i);
+          mistakeBoxes[i - 1] = box ? box.classList.contains('active') : false;
+        }
+        const penaltyEl = document.getElementById('penaltyTime');
+        const penaltyText = penaltyEl ? penaltyEl.textContent : '';
+
+        const now = new Date();
+        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const dateStr = months[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear();
+
+        window.SFLHistory.record({
+          puzzleRating,
+          mode,
+          solveTime,
+          mistakes,
+          grade,
+          gaveUp,
+          date: dateStr,
+          sol: { ...sol },
+          gridState,
+          answerState,
+          clueStates,
+          mistakeBoxes,
+          penaltyText,
+        });
+      }, 100); // slight delay so grade element is rendered
     };
 
     // ── Grade update after result overlay opens ──────────────────────────
@@ -639,6 +752,246 @@ if (resultCloseBtn) {
     }
   });
 }
+
+    // ── History overlay ──────────────────────────────────────────────────
+    const historyOverlay  = document.getElementById('historyOverlay');
+    const historyClose    = document.getElementById('historyPopupClose');
+    const historyTabs     = document.querySelectorAll('.history-tab');
+    const historyBody     = document.getElementById('historyTableBody');
+    const historyEmpty    = document.getElementById('historyEmpty');
+    const historyTable    = document.getElementById('historyTable');
+    const menuHistoryBtn  = document.getElementById('menuHistoryBtn');
+
+    let _historyTab = 'casual';
+    let _sortCol    = 'puzzleRating';
+    let _sortDir    = 'desc';
+
+    function gradeColor(g) {
+      if (!g || g === 'F')       return 'var(--danger)';
+      if (g.startsWith('A'))     return 'var(--success)';
+      if (g.startsWith('B'))     return '#7ecfff';
+      if (g.startsWith('C'))     return 'var(--accent)';
+      return '#ffa032';
+    }
+
+    function ratingColor(r) {
+      if (r <= 1000) return { color: '#00e5a0', bg: 'rgba(0,229,160,0.12)', border: 'rgba(0,229,160,0.4)' };
+      if (r <= 1400) return { color: 'var(--accent)', bg: 'rgba(232,255,71,0.10)', border: 'rgba(232,255,71,0.4)' };
+      if (r <= 1800) return { color: '#ffa032', bg: 'rgba(255,160,50,0.12)', border: 'rgba(255,160,50,0.4)' };
+      return { color: 'var(--danger)', bg: 'rgba(255,77,106,0.12)', border: 'rgba(255,77,106,0.4)' };
+    }
+
+    function fmtTime(secs) {
+      if (secs === null || secs === undefined) return '--:--';
+      const m = Math.floor(secs / 60);
+      const s = String(secs % 60).padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    const GRADE_ORDER = ['A+','A','A−','B+','B','B−','C+','C','C−','D+','D','D−','F'];
+
+    function sortValue(entry, col) {
+      switch(col) {
+        case 'puzzleRating': return entry.puzzleRating || 0;
+        case 'solveTime':    return entry.gaveUp ? Infinity : (entry.solveTime || 0);
+        case 'mistakes':     return entry.mistakes || 0;
+        case 'grade':        return GRADE_ORDER.indexOf(entry.grade) === -1 ? 99 : GRADE_ORDER.indexOf(entry.grade);
+        case 'date':         return entry.savedAt || 0;
+        default:             return 0;
+      }
+    }
+
+    function renderHistory() {
+      const all = window.SFLHistory.getAll().filter(e => e.mode === _historyTab);
+      const sorted = all.slice().sort((a, b) => {
+        const av = sortValue(a, _sortCol), bv = sortValue(b, _sortCol);
+        return _sortDir === 'asc' ? av - bv : bv - av;
+      });
+
+      // Update sort arrows on headers
+      historyTable.querySelectorAll('th').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+        if (th.dataset.col === _sortCol) th.classList.add(_sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        // Reset arrow text
+        const arrow = th.querySelector('.sort-arrow');
+        if (arrow) arrow.textContent = '↕';
+      });
+      const activeHeader = historyTable.querySelector(`th[data-col="${_sortCol}"] .sort-arrow`);
+      if (activeHeader) activeHeader.textContent = _sortDir === 'asc' ? '↑' : '↓';
+
+      historyBody.innerHTML = '';
+      if (sorted.length === 0) {
+        historyEmpty.style.display = '';
+        historyTable.style.display = 'none';
+        return;
+      }
+      historyEmpty.style.display = 'none';
+      historyTable.style.display = '';
+
+      sorted.forEach((entry, idx) => {
+        const rc = ratingColor(entry.puzzleRating || 0);
+        const gc = gradeColor(entry.grade);
+        const timeDisplay = entry.gaveUp ? '<span style="color:var(--danger)">FAILED</span>' : fmtTime(entry.solveTime);
+        const mistakesDisplay = entry.mistakes > 0
+          ? `<span style="color:var(--danger)">${entry.mistakes}</span>`
+          : '<span style="color:var(--success)">—</span>';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="history-rating-chip" style="color:${rc.color};background:${rc.bg};border-color:${rc.border}">${entry.puzzleRating || '?'}</span></td>
+          <td>${timeDisplay}</td>
+          <td>${mistakesDisplay}</td>
+          <td><span class="history-grade" style="color:${gc}">${entry.grade || '?'}</span></td>
+          <td style="color:var(--text-muted);font-size:11px">${entry.date || ''}</td>
+        `;
+        tr.addEventListener('click', () => launchHistoryReview(entry));
+        historyBody.appendChild(tr);
+      });
+    }
+
+    function openHistoryOverlay() {
+      renderHistory();
+      if (historyOverlay) historyOverlay.classList.add('open');
+    }
+    function closeHistoryOverlay() {
+      if (historyOverlay) historyOverlay.classList.remove('open');
+    }
+
+    function launchHistoryReview(entry) {
+      if (!entry.sol) return;
+      closeHistoryOverlay();
+      if (window._sfgame && window._sfgame.gameActive && typeof window._sfgame._forceEndGame === 'function') {
+        window._sfgame._forceEndGame();
+      }
+      try { localStorage.removeItem('sfl_session_v1'); } catch(e) {}
+      window._sflBlockSessionRestore = true;
+
+      showLoading(true);
+      showGameLayout();
+
+      setTimeout(() => {
+        window._sflPuzzleContext.isDaily    = false;
+        window._sflPuzzleContext.dailyDifficulty = null;
+        window._sflPuzzleContext.isReview   = true;
+        window._sflPuzzleContext.fromHistory = true;
+
+        const rec = entry;
+        const sol = entry.sol;
+        window._sflApplyPuzzleLayout(sol);
+
+        // Grid
+        const gridEl = document.getElementById('grid');
+        if (gridEl && rec.gridState) {
+          gridEl.querySelectorAll('.cell').forEach(cell => {
+            const key = cell.dataset.row + '-' + cell.dataset.value;
+            const crossed = rec.gridState[key] === true;
+            cell.classList.toggle('crossed', crossed);
+            cell.setAttribute('aria-pressed', String(crossed));
+          });
+        }
+
+        // Answers
+        if (rec.answerState) {
+          ['A','B','C','D','E','F'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && rec.answerState[id] !== undefined) el.value = rec.answerState[id];
+          });
+        }
+
+        // Clue states
+        if (rec.clueStates && rec.clueStates.length) {
+          const cl = document.getElementById('cluesList');
+          if (cl) {
+            cl.querySelectorAll('li').forEach((li, i) => {
+              li.classList.remove('clue-ok', 'clue-fail');
+              if (rec.clueStates[i] === 'ok')   li.classList.add('clue-ok');
+              if (rec.clueStates[i] === 'fail')  li.classList.add('clue-fail');
+            });
+          }
+        }
+
+        // Mistake boxes
+        for (let i = 1; i <= 3; i++) {
+          const box = document.getElementById('mistakeBox' + i);
+          if (!box) continue;
+          const active = !!(rec.mistakeBoxes && rec.mistakeBoxes[i - 1]);
+          box.classList.toggle('active', active);
+          box.textContent = active ? '✗' : '';
+        }
+
+        // Timer
+        const timerEl = document.getElementById('timer');
+        if (timerEl) {
+          if (rec.gaveUp) {
+            timerEl.textContent = '--:--';
+          } else {
+            const m = String(Math.floor(rec.solveTime / 60)).padStart(2, '0');
+            const s = String(rec.solveTime % 60).padStart(2, '0');
+            timerEl.textContent = `${m}:${s}`;
+          }
+          timerEl.className = 'timer stopped';
+        }
+
+        // Penalty
+        const penaltyEl = document.getElementById('penaltyTime');
+        if (penaltyEl) {
+          penaltyEl.textContent = rec.penaltyText || '';
+          penaltyEl.classList.toggle('visible', !!(rec.penaltyText));
+        }
+
+        // Feedback
+        const feedbackEl = document.getElementById('feedback');
+        if (feedbackEl) {
+          if (rec.gaveUp) {
+            feedbackEl.textContent = '✗ Puzzle failed.';
+            feedbackEl.className = 'feedback incorrect';
+          } else {
+            feedbackEl.textContent = '✓ ALL CORRECT! - WELL DONE.';
+            feedbackEl.className = 'feedback correct';
+          }
+        }
+
+        setBackMode(true);
+        showLoading(false);
+      }, 20);
+    }
+
+    // Tab switching
+    historyTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        historyTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        _historyTab = tab.dataset.htab;
+        renderHistory();
+      });
+    });
+
+    // Column sort
+    if (historyTable) {
+      historyTable.querySelectorAll('th[data-col]').forEach(th => {
+        th.addEventListener('click', () => {
+          const col = th.dataset.col;
+          if (_sortCol === col) {
+            _sortDir = _sortDir === 'desc' ? 'asc' : 'desc';
+          } else {
+            _sortCol = col;
+            _sortDir = col === 'puzzleRating' ? 'desc' : 'asc';
+          }
+          renderHistory();
+        });
+      });
+    }
+
+    // Open/close
+    if (menuHistoryBtn) menuHistoryBtn.addEventListener('click', openHistoryOverlay);
+    if (historyClose)   historyClose.addEventListener('click',  closeHistoryOverlay);
+    if (historyOverlay) historyOverlay.addEventListener('click', e => {
+      if (e.target === historyOverlay) closeHistoryOverlay();
+    });
+
+    // Back button from history review returns to history overlay
+    // (patch the existing newPuzzleBtn back-mode handler)
+    const _origNewPuzzleClick = newPuzzleBtn ? newPuzzleBtn.onclick : null;
 
     // Initial state
     setPopupMode('casual');

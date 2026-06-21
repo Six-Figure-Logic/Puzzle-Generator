@@ -80,6 +80,9 @@
       <button id="menuRandomBtn" class="menu-btn menu-btn-primary menu-btn-random">
         <i class="ti ti-dice-6 menu-btn-icon"></i>RANDOM PUZZLE
       </button>
+      <button id="menuHistoryBtn" class="menu-btn menu-btn-primary menu-btn-history">
+        <i class="ti ti-history menu-btn-icon"></i>SOLVE HISTORY
+      </button>
     </div>
     <!-- ── END MAIN MENU ─────────────────────────────────────────── -->
 
@@ -581,6 +584,39 @@
   </div>
   <!-- ── END RANDOM PUZZLE POPUP ───────────────────────────────────── -->
 
+
+  <!-- ── HISTORY OVERLAY ──────────────────────────────────────────── -->
+  <div id="historyOverlay" class="puzzle-select-overlay" role="dialog" aria-modal="true" aria-label="Solve History">
+    <div class="puzzle-select-box history-box">
+      <div class="popup-header">
+        <button class="popup-close" id="historyPopupClose" aria-label="Close">&times;</button>
+        <span class="popup-title">SOLVE HISTORY</span>
+      </div>
+
+      <div class="history-tabs">
+        <button class="history-tab active" data-htab="casual">CASUAL</button>
+        <button class="history-tab" data-htab="rated">RATED</button>
+      </div>
+
+      <div class="history-table-wrap">
+        <table class="history-table" id="historyTable">
+          <thead>
+            <tr>
+              <th data-col="puzzleRating">PUZZLE RATING <span class="sort-arrow">↕</span></th>
+              <th data-col="solveTime">TIME <span class="sort-arrow">↕</span></th>
+              <th data-col="mistakes">MISTAKES <span class="sort-arrow">↕</span></th>
+              <th data-col="grade">PERF <span class="sort-arrow">↕</span></th>
+              <th data-col="date">DATE <span class="sort-arrow">↕</span></th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody">
+          </tbody>
+        </table>
+        <div class="history-empty" id="historyEmpty" style="display:none">No solves recorded yet.</div>
+      </div>
+    </div>
+  </div>
+  <!-- ── END HISTORY OVERLAY ──────────────────────────────────────── -->
 
   <script src="app.js"></script>
   <script src="session.js"></script>
