@@ -166,7 +166,7 @@ header h1 {
 
 .btn.primary {
   background: var(--accent);
-  width: 150px;
+  width: 140px;
   height: 48px;
   color: #0d0f14;
   font-size: 18px;
@@ -662,8 +662,8 @@ header h1 {
 /* ── Topbar-clues: stacked rows ── */
 .topbar-clues {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
   gap: 6px;
 }
 

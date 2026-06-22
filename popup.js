@@ -335,12 +335,15 @@
   // ─── Back mode ──────────────────────────────────────────────────────────
   function setBackMode(active) {
     if (!newPuzzleBtn) return;
+    const solBtn = document.getElementById('showSolutionBtn');
     if (active) {
       newPuzzleBtn.innerHTML = '<span class="btn-icon">< Back</span>';
       newPuzzleBtn.dataset.backMode = '1';
+      if (solBtn) solBtn.style.display = '';
     } else {
       newPuzzleBtn.innerHTML = '<span class="btn-icon">START</span>';
       newPuzzleBtn.dataset.backMode = '';
+      if (solBtn) solBtn.style.display = 'none';
     }
   }
 
@@ -1017,5 +1020,34 @@ if (resultCloseBtn) {
     showMenu:    showMainMenu,
     showGame:    showGameLayout,
   };
+
+  // ── Show Solution button ─────────────────────────────────────────────
+    const showSolutionBtn = document.getElementById('showSolutionBtn');
+    const solutionModal   = document.getElementById('solutionModal');
+    const solutionClose   = document.getElementById('solutionModalClose');
+    const solutionBody    = document.getElementById('solutionModalBody');
+
+    function openSolutionModal() {
+      const sol = window.currentSolution;
+      if (!sol || !solutionBody) return;
+      const labels = ['A','B','C','D','E','F'];
+      solutionBody.innerHTML = labels.map(l => `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;
+                    background:var(--surface2);border:1px solid var(--border-bright);
+                    border-radius:8px;padding:10px 6px;">
+          <span style="font-family:var(--mono);font-size:18px;font-weight:700;
+                       color:var(--text-muted);">${l}</span>
+          <span style="font-family:'BankGothic','Oswald',sans-serif;font-size:28px;
+                       font-weight:700;color:var(--accent);">${sol[l] !== undefined ? sol[l] : sol[l.toLowerCase()]}</span>
+        </div>
+      `).join('');
+      solutionModal.classList.add('open');
+    }
+
+    if (showSolutionBtn) showSolutionBtn.addEventListener('click', openSolutionModal);
+    if (solutionClose)   solutionClose.addEventListener('click',  () => solutionModal.classList.remove('open'));
+    if (solutionModal)   solutionModal.addEventListener('click',  e => {
+      if (e.target === solutionModal) solutionModal.classList.remove('open');
+    });
 
 })();

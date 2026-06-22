@@ -2229,8 +2229,11 @@ populateAnswerSelects();
     if (_pr2) _pr2.disabled = false;
 
     newPuzzleBtn.innerHTML = '<span class="btn-icon">< BACK</span>';
+    newPuzzleBtn.dataset.backMode = '1';
     newPuzzleBtn.classList.remove('give-up-active');
     penaltyEl.classList.remove('visible');
+    const solBtn = document.getElementById('showSolutionBtn');
+    if (solBtn) solBtn.style.display = '';
   }
 
   // ─── Give up logic ────────────────────────────────────────────────────────

@@ -432,6 +432,9 @@
         <button id="newPuzzleBtn" class="btn primary" style="margin-top:1em;">
           <span class="btn-icon">START</span>
         </button>
+        <button id="showSolutionBtn" class="btn ghost" style="margin-top:1.5em;display:none;font-size:11px;height:48px;white-space:nowrap;">
+          <span style="font-family:'BankGothic','Oswald',sans-serif;font-weight:700;letter-spacing:0.08em;">SHOW SOLUTION</span>
+        </button>
       </div>
 
       <!-- [1,2] answers topbar -->
@@ -508,6 +511,17 @@
   &nbsp;·&nbsp;
   <a href="mailto:6figurelogic@gmail.com">Contact</a>
 </footer>
+
+<!-- SOLUTION MODAL -->
+<div id="solutionModal" class="giveup-overlay" role="dialog" aria-modal="true">
+  <div class="giveup-box" style="max-width:340px;">
+    <div class="giveup-title" style="color:var(--accent);text-align:center;">SOLUTION</div>
+    <div id="solutionModalBody" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px;"></div>
+    <div class="giveup-btns">
+      <button id="solutionModalClose" class="giveup-btn-no" style="flex:none;width:100%;">Close</button>
+    </div>
+  </div>
+</div>
 
   </main>
 
