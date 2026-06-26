@@ -613,7 +613,7 @@
           showMainMenu();
           if (fromHistory) {
             setTimeout(openHistoryOverlay, 50);
-          } else {
+          } else if (window._sflPuzzleContext && window._sflPuzzleContext.isDaily) {
             setTimeout(openDailyPopup, 50);
           }
           return;

@@ -2998,7 +2998,7 @@ function getShareData() {
 (function () {
   const TABS = [
     { id: 'howto', pages: 4 },
-    { id: 'rating', pages: 6 },
+    { id: 'rating', pages: 7 },
   ];
 
   TABS.forEach(({ id, pages }) => {
