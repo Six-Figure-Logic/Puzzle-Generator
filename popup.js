@@ -431,7 +431,7 @@ if (sol || tried >= MAX) {
           }
           showLoading(false);
 
-          console.log(`[SFL] random puzzle: rating=${sol?._rating}, attempts=${tried}${tried >= MAX ? ' (hit MAX)' : ''}`);
+          // console.log(`[SFL] random puzzle: rating=${sol?._rating}, attempts=${tried}${tried >= MAX ? ' (hit MAX)' : ''}`);
           if (sol) window.applyNewPuzzle(sol);
       } else {
         setTimeout(runChunk, 0);

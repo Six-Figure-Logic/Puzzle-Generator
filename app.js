@@ -1579,9 +1579,9 @@ function computePuzzleRating(rawClues, elim, sol) {
   computePuzzleRating._lastDebug = { wedResult, E_norm, WED_norm, elim, rating };
   if (computePuzzleRating._logNext) {
     computePuzzleRating._logNext = false;
-    console.log('[WED cascade]', wedResult.ecDetails.map(d => `${d.varName}:${d.ec}×${d.weight}=${d.weightedEC.toFixed(1)}`).join(', '),
-      '→ WED_raw:', wedResult.WED_raw.toFixed(1), 'WED_norm:', WED_norm.toFixed(1),
-      'E_norm:', E_norm.toFixed(1), '→ rating:', rating);
+    // console.log('[WED cascade]', wedResult.ecDetails.map(d => `${d.varName}:${d.ec}×${d.weight}=${d.weightedEC.toFixed(1)}`).join(', '),
+    //   '→ WED_raw:', wedResult.WED_raw.toFixed(1), 'WED_norm:', WED_norm.toFixed(1),
+    //   'E_norm:', E_norm.toFixed(1), '→ rating:', rating);
   }
   return rating;
 }
