@@ -419,18 +419,20 @@
           return;
         }
       }
-      if (sol || tried >= MAX) {
-        if (!sol) {
-          try {
-            sol = gen();
-            if (sol && sol._rawClues) {
-              const elim = score(sol._rawClues, sol);
-              sol._rating = rate(sol._rawClues, elim, sol);
-            }
-          } catch(e) {}
-        }
-        showLoading(false);
-        if (sol) window.applyNewPuzzle(sol);
+if (sol || tried >= MAX) {
+          if (!sol) {
+            try {
+              sol = gen();
+              if (sol && sol._rawClues) {
+                const elim = score(sol._rawClues, sol);
+                sol._rating = rate(sol._rawClues, elim, sol);
+              }
+            } catch(e) {}
+          }
+          showLoading(false);
+
+          console.log(`[SFL] random puzzle: rating=${sol?._rating}, attempts=${tried}${tried >= MAX ? ' (hit MAX)' : ''}`);
+          if (sol) window.applyNewPuzzle(sol);
       } else {
         setTimeout(runChunk, 0);
       }

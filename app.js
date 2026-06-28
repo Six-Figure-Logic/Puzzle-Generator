@@ -1371,124 +1371,179 @@ case 'no product': {
   const GLOBAL_OPS_WED = new Set(['no sum','no product','largest','smallest','not largest','not smallest']);
 
   function computeWED(rawClues, sol) {
-    // ─── Sort clues in-memory by ascending difficulty prior to WED calculation ───
   rawClues = [...rawClues].sort((a, b) => clueComplexityScore(a) - clueComplexityScore(b));
-    const clueCount = rawClues.length;
-    const varNames6 = ['A','B','C','D','E','F'];
-    const solArr = [
-      sol.a !== undefined ? sol.a : sol.A,
-      sol.b !== undefined ? sol.b : sol.B,
-      sol.c !== undefined ? sol.c : sol.C,
-      sol.d !== undefined ? sol.d : sol.D,
-      sol.e !== undefined ? sol.e : sol.E,
-      sol.f !== undefined ? sol.f : sol.F
-    ];
+  const clueCount = rawClues.length;
 
-    // Backtracker: can a valid distinct-value assignment exist with varIdx=testVal
-    // satisfying subsetIdxs? No fixedMap — full free search.
-    function btAssign(toAssign, pos, assignment, usedMask, subsetIdxs) {
-      if (pos === toAssign.length) {
-        // Leaf: check ALL clues including globals
-        const s = { a:assignment[0], b:assignment[1], c:assignment[2],
-                    d:assignment[3], e:assignment[4], f:assignment[5] };
-        for (const idx of subsetIdxs) {
-          if (!checkClue(s, rawClues[idx])) return false;
+  const STEP_WEIGHTS = [2.5, 2.0, 1.5, 1.0, 0.4, 0.1];
+
+  const solArr = [
+    sol.a !== undefined ? sol.a : sol.A,
+    sol.b !== undefined ? sol.b : sol.B,
+    sol.c !== undefined ? sol.c : sol.C,
+    sol.d !== undefined ? sol.d : sol.D,
+    sol.e !== undefined ? sol.e : sol.E,
+    sol.f !== undefined ? sol.f : sol.F
+  ];
+
+  const varNames6 = ['A','B','C','D','E','F'];
+
+  // fixedVals[i] = true solution value once that variable is solved, else 0
+  const fixedVals = new Array(6).fill(0);
+
+  function btAssign(toAssign, pos, assignment, usedMask, subsetIdxs) {
+    if (pos === toAssign.length) {
+      const s = { a:assignment[0], b:assignment[1], c:assignment[2],
+                  d:assignment[3], e:assignment[4], f:assignment[5] };
+      for (const idx of subsetIdxs) {
+        if (!checkClue(s, rawClues[idx])) return false;
+      }
+      return true;
+    }
+    const varI = toAssign[pos];
+    for (let n = 1; n <= 10; n++) {
+      const bit = 1 << (n - 1);
+      if (usedMask & bit) continue;
+      assignment[varI] = n;
+      let ok = true;
+      for (const idx of subsetIdxs) {
+        const c = rawClues[idx];
+        if (GLOBAL_OPS_WED.has(c.Operator)) continue;
+        const allAssigned =
+          (!c.Var1Index || assignment[c.Var1Index-1]) &&
+          (!c.Var2Index || assignment[c.Var2Index-1]) &&
+          (!c.Var3Index || assignment[c.Var3Index-1]);
+        if (allAssigned) {
+          const s2 = { a:assignment[0], b:assignment[1], c:assignment[2],
+                       d:assignment[3], e:assignment[4], f:assignment[5] };
+          if (!checkClue(s2, c)) { ok = false; break; }
         }
+      }
+      if (ok && btAssign(toAssign, pos + 1, assignment, usedMask | bit, subsetIdxs)) {
+        assignment[varI] = 0;
         return true;
       }
-      const varI = toAssign[pos];
-      for (let n = 1; n <= 10; n++) {
-        const bit = 1 << (n - 1);
-        if (usedMask & bit) continue;
-        assignment[varI] = n;
-        // Partial pruning: only non-global clues whose vars are all assigned
-        let ok = true;
-        for (const idx of subsetIdxs) {
-          const c = rawClues[idx];
-          if (GLOBAL_OPS_WED.has(c.Operator)) continue; // globals checked at leaf only
-          const allAssigned =
-            (!c.Var1Index || assignment[c.Var1Index-1]) &&
-            (!c.Var2Index || assignment[c.Var2Index-1]) &&
-            (!c.Var3Index || assignment[c.Var3Index-1]);
-          if (allAssigned) {
-            const s2 = { a:assignment[0], b:assignment[1], c:assignment[2],
-                         d:assignment[3], e:assignment[4], f:assignment[5] };
-            if (!checkClue(s2, c)) { ok = false; break; }
-          }
-        }
-        if (ok && btAssign(toAssign, pos + 1, assignment, usedMask | bit, subsetIdxs)) {
-          assignment[varI] = 0;
-          return true;
-        }
-        assignment[varI] = 0;
-      }
-      return false;
+      assignment[varI] = 0;
     }
+    return false;
+  }
 
-    function isValuePossible(varIdx, testVal, subsetIdxs) {
-      const assignment = new Array(6).fill(0);
-      assignment[varIdx] = testVal;
-      const usedMask = 1 << (testVal - 1);
-      const toAssign = [];
-      for (let i = 0; i < 6; i++) { if (i !== varIdx) toAssign.push(i); }
-      return btAssign(toAssign, 0, assignment, usedMask, subsetIdxs);
-    }
+  function isValuePossible(varIdx, testVal, subsetIdxs) {
+    // Fixed variables are locked to their true values
+    const assignment = new Array(6).fill(0);
+    let usedMask = 0;
 
-    // Returns true if subsetIdxs uniquely pins varIdx (exactly one testVal possible)
-    function subsetPinsVar(subsetIdxs, varIdx) {
-      let possibleCount = 0;
-      for (let testVal = 1; testVal <= 10; testVal++) {
-        if (isValuePossible(varIdx, testVal, subsetIdxs)) {
-          possibleCount++;
-          if (possibleCount > 1) return false;
-        }
-      }
-      return possibleCount === 1;
-    }
-
-    // Generate combinations of size k from 0..n-1
-    function* combos(n, k) {
-      const idx = Array.from({length: k}, (_, i) => i);
-      while (true) {
-        yield idx.slice();
-        let i = k - 1;
-        while (i >= 0 && idx[i] === n - k + i) i--;
-        if (i < 0) break;
-        idx[i]++;
-        for (let j = i + 1; j < k; j++) idx[j] = idx[j-1] + 1;
+    // Lock all already-fixed variables
+    for (let i = 0; i < 6; i++) {
+      if (fixedVals[i]) {
+        assignment[i] = fixedVals[i];
+        usedMask |= 1 << (fixedVals[i] - 1);
       }
     }
 
-    // Find minimum-EC subset for varIdx
-    function findMinSubset(varIdx) {
-      for (let size = 1; size <= clueCount; size++) {
-        for (const combo of combos(clueCount, size)) {
-          if (subsetPinsVar(combo, varIdx)) return combo;
-        }
-      }
-      return Array.from({length: clueCount}, (_, i) => i);
-    }
+    // Lock the variable we're testing
+    assignment[varIdx] = testVal;
+    usedMask |= 1 << (testVal - 1);
 
-    // Compute EC for each variable independently
-    const ecDetails = [];
-    for (let vi = 0; vi < 6; vi++) {
+    const toAssign = [];
+    for (let i = 0; i < 6; i++) {
+      if (i !== varIdx && !fixedVals[i]) toAssign.push(i);
+    }
+    return btAssign(toAssign, 0, assignment, usedMask, subsetIdxs);
+  }
+
+  function subsetPinsVar(subsetIdxs, varIdx) {
+    let possibleCount = 0;
+    for (let testVal = 1; testVal <= 10; testVal++) {
+      // Skip values already used by fixed variables
+      let alreadyUsed = false;
+      for (let i = 0; i < 6; i++) {
+        if (fixedVals[i] === testVal) { alreadyUsed = true; break; }
+      }
+      if (alreadyUsed) continue;
+      if (isValuePossible(varIdx, testVal, subsetIdxs)) {
+        possibleCount++;
+        if (possibleCount > 1) return false;
+      }
+    }
+    return possibleCount === 1;
+  }
+
+  function* combos(n, k) {
+    const idx = Array.from({length: k}, (_, i) => i);
+    while (true) {
+      yield idx.slice();
+      let i = k - 1;
+      while (i >= 0 && idx[i] === n - k + i) i--;
+      if (i < 0) break;
+      idx[i]++;
+      for (let j = i + 1; j < k; j++) idx[j] = idx[j-1] + 1;
+    }
+  }
+
+  function findMinSubset(varIdx) {
+    for (let size = 1; size <= clueCount; size++) {
+      for (const combo of combos(clueCount, size)) {
+        if (subsetPinsVar(combo, varIdx)) return combo;
+      }
+    }
+    return Array.from({length: clueCount}, (_, i) => i);
+  }
+
+  // Cascade: greedily solve cheapest variable first, fix it, repeat
+  const ecDetails = [];
+  const solvedOrder = [];
+  const unsolvedVars = new Set([0,1,2,3,4,5]);
+
+  let step = 0;
+  while (unsolvedVars.size > 0) {
+    // Find min EC across all unsolved variables
+    let minEC = Infinity;
+    const candidates = new Map(); // vi -> { subset, ec }
+
+    for (const vi of unsolvedVars) {
       const subset = findMinSubset(vi);
       const ec = subset.reduce((sum, idx) => sum + clueComplexityScore(rawClues[idx]), 0);
-      ecDetails.push({
-        varName: varNames6[vi],
-        ec,
-        clueIndices: subset.map(i => i + 1)
-      });
+      candidates.set(vi, { subset, ec });
+      if (ec < minEC) minEC = ec;
     }
 
-    // Equal weights — no cascade justification for differential weighting
-    const WED_raw = ecDetails.reduce((sum, d) => sum + d.ec, 0) / 6;
+    // Collect all variables that tie at minEC
+    const tied = [];
+    for (const [vi, data] of candidates) {
+      if (data.ec === minEC) tied.push(vi);
+    }
 
-    // Normalize: min ~1 (A-B=9), max ~480 (super-six all hard clues)
-   const WED_norm = Math.min(100, Math.max(0, (WED_raw - 1) / 223 * 100));
+    // All tied variables share the weight of the first step they occupy
+    const sharedWeight = STEP_WEIGHTS[step];
 
-    return { wed_norm: WED_norm, ecDetails, WED_raw };
+    // Record and fix all tied variables together
+    for (const vi of tied) {
+      const { subset, ec } = candidates.get(vi);
+      ecDetails.push({
+        step: step + 1,
+        varName: varNames6[vi],
+        ec,
+        weight: sharedWeight,
+        weightedEC: ec * sharedWeight,
+        clueIndices: subset.map(i => i + 1)
+      });
+      solvedOrder.push(varNames6[vi]);
+      fixedVals[vi] = solArr[vi];
+      unsolvedVars.delete(vi);
+    }
+
+    step += tied.length;
   }
+
+  const WED_raw = ecDetails.reduce((sum, d) => sum + d.weightedEC, 0);
+
+  // Normalization bounds calibrated for weighted cascade:
+  // min ~ 2.5 (trivial first step, e.g. A-B=9 type clue)
+  // max ~ 800 (all hard clues, no cascade benefit)
+  const WED_norm = Math.min(100, Math.max(0, (WED_raw - 2.5) / 2897.5 * 100));
+
+  return { wed_norm: WED_norm, ecDetails, WED_raw };
+}
 
   // ── Puzzle rating ─────────────────────────────────────────────────────────
   // Three components:
@@ -1522,6 +1577,12 @@ function computePuzzleRating(rawClues, elim, sol) {
   const rating = Math.round(800 + (E_norm * 0.50 + WED_norm * 0.50) * 18);
 
   computePuzzleRating._lastDebug = { wedResult, E_norm, WED_norm, elim, rating };
+  if (computePuzzleRating._logNext) {
+    computePuzzleRating._logNext = false;
+    console.log('[WED cascade]', wedResult.ecDetails.map(d => `${d.varName}:${d.ec}×${d.weight}=${d.weightedEC.toFixed(1)}`).join(', '),
+      '→ WED_raw:', wedResult.WED_raw.toFixed(1), 'WED_norm:', WED_norm.toFixed(1),
+      'E_norm:', E_norm.toFixed(1), '→ rating:', rating);
+  }
   return rating;
 }
 
@@ -1569,7 +1630,12 @@ function applyNewPuzzle(sol) {
   if (ratingEl && sol._rawClues && sol._rawClues.length) {
     if (!sol._rating) {
       const elim = window._scorePuzzle(sol._rawClues, sol);
+      window._computePuzzleRating._logNext = true;
       sol._rating = window._computePuzzleRating(sol._rawClues, elim, sol);
+    } else {
+      window._computePuzzleRating._logNext = true;
+      const elim = window._scorePuzzle(sol._rawClues, sol);
+      window._computePuzzleRating(sol._rawClues, elim, sol);
     }
     const rating = sol._rating;
     document.getElementById('puzzleRatingValue').textContent = '  ★ ' + rating;
