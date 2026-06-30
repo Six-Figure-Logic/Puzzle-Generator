@@ -72,7 +72,7 @@ function generateDailyPuzzle(dateStr, difficulty) {
 
     try {
       for (let attempt = 0; attempt < 5000; attempt++) {
-        const candidate = gen();
+        const candidate = gen(difficulty === 'expert' ? 9 : 8);
         if (!candidate || !candidate._rawClues) continue;
         if (!fallbackCandidate) fallbackCandidate = candidate;
         const elim = score(candidate._rawClues, candidate);

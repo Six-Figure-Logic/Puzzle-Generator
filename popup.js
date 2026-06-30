@@ -404,7 +404,7 @@
       while (tried < end) {
         tried++;
         try {
-          const candidate = gen();
+          const candidate = gen(range.tier === 'expert' ? 9 : 8);
           if (!candidate || !candidate._rawClues) continue;
           const elim   = score(candidate._rawClues, candidate);
           const rating = rate(candidate._rawClues, elim, candidate);

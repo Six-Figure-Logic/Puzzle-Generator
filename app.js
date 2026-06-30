@@ -677,7 +677,7 @@ function findSolutionsForClues(clues, maxSolutions = 2) {
   // --- Fixed: generatePuzzleJS ---
 // Strategy: always generate UP TO 8 clues first (not stopping early at uniqueness),
 // then prune exhaustively until no clue is redundant and count <= 6.
-function generatePuzzleJS(maxAttempts = 5000) {
+function generatePuzzleJS(poolSize = 8) {
   initLookups();
 
   // Exhaustive greedy prune: repeatedly scan and remove any redundant clue
@@ -727,13 +727,12 @@ function generatePuzzleJS(maxAttempts = 5000) {
     return null;
   }
 
-  let attempt = 0;
-  while (attempt++ < maxAttempts) {
+  while (true) {
     const sol = makeRandomSolution();
 
-    // Step 1: gather up to 8 non-duplicate clues (all valid for sol, no uniqueness requirement yet)
+    // Step 1: gather up to poolSize non-duplicate clues (all valid for sol, no uniqueness requirement yet)
     const pool = [];
-    for (let k = 0; k < 8; k++) {
+    for (let k = 0; k < poolSize; k++) {
       const clue = pickClue(pool, sol, 300);
       if (clue) pool.push(clue);
     }
@@ -764,14 +763,6 @@ function generatePuzzleJS(maxAttempts = 5000) {
       _rawClues: pruned
     };
   }
-
-  // Fallback (should be very rare)
-  const sol = makeRandomSolution();
-  return {
-    A: sol.a, B: sol.b, C: sol.c, D: sol.d, E: sol.e, F: sol.f,
-    _clues: [`A + B = ${sol.a + sol.b}`, `C + D = ${sol.c + sol.d}`, `E + F = ${sol.e + sol.f}`],
-    _rawClues: []
-  };
 }
 
   // ── Difficulty scoring (translated from VBA RankPuzzleDifficulty) ──
