@@ -78,7 +78,7 @@
     const gen = window.generatePuzzle;
     const score = window._scorePuzzle;
     const rate = window._computePuzzleRating;
-    const poolSize = difficulty === 'expert' ? 9 : 8;
+     const poolSize = difficulty === 'expert' ? 35 : 10;
 
     try {
       for (let attempt = 0; attempt < 5000; attempt++) {
@@ -86,6 +86,8 @@
         if (!candidate || !candidate._rawClues) continue;
         if (!fallbackCandidate) fallbackCandidate = candidate;
         const elim = score(candidate._rawClues, candidate);
+        // ── perf: skip expensive WED calc, see maxPossibleRating ──
+        if (window._maxPossibleRating(elim) < band.min) continue;
         const rating = rate(candidate._rawClues, elim, candidate);
         candidate._rating = rating;
         if (rating >= band.min && rating <= band.max) {

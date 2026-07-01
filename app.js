@@ -80,11 +80,18 @@ function buildGridRows() {
       cell.dataset.value = String(n);
       cell.textContent = String(n);
 
+ // CTRL/⌘ + LEFT CLICK and RIGHT CLICK both just toggle the cell —
+      // shared handler (toggleCell already calls pushHistory() itself).
+      const toggleClickHandler = (e) => {
+        e.preventDefault();
+        toggleCell(cell);
+      };
+
       // LEFT CLICK: lock this value — eliminate row + column, fill answer
       cell.addEventListener('click', (e) => {
+        if (e.ctrlKey || e.metaKey) { toggleClickHandler(e); return; }
         e.preventDefault();
         pushHistory();
-        if (e.ctrlKey || e.metaKey) { toggleCell(cell); return; }
         const lockedRow = cell.dataset.row;
         const lockedVal = cell.dataset.value;
 
@@ -121,11 +128,8 @@ function buildGridRows() {
         }
       });
 
-      // RIGHT CLICK: simple toggle cross
-      cell.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        toggleCell(cell);
-      });
+      // RIGHT CLICK: toggle cell
+      cell.addEventListener('contextmenu', toggleClickHandler);
 
       cellsWrap.appendChild(cell);
     }
@@ -135,7 +139,7 @@ function buildGridRows() {
   }
 }
 
-// ── Undo / Redo ──────────────────────────────────────────────────────────────
+// ── UNDO / REDO ──────────────────────────────────────────────────────────────
 const undoStack = [];
 const redoStack = [];
 window._sflUndoStack = undoStack;
@@ -228,8 +232,6 @@ function checkDuplicateAnswers() {
 }
 
 // ======= Puzzle generator translated from VBA to JS =======
-// Drop this into app.js and call generatePuzzle() from your UI.
-// Returns { A:.., B:.., C:.., D:.., E:.., F:.., _clues: [ ... ] }
 
 (function(){
   // --- Lookups and globals ---
@@ -239,16 +241,7 @@ function checkDuplicateAnswers() {
 
   function initLookups() {
     if (ValidProductsList.length > 0) return; // already initialized
-    PrimeLookup[1] = false;
-    PrimeLookup[2] = true;
-    PrimeLookup[3] = true;
-    PrimeLookup[4] = false;
-    PrimeLookup[5] = true;
-    PrimeLookup[6] = false;
-    PrimeLookup[7] = true;
-    PrimeLookup[8] = false;
-    PrimeLookup[9] = false;
-    PrimeLookup[10] = false;
+      [2, 3, 5, 7].forEach(p => PrimeLookup[p] = true);
     for (let i = 1; i <= 10; i++) EvenLookup[i] = (i % 2 === 0);
     const list = [6,8,9,10,12,14,15,16,18,20,21,24,27,28,30,32,35,36,40,42,45,48,50,54,56,60,63,70,72,80,90];
     for (let v of list) ValidProductsList.push(v);
@@ -279,75 +272,85 @@ function checkDuplicateAnswers() {
   }
 
   // --- GenerateRandomClue (18 types) ---
+    // Types 1–10 never fail — factored out so the fallback can reuse them
+  // instead of hardcoding one fixed clue.
+  function makeGuaranteedClue(vals, typeId) {
+    const c = makeClue();
+    let i, j, vi, vj, maxV, maxIdx, minV, minIdx;
+    switch(typeId) {
+      case 1: // sum pair
+        i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
+        c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Operator = "+"; c.Value = vals[i] + vals[j];
+        c.Var1Index = i+1; c.Var2Index = j+1; return c;
+
+      case 2: // product pair
+        i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
+        c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Operator = "*"; c.Value = vals[i] * vals[j];
+        c.Var1Index = i+1; c.Var2Index = j+1; return c;
+
+      case 3: // diff (larger - smaller)
+        i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
+        vi = vals[i]; vj = vals[j];
+        if (vi > vj) { c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Var1Index = i+1; c.Var2Index = j+1; }
+        else { c.Var1 = varNames[j]; c.Var2 = varNames[i]; c.Var1Index = j+1; c.Var2Index = i+1; }
+        c.Operator = "-"; c.Value = Math.abs(vi - vj); return c;
+
+      case 4: // comparison > or 
+        i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
+        c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Var1Index = i+1; c.Var2Index = j+1;
+        c.Operator = (vals[i] > vals[j]) ? ">" : "<"; c.Value = 0; return c;
+
+      case 5: // parity unary
+        i = randInt(6);
+        c.Var1 = varNames[i]; c.Var1Index = i+1;
+        c.Operator = EvenLookup[vals[i]] ? "even" : "odd"; c.Value = 0; return c;
+
+      case 6: // prime unary
+        i = randInt(6);
+        c.Var1 = varNames[i]; c.Var1Index = i+1;
+        c.Operator = PrimeLookup[vals[i]] ? "prime" : "not prime"; c.Value = 0; return c;
+
+      case 7: // largest
+        maxV = vals[0]; maxIdx = 0;
+        for (let t=1;t<6;t++){ if (vals[t] > maxV){ maxV = vals[t]; maxIdx = t; } }
+        c.Var1 = varNames[maxIdx]; c.Var1Index = maxIdx+1; c.Operator = "largest"; return c;
+
+      case 8: // smallest
+        minV = vals[0]; minIdx = 0;
+        for (let t=1;t<6;t++){ if (vals[t] < minV){ minV = vals[t]; minIdx = t; } }
+        c.Var1 = varNames[minIdx]; c.Var1Index = minIdx+1; c.Operator = "smallest"; return c;
+
+      case 9: // not largest (random non-max)
+        maxV = vals[0]; maxIdx = 0;
+        for (let t=1;t<6;t++){ if (vals[t] > maxV){ maxV = vals[t]; maxIdx = t; } }
+        i = randInt(6); while (i===maxIdx) i = randInt(6);
+        c.Var1 = varNames[i]; c.Var1Index = i+1; c.Operator = "not largest"; return c;
+
+      case 10: // not smallest
+        minV = vals[0]; minIdx = 0;
+        for (let t=1;t<6;t++){ if (vals[t] < minV){ minV = vals[t]; minIdx = t; } }
+        i = randInt(6); while (i===minIdx) i = randInt(6);
+        c.Var1 = varNames[i]; c.Var1Index = i+1; c.Operator = "not smallest"; return c;
+    }
+  }
+
   function generateRandomClue(sol) {
     const vals = [sol.a, sol.b, sol.c, sol.d, sol.e, sol.f];
     let attempts = 0;
 
-    // Declare all variables used across switch cases at function scope
-    // to avoid "Cannot access 'X' before initialization" TDZ errors.
+    // Declare all variables used across switch cases (11–18) at function
+    // scope to avoid "Cannot access 'X' before initialization" TDZ errors.
     let i, j, k;
     let vi, vj, vk;
     let innerTries;
-    let maxV, maxIdx, minV, minIdx;
 
     while (attempts++ < 500) {
       const c = makeClue();
       const typeId = Math.floor(Math.random() * 18) + 1;
 
+      if (typeId <= 10) return makeGuaranteedClue(vals, typeId);
+
       switch(typeId) {
-        case 1: // sum pair
-          i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
-          c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Operator = "+"; c.Value = vals[i] + vals[j];
-          c.Var1Index = i+1; c.Var2Index = j+1; return c;
-
-        case 2: // product pair
-          i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
-          c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Operator = "*"; c.Value = vals[i] * vals[j];
-          c.Var1Index = i+1; c.Var2Index = j+1; return c;
-
-        case 3: // diff (larger - smaller)
-          i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
-          vi = vals[i]; vj = vals[j];
-          if (vi > vj) { c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Var1Index = i+1; c.Var2Index = j+1; }
-          else { c.Var1 = varNames[j]; c.Var2 = varNames[i]; c.Var1Index = j+1; c.Var2Index = i+1; }
-          c.Operator = "-"; c.Value = Math.abs(vi - vj); return c;
-
-        case 4: // comparison > or <
-          i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
-          c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Var1Index = i+1; c.Var2Index = j+1;
-          c.Operator = (vals[i] > vals[j]) ? ">" : "<"; c.Value = 0; return c;
-
-        case 5: // parity unary
-          i = randInt(6);
-          c.Var1 = varNames[i]; c.Var1Index = i+1;
-          c.Operator = EvenLookup[vals[i]] ? "even" : "odd"; c.Value = 0; return c;
-
-        case 6: // prime unary
-          i = randInt(6);
-          c.Var1 = varNames[i]; c.Var1Index = i+1;
-          c.Operator = PrimeLookup[vals[i]] ? "prime" : "not prime"; c.Value = 0; return c;
-
-        case 7: // largest
-          maxV = vals[0]; maxIdx = 0;
-          for (let t=1;t<6;t++){ if (vals[t] > maxV){ maxV = vals[t]; maxIdx = t; } }
-          c.Var1 = varNames[maxIdx]; c.Var1Index = maxIdx+1; c.Operator = "largest"; return c;
-
-        case 8: // smallest
-          minV = vals[0]; minIdx = 0;
-          for (let t=1;t<6;t++){ if (vals[t] < minV){ minV = vals[t]; minIdx = t; } }
-          c.Var1 = varNames[minIdx]; c.Var1Index = minIdx+1; c.Operator = "smallest"; return c;
-
-        case 9: // not largest (random non-max)
-          maxV = vals[0]; maxIdx = 0;
-          for (let t=1;t<6;t++){ if (vals[t] > maxV){ maxV = vals[t]; maxIdx = t; } }
-          i = randInt(6); while (i===maxIdx) i = randInt(6);
-          c.Var1 = varNames[i]; c.Var1Index = i+1; c.Operator = "not largest"; return c;
-
-        case 10: // not smallest
-          minV = vals[0]; minIdx = 0;
-          for (let t=1;t<6;t++){ if (vals[t] < minV){ minV = vals[t]; minIdx = t; } }
-          i = randInt(6); while (i===minIdx) i = randInt(6);
-          c.Var1 = varNames[i]; c.Var1Index = i+1; c.Operator = "not smallest"; return c;
 
         case 11: // adjacent
           innerTries = 0;
@@ -427,7 +430,8 @@ function checkDuplicateAnswers() {
         case 17: // no sum
           innerTries = 0;
           do {
-            const sumN = 5 + Math.floor(Math.random() * 13); // 5..17
+            const offset = 1 + Math.floor(Math.random() * 6); // 1..6
+            const sumN = 11 + (Math.random() < 0.5 ? -offset : offset); // 5..17, never 11
             let hasPairSum = false;
             for (let p=0;p<6 && !hasPairSum;p++){
               for (let q=p+1;q<6;q++){
@@ -456,10 +460,8 @@ function checkDuplicateAnswers() {
       } // switch
     } // attempts loop
 
-    // fallback: return a simple parity clue
-    const fallback = makeClue();
-    fallback.Var1 = "A"; fallback.Var1Index = 1; fallback.Operator = (EvenLookup[sol.a] ? "even" : "odd");
-    return fallback;
+    // fallback: types 1–10 never fail, so just draw a random one
+    return makeGuaranteedClue(vals, 1 + Math.floor(Math.random() * 10));
   }
 
   // --- Clue to human string ---
@@ -675,29 +677,36 @@ function findSolutionsForClues(clues, maxSolutions = 2) {
   }
 
   // --- Fixed: generatePuzzleJS ---
-// Strategy: always generate UP TO 8 clues first (not stopping early at uniqueness),
-// then prune exhaustively until no clue is redundant and count <= 6.
-function generatePuzzleJS(poolSize = 8) {
+// Strategy: for puzzles <=1800, poolsize is 10.  For 1801-2000 its 12, and for 2001+ its 35.
+// then prune the pool exhaustively until no clue is redundant and count <= 6.
+function generatePuzzleJS(poolSize = 10) {
   initLookups();
 
-  // Exhaustive greedy prune: repeatedly scan and remove any redundant clue
-  // until no more can be removed. More thorough than single-pass.
-  function exhaustivePrune(clues, targetSol) {
+// Exhaustive greedy prune: single forward pass, removing redundant clues
+  // as found (see invariant note below). Never restarts the scan.
+function exhaustivePrune(clues, targetSol) {
     const working = clues.slice();
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (let i = 0; i < working.length; i++) {
-        const without = working.filter((_, idx) => idx !== i);
-        const sols = findSolutionsForClues(without, 2);
-        if (sols.length === 1 &&
-            sols[0].a === targetSol.a && sols[0].b === targetSol.b &&
-            sols[0].c === targetSol.c && sols[0].d === targetSol.d &&
-            sols[0].e === targetSol.e && sols[0].f === targetSol.f) {
-          working.splice(i, 1);
-          changed = true;
-          break; // restart scan after any removal
-        }
+    // Single forward pass instead of restarting the scan from index 0 after
+    // every removal. Provably equivalent: removing a clue only shrinks the
+    // candidate solution set, so a clue already confirmed non-redundant
+    // against the current `working` array stays non-redundant after any
+    // later removal — uniqueness that already required it can't be restored
+    // by removing even more constraints. So indices before the current
+    // position never need re-testing; only the position of a removal
+    // (tested against the freshly shrunk array) does.
+    // ── invariant: no restart needed, see proof above ──
+    let i = 0;
+    while (i < working.length) {
+      const without = working.filter((_, idx) => idx !== i);
+      const sols = findSolutionsForClues(without, 2);
+      if (sols.length === 1 &&
+          sols[0].a === targetSol.a && sols[0].b === targetSol.b &&
+          sols[0].c === targetSol.c && sols[0].d === targetSol.d &&
+          sols[0].e === targetSol.e && sols[0].f === targetSol.f) {
+        working.splice(i, 1);
+        // don't increment — the next clue has shifted into index i
+      } else {
+        i++;
       }
     }
     return working;
@@ -1336,7 +1345,7 @@ case 'no product': {
       case 'closer':       return 85;
       case 'not between':  return 82;
       case 'not largest':
-      case 'not smallest': return 90;
+      case 'not smallest': return 75;
       case 'no sum': {
         const v = Math.round(n);
         if (v===9||v===10||v===12||v===13) return 25;
@@ -1537,17 +1546,11 @@ case 'no product': {
 }
 
   // ── Puzzle rating ─────────────────────────────────────────────────────────
-  // Three components:
-  //   E_norm  (elim score)           weight 0.30
-  //   WED_norm (entry depth, avg EC) weight 0.55
-  //   C_norm  (avg clue complexity)  weight 0.15
-  //
-  //   Rating = round(800 + (E*0.30 + WED*0.55 + C*0.15) * 15.5)
+  // Two components:
+  //   E_norm  (elim score)           weight 0.50
+  //   WED_norm (entry depth, avg EC) weight 0.50
+  //   Rating = round(800 + (E*0.50 + WED*0.50) * 18)
   //   Bands: Easy 800-1000 | Medium 1001-1400 | Hard 1401-1800 | Expert 1801+
-  //
-  //   NOTE: computePuzzleRating takes optional sol argument for WED.
-  //   During generation screening (sol unknown) WED is skipped; only
-  //   E_norm + C_norm used for fast pre-screening via difficultyFromElim.
 
 function computePuzzleRating(rawClues, elim, sol) {
   // E_norm
@@ -1577,6 +1580,26 @@ function computePuzzleRating(rawClues, elim, sol) {
   return rating;
 }
 
+  // Fast upper-bound rating estimate using only the (already-computed) elim
+  // score, assuming best-case WED_norm = 100.
+
+  // ─────────────────────────────────────────────────────────────────
+  // ⚠ KEEP IN SYNC with computePuzzleRating's E_norm/rating formula.
+  // Any change there (weights, curve, constants) must be mirrored here
+  // or the WED-skip optimization below will reject valid puzzles.
+  // ─────────────────────────────────────────────────────────────────
+  function maxPossibleRating(elim) {
+    let E_norm;
+    if (elim <= 6) {
+      E_norm = 0;
+    } else if (elim <= 45) {
+      E_norm = Math.pow((elim - 6) / 39, 0.85) * 75;
+    } else {
+      E_norm = 75 + Math.pow((elim - 45) / 9, 0.60) * 25;
+    }
+    return Math.round(800 + (E_norm * 0.50 + 100 * 0.50) * 18);
+  }
+
   function ratingToDifficulty(rating) {
     if (rating <= 1000) return 'easy';
     if (rating <= 1400) return 'medium';
@@ -1586,8 +1609,9 @@ function computePuzzleRating(rawClues, elim, sol) {
 
  
   // Expose
-  window._scorePuzzle         = scorePuzzle;
+ window._scorePuzzle         = scorePuzzle;
   window._computePuzzleRating = computePuzzleRating;
+  window._maxPossibleRating   = maxPossibleRating;
   window._ratingToDifficulty  = ratingToDifficulty;
 
   window.generatePuzzle    = generatePuzzleJS;
@@ -1616,17 +1640,13 @@ function applyNewPuzzle(sol) {
   feedbackEl.textContent = '';
   feedbackEl.className = 'feedback';
 
-  // Compute rating synchronously — WED runs inside generator loop now
+  // Rating is normally pre-computed at generation time; only run WED here
+  // if this puzzle somehow reached us without one (e.g. legacy/imported).
   const ratingEl = document.getElementById('puzzleRating');
   if (ratingEl && sol._rawClues && sol._rawClues.length) {
     if (!sol._rating) {
       const elim = window._scorePuzzle(sol._rawClues, sol);
-      window._computePuzzleRating._logNext = true;
       sol._rating = window._computePuzzleRating(sol._rawClues, elim, sol);
-    } else {
-      window._computePuzzleRating._logNext = true;
-      const elim = window._scorePuzzle(sol._rawClues, sol);
-      window._computePuzzleRating(sol._rawClues, elim, sol);
     }
     const rating = sol._rating;
     document.getElementById('puzzleRatingValue').textContent = '  ★ ' + rating;

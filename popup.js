@@ -421,8 +421,8 @@
       window._sfgame._setMode(popupMode);
     }
 
-    const range = RANGES[currentRangeIdx];
-    const poolSize = range.tier === 'expert' ? 9 : 8;
+   const range = RANGES[currentRangeIdx];
+    const poolSize = range.min >= 2001 ? 35 : (range.min >= 1801 ? 12 : 10);
     const gen   = window.generatePuzzle;
     const score = window._scorePuzzle;
     const rate  = window._computePuzzleRating;
@@ -436,7 +436,9 @@
         try {
           const candidate = gen(poolSize);
           if (!candidate || !candidate._rawClues) continue;
-          const elim   = score(candidate._rawClues, candidate);
+          const elim = score(candidate._rawClues, candidate);
+          // ── perf: skip expensive WED calc, see maxPossibleRating ──
+          if (window._maxPossibleRating(elim) < range.min) continue;
           const rating = rate(candidate._rawClues, elim, candidate);
           if (rating >= range.min && rating <= range.max) {
             candidate._rating = rating;
