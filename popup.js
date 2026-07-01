@@ -1,15 +1,16 @@
 // popup.js — Play popup for Six-Figure Logic
 // Handles the puzzle selection popup (Daily + Random), mode pill,
-// daily state display, and integration with app.js / daily.js
-// Must be loaded AFTER app.js and daily.js
+// daily state display, solve history, and integration with app.js / daily.js
+// Load order: app.js → session.js → daily.js → popup.js
 
-// popup.js — Play popup for Six-Figure Logic
-// ── History storage ──────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// SOLVE HISTORY STORAGE
+// ═══════════════════════════════════════════════════════════════════════════
 (function () {
   'use strict';
 
   const HISTORY_KEY = 'sfl_history_v1';
-  const HISTORY_CAP = 200;
+  const HISTORY_CAP = 200; // per mode (casual/rated), stored together in one array
 
   function loadHistory() {
     try {
@@ -26,17 +27,16 @@
     record(entry) {
       // entry: { puzzleRating, mode, solveTime, mistakes, grade, gaveUp, date,
       //          sol, gridState, answerState, clueStates, mistakeBoxes, penaltyText }
-      // Cap is per-mode: 100 casual + 100 rated stored separately in one array.
       const arr = loadHistory();
       arr.unshift({ ...entry, savedAt: Date.now() });
-      // Count entries per mode and drop oldest of the same mode if over cap
+
+      // Cap is per-mode — drop the oldest entry of the same mode once over cap
       const modeCounts = {};
       const trimmed = [];
       for (const e of arr) {
         const m = e.mode || 'casual';
         modeCounts[m] = (modeCounts[m] || 0) + 1;
         if (modeCounts[m] <= HISTORY_CAP) trimmed.push(e);
-        // else: skip (this is the oldest entry for that mode, dropped)
       }
       saveHistory(trimmed);
     },
@@ -46,6 +46,10 @@
 
 (function () {
   'use strict';
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // RANDOM PUZZLE DIFFICULTY RANGES
+  // ═══════════════════════════════════════════════════════════════════════
 
   const RANGES = [
     { min: 800,  max: 1000, label: '800–1000',  tier: 'easy',   tierLabel: 'EASY' },
@@ -65,13 +69,16 @@
     dailyDifficulty: null,
   };
 
-  // ─── DOM refs ────────────────────────────────────────────────────────────
+  // ─── DOM refs (assigned on DOMContentLoaded) ────────────────────────────
   let dailyOverlay, randomOverlay;
   let modeCasualBtn, modeRatedBtn;
   let rangeLeftBtn, rangeRightBtn, rangeLabelEl, rangeTierEl;
   let randomLaunchBtn, newPuzzleBtn;
 
-  // ─── Main menu show/hide ─────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // MAIN MENU ⇄ GAME LAYOUT
+  // ═══════════════════════════════════════════════════════════════════════
+
   function showMainMenu() {
     const menu = document.getElementById('mainMenu');
     const layout = document.querySelector('.main-layout');
@@ -79,9 +86,7 @@
     if (menu) menu.style.display = 'flex';
     if (layout) layout.classList.add('hidden');
     topbars.forEach(t => t.classList.add('hidden'));
-    // Hide newPuzzleBtn (it's inside a topbar but just in case)
     if (newPuzzleBtn) newPuzzleBtn.style.display = 'none';
-    // Hide mode badge
     const badge = document.getElementById('modeDisplayBadge');
     if (badge) badge.style.visibility = 'hidden';
   }
@@ -94,12 +99,14 @@
     if (layout) layout.classList.remove('hidden');
     topbars.forEach(t => t.classList.remove('hidden'));
     if (newPuzzleBtn) {
-      newPuzzleBtn.style.display = '';
       newPuzzleBtn.style.removeProperty('display');
     }
   }
 
-  // ─── Popup open/close ────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // POPUP OPEN / CLOSE
+  // ═══════════════════════════════════════════════════════════════════════
+
   function openDailyPopup() {
     refreshDailyCards();
     if (dailyOverlay) dailyOverlay.classList.add('open');
@@ -116,7 +123,10 @@
     if (randomOverlay) randomOverlay.classList.remove('open');
   }
 
-  // ─── Mode pill (Random popup only) ──────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // MODE PILL (Random popup only — daily puzzles are always casual)
+  // ═══════════════════════════════════════════════════════════════════════
+
   function setPopupMode(mode) {
     popupMode = mode;
     if (modeCasualBtn) modeCasualBtn.classList.toggle('active', mode === 'casual');
@@ -150,7 +160,10 @@
     return `${m}:${s}`;
   }
 
-  // ─── Daily card rendering ────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // DAILY CARD RENDERING
+  // ═══════════════════════════════════════════════════════════════════════
+
   function refreshDailyCards() {
     const today = window.SFLDaily.getDateString();
     const todayRec = window.SFLDaily.getTodayRecord();
@@ -200,7 +213,10 @@
     });
   }
 
-  // ─── Launch daily puzzle (always casual) ─────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // LAUNCH DAILY PUZZLE (always casual)
+  // ═══════════════════════════════════════════════════════════════════════
+
   function launchDaily(difficulty) {
     const rec = window.SFLDaily.getDifficultyRecord(difficulty);
     const isReview = rec && (rec.solved || rec.gaveUp);
@@ -233,8 +249,6 @@
     showGameLayout();
 
     setPopupMode('casual');
-
-    // Set game mode
     if (window._sfgame && typeof window._sfgame._setMode === 'function') {
       window._sfgame._setMode('casual');
     }
@@ -252,7 +266,10 @@
     }, 20);
   }
 
-  // ─── Restore daily final state (review) ─────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // RESTORE A COMPLETED DAILY INTO REVIEW MODE
+  // ═══════════════════════════════════════════════════════════════════════
+
   function restoreDailyFinalState(difficulty, rec) {
     window._sflPuzzleContext.isDaily = true;
     window._sflPuzzleContext.dailyDifficulty = difficulty;
@@ -332,7 +349,10 @@
     setBackMode(true);
   }
 
-  // ─── Back mode ──────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // "BACK" / "< BACK" BUTTON STATE
+  // ═══════════════════════════════════════════════════════════════════════
+
   function setBackMode(active) {
     if (!newPuzzleBtn) return;
     const solBtn = document.getElementById('showSolutionBtn');
@@ -347,7 +367,10 @@
     }
   }
 
-  // ─── Loading overlay ─────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // LOADING OVERLAY (spinner shown during puzzle generation)
+  // ═══════════════════════════════════════════════════════════════════════
+
   function showLoading(show) {
     let el = document.getElementById('puzzleLoadingOverlay');
     if (show) {
@@ -364,7 +387,10 @@
     }
   }
 
-  // ─── Range selector ──────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // RANDOM PUZZLE RANGE SELECTOR
+  // ═══════════════════════════════════════════════════════════════════════
+
   function updateRangeDisplay() {
     const r = RANGES[currentRangeIdx];
     if (!rangeLabelEl || !rangeTierEl) return;
@@ -375,7 +401,10 @@
     if (rangeRightBtn) rangeRightBtn.disabled = currentRangeIdx === RANGES.length - 1;
   }
 
-  // ─── Launch random puzzle ────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // LAUNCH RANDOM PUZZLE — generates in chunks so the UI can repaint
+  // ═══════════════════════════════════════════════════════════════════════
+
   function launchRandom() {
     if (window._sfgame && window._sfgame.gameActive && typeof window._sfgame._forceEndGame === 'function') {
       window._sfgame._forceEndGame();
@@ -393,6 +422,7 @@
     }
 
     const range = RANGES[currentRangeIdx];
+    const poolSize = range.tier === 'expert' ? 9 : 8;
     const gen   = window.generatePuzzle;
     const score = window._scorePuzzle;
     const rate  = window._computePuzzleRating;
@@ -404,7 +434,7 @@
       while (tried < end) {
         tried++;
         try {
-          const candidate = gen(range.tier === 'expert' ? 9 : 8);
+          const candidate = gen(poolSize);
           if (!candidate || !candidate._rawClues) continue;
           const elim   = score(candidate._rawClues, candidate);
           const rating = rate(candidate._rawClues, elim, candidate);
@@ -419,20 +449,18 @@
           return;
         }
       }
-if (sol || tried >= MAX) {
-          if (!sol) {
-            try {
-              sol = gen();
-              if (sol && sol._rawClues) {
-                const elim = score(sol._rawClues, sol);
-                sol._rating = rate(sol._rawClues, elim, sol);
-              }
-            } catch(e) {}
-          }
-          showLoading(false);
-
-          // console.log(`[SFL] random puzzle: rating=${sol?._rating}, attempts=${tried}${tried >= MAX ? ' (hit MAX)' : ''}`);
-          if (sol) window.applyNewPuzzle(sol);
+      if (sol || tried >= MAX) {
+        if (!sol) {
+          try {
+            sol = gen(poolSize);
+            if (sol && sol._rawClues) {
+              const elim = score(sol._rawClues, sol);
+              sol._rating = rate(sol._rawClues, elim, sol);
+            }
+          } catch(e) {}
+        }
+        showLoading(false);
+        if (sol) window.applyNewPuzzle(sol);
       } else {
         setTimeout(runChunk, 0);
       }
@@ -440,7 +468,10 @@ if (sol || tried >= MAX) {
     requestAnimationFrame(() => setTimeout(runChunk, 0));
   }
 
-  // ─── _sflApplyPuzzleLayout (review mode) ────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // SHARED PUZZLE LAYOUT APPLICATION (review mode — no timer/lock side effects)
+  // ═══════════════════════════════════════════════════════════════════════
+
   window._sflApplyPuzzleLayout = function (sol) {
     if (sol && sol.A !== undefined && sol.a === undefined) {
       sol.a = sol.A; sol.b = sol.B; sol.c = sol.C;
@@ -448,17 +479,21 @@ if (sol || tried >= MAX) {
     }
     window.currentSolution = sol;
     if (typeof window._sflSetCurrentSolution === 'function') window._sflSetCurrentSolution(sol);
+
     const undoStack = window._sflUndoStack;
     const redoStack = window._sflRedoStack;
     if (undoStack) undoStack.length = 0;
     if (redoStack) redoStack.length = 0;
     if (typeof window.updateUndoRedoBtns === 'function') window.updateUndoRedoBtns();
+
     ['A','B','C','D','E','F'].forEach(id => {
       const el = document.getElementById(id);
       if (el) { el.value = ''; el.classList.remove('answer-duplicate'); }
     });
+
     const feedbackEl = document.getElementById('feedback');
     if (feedbackEl) { feedbackEl.textContent = ''; feedbackEl.className = 'feedback'; }
+
     const gridEl = document.getElementById('grid');
     if (gridEl) {
       gridEl.querySelectorAll('.cell').forEach(c => {
@@ -466,6 +501,7 @@ if (sol || tried >= MAX) {
         c.setAttribute('aria-pressed', 'false');
       });
     }
+
     const ratingEl = document.getElementById('puzzleRating');
     if (ratingEl && sol._rawClues && sol._rawClues.length) {
       const rating = sol._rating || (() => {
@@ -479,6 +515,7 @@ if (sol || tried >= MAX) {
     } else if (ratingEl) {
       ratingEl.style.display = 'none';
     }
+
     const cluesList = document.getElementById('cluesList');
     if (cluesList) {
       cluesList.innerHTML = '';
@@ -495,7 +532,10 @@ if (sol || tried >= MAX) {
     }
   };
 
-  // ─── Save daily completion ───────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // SAVE DAILY COMPLETION STATE (grid/answers/clues at time of solve/forfeit)
+  // ═══════════════════════════════════════════════════════════════════════
+
   function captureDailyCompletionState(solveTime, gaveUp, mistakes, penaltySecs, grade) {
     const ctx = window._sflPuzzleContext;
     if (!ctx.isDaily || !ctx.dailyDifficulty) return;
@@ -534,7 +574,10 @@ if (sol || tried >= MAX) {
     });
   }
 
-  // ─── Init ────────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // INIT — DOM wiring, event listeners, lifecycle hooks
+  // ═══════════════════════════════════════════════════════════════════════
+
   document.addEventListener('DOMContentLoaded', function () {
     dailyOverlay    = document.getElementById('dailySelectOverlay');
     randomOverlay   = document.getElementById('randomSelectOverlay');
@@ -547,7 +590,7 @@ if (sol || tried >= MAX) {
     randomLaunchBtn = document.getElementById('randomLaunchBtn');
     newPuzzleBtn    = document.getElementById('newPuzzleBtn');
 
-    // Main menu buttons
+    // ── Main menu buttons ──────────────────────────────────────────────
     const menuHowTo   = document.getElementById('menuHowToPlayBtn');
     const menuTut     = document.getElementById('menuTutorialBtn');
     const menuDaily   = document.getElementById('menuDailyBtn');
@@ -563,11 +606,11 @@ if (sol || tried >= MAX) {
     if (menuDaily)  menuDaily.addEventListener('click',  openDailyPopup);
     if (menuRandom) menuRandom.addEventListener('click', openRandomPopup);
 
-    // Mode pill (random popup)
+    // ── Mode pill (random popup) ───────────────────────────────────────
     if (modeCasualBtn) modeCasualBtn.addEventListener('click', () => setPopupMode('casual'));
     if (modeRatedBtn)  modeRatedBtn.addEventListener('click',  () => setPopupMode('rated'));
 
-    // Range selector
+    // ── Range selector ─────────────────────────────────────────────────
     if (rangeLeftBtn) rangeLeftBtn.addEventListener('click', () => {
       if (currentRangeIdx > 0) { currentRangeIdx--; updateRangeDisplay(); }
     });
@@ -575,26 +618,24 @@ if (sol || tried >= MAX) {
       if (currentRangeIdx < RANGES.length - 1) { currentRangeIdx++; updateRangeDisplay(); }
     });
 
-    // Random launch
+    // ── Random launch ──────────────────────────────────────────────────
     if (randomLaunchBtn) randomLaunchBtn.addEventListener('click', launchRandom);
 
-    // Daily cards
+    // ── Daily cards ─────────────────────────────────────────────────────
     window.SFLDaily.KEYS.forEach(diff => {
       const card = document.getElementById(`daily-card-${diff}`);
       if (card) card.addEventListener('click', () => launchDaily(diff));
     });
 
-    // Close buttons
+    // ── Popup close buttons ────────────────────────────────────────────
     const dailyClose  = document.getElementById('dailyPopupClose');
     const randomClose = document.getElementById('randomPopupClose');
     if (dailyClose)  dailyClose.addEventListener('click',  closeDailyPopup);
     if (randomClose) randomClose.addEventListener('click', closeRandomPopup);
 
-    // Backdrop clicks
     if (dailyOverlay)  dailyOverlay.addEventListener('click',  e => { if (e.target === dailyOverlay)  closeDailyPopup(); });
     if (randomOverlay) randomOverlay.addEventListener('click', e => { if (e.target === randomOverlay) closeRandomPopup(); });
 
-    // Escape key
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
         closeDailyPopup();
@@ -602,7 +643,9 @@ if (sol || tried >= MAX) {
       }
     });
 
-    // ── New Puzzle / Back button ─────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════
+    // NEW PUZZLE / BACK BUTTON — routes to forfeit (app.js) or back nav
+    // ═══════════════════════════════════════════════════════════════════
     if (newPuzzleBtn) {
       newPuzzleBtn.addEventListener('click', function (e) {
         // Back/review mode — return to history or daily popup
@@ -620,7 +663,7 @@ if (sol || tried >= MAX) {
           }
           return;
         }
-        // Game active — let app.js forfeit handler run (don't intercept)
+        // Game active — let app.js's forfeit handler run (don't intercept)
         if (window._sfgame && window._sfgame.gameActive) return;
         // No game active and not in popup flow — go to main menu
         e.stopImmediatePropagation();
@@ -628,7 +671,9 @@ if (sol || tried >= MAX) {
       }, true);
     }
 
-    // ── Rating result patch ──────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════
+    // RATING RESULT PATCH — stash the last result for the share popover
+    // ═══════════════════════════════════════════════════════════════════
     const origRecordResult = window.SFLRating.recordResult.bind(window.SFLRating);
     window.SFLRating.recordResult = function(solveSeconds, mistakes, puzzleRating, gaveUp) {
       const result = origRecordResult(solveSeconds, mistakes, puzzleRating, gaveUp);
@@ -636,7 +681,9 @@ if (sol || tried >= MAX) {
       return result;
     };
 
-    // ── stopTimer hook (daily completion save + history record) ──────────
+    // ═══════════════════════════════════════════════════════════════════
+    // STOPTIMER HOOK — saves daily completion state + records solve history
+    // ═══════════════════════════════════════════════════════════════════
     const _origStopTimer = window.stopTimer;
     window.stopTimer = function () {
       _origStopTimer();
@@ -661,7 +708,8 @@ if (sol || tried >= MAX) {
         captureDailyCompletionState(solveTime, gaveUp, mistakes, 0, solved ? '' : 'F');
       }
 
-      // History record — capture full puzzle state for replay
+      // History record — capture full puzzle state for replay.
+      // Delayed so the grade element in the result popup is rendered first.
       setTimeout(() => {
         const sol = window.currentSolution;
         if (!sol) return;
@@ -720,10 +768,13 @@ if (sol || tried >= MAX) {
           mistakeBoxes,
           penaltyText,
         });
-      }, 100); // slight delay so grade element is rendered
+      }, 100);
     };
 
-    // ── Grade update after result overlay opens ──────────────────────────
+    // ═══════════════════════════════════════════════════════════════════
+    // GRADE BACKFILL — once the result popup renders a grade for a daily,
+    // attach it to the saved daily record
+    // ═══════════════════════════════════════════════════════════════════
     const resultOverlay = document.getElementById('resultOverlay');
     if (resultOverlay) {
       const observer = new MutationObserver(() => {
@@ -744,21 +795,25 @@ if (sol || tried >= MAX) {
       observer.observe(resultOverlay, { attributes: true, attributeFilter: ['class'] });
     }
 
-// ── When game ends, return to daily popup if it was a daily ─────────
-const resultCloseBtn = document.getElementById('resultCloseBtn');
-if (resultCloseBtn) {
-  resultCloseBtn.addEventListener('click', () => {
-    const ctx = window._sflPuzzleContext;
-    if (ctx && ctx.isDaily && !ctx.isReview) {
-      setBackMode(false);
-      ctx.isReview = false;
-      showMainMenu();
-      setTimeout(openDailyPopup, 50);
+    // ═══════════════════════════════════════════════════════════════════
+    // RESULT POPUP CLOSE — return to daily popup if puzzle was a daily
+    // ═══════════════════════════════════════════════════════════════════
+    const resultCloseBtn = document.getElementById('resultCloseBtn');
+    if (resultCloseBtn) {
+      resultCloseBtn.addEventListener('click', () => {
+        const ctx = window._sflPuzzleContext;
+        if (ctx && ctx.isDaily && !ctx.isReview) {
+          setBackMode(false);
+          ctx.isReview = false;
+          showMainMenu();
+          setTimeout(openDailyPopup, 50);
+        }
+      });
     }
-  });
-}
 
-    // ── History overlay ──────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════
+    // SOLVE HISTORY OVERLAY
+    // ═══════════════════════════════════════════════════════════════════
     const historyOverlay  = document.getElementById('historyOverlay');
     const historyClose    = document.getElementById('historyPopupClose');
     const historyTabs     = document.querySelectorAll('.history-tab');
@@ -813,11 +868,9 @@ if (resultCloseBtn) {
         return _sortDir === 'asc' ? av - bv : bv - av;
       });
 
-      // Update sort arrows on headers
       historyTable.querySelectorAll('th').forEach(th => {
         th.classList.remove('sort-asc', 'sort-desc');
         if (th.dataset.col === _sortCol) th.classList.add(_sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
-        // Reset arrow text
         const arrow = th.querySelector('.sort-arrow');
         if (arrow) arrow.textContent = '↕';
       });
@@ -833,7 +886,7 @@ if (resultCloseBtn) {
       historyEmpty.style.display = 'none';
       historyTable.style.display = '';
 
-      sorted.forEach((entry, idx) => {
+      sorted.forEach((entry) => {
         const rc = ratingColor(entry.puzzleRating || 0);
         const gc = gradeColor(entry.grade);
         const timeDisplay = entry.gaveUp ? '<span style="color:var(--danger)">FAILED</span>' : fmtTime(entry.solveTime);
@@ -987,24 +1040,19 @@ if (resultCloseBtn) {
       });
     }
 
-    // Open/close
     if (menuHistoryBtn) menuHistoryBtn.addEventListener('click', openHistoryOverlay);
     if (historyClose)   historyClose.addEventListener('click',  closeHistoryOverlay);
     if (historyOverlay) historyOverlay.addEventListener('click', e => {
       if (e.target === historyOverlay) closeHistoryOverlay();
     });
 
-    // Back button from history review returns to history overlay
-    // (patch the existing newPuzzleBtn back-mode handler)
-    const _origNewPuzzleClick = newPuzzleBtn ? newPuzzleBtn.onclick : null;
-
-    // Initial state
+    // ── Initial state on page load ─────────────────────────────────────
     setPopupMode('casual');
     updateRangeDisplay();
     try {
       const _s = localStorage.getItem('sfl_session_v1');
       const _parsed = _s ? JSON.parse(_s) : null;
-      const _hasSave = !!((_parsed && _parsed.solution));
+      const _hasSave = !!(_parsed && _parsed.solution);
       if (_hasSave) {
         showGameLayout();
       } else {
@@ -1015,7 +1063,9 @@ if (resultCloseBtn) {
     }
   });
 
-  // ─── Expose ──────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // PUBLIC API
+  // ═══════════════════════════════════════════════════════════════════════
   window.SFLPopup = {
     openDaily:   openDailyPopup,
     openRandom:  openRandomPopup,
@@ -1023,33 +1073,35 @@ if (resultCloseBtn) {
     showGame:    showGameLayout,
   };
 
-  // ── Show Solution button ─────────────────────────────────────────────
-    const showSolutionBtn = document.getElementById('showSolutionBtn');
-    const solutionModal   = document.getElementById('solutionModal');
-    const solutionClose   = document.getElementById('solutionModalClose');
-    const solutionBody    = document.getElementById('solutionModalBody');
+  // ═══════════════════════════════════════════════════════════════════════
+  // SHOW SOLUTION MODAL (review mode)
+  // ═══════════════════════════════════════════════════════════════════════
+  const showSolutionBtn = document.getElementById('showSolutionBtn');
+  const solutionModal   = document.getElementById('solutionModal');
+  const solutionClose   = document.getElementById('solutionModalClose');
+  const solutionBody    = document.getElementById('solutionModalBody');
 
-    function openSolutionModal() {
-      const sol = window.currentSolution;
-      if (!sol || !solutionBody) return;
-      const labels = ['A','B','C','D','E','F'];
-      solutionBody.innerHTML = labels.map(l => `
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;
-                    background:var(--surface2);border:1px solid var(--border-bright);
-                    border-radius:8px;padding:10px 6px;">
-          <span style="font-family:var(--mono);font-size:18px;font-weight:700;
-                       color:var(--text-muted);">${l}</span>
-          <span style="font-family:'BankGothic','Oswald',sans-serif;font-size:28px;
-                       font-weight:700;color:var(--accent);">${sol[l] !== undefined ? sol[l] : sol[l.toLowerCase()]}</span>
-        </div>
-      `).join('');
-      solutionModal.classList.add('open');
-    }
+  function openSolutionModal() {
+    const sol = window.currentSolution;
+    if (!sol || !solutionBody) return;
+    const labels = ['A','B','C','D','E','F'];
+    solutionBody.innerHTML = labels.map(l => `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;
+                  background:var(--surface2);border:1px solid var(--border-bright);
+                  border-radius:8px;padding:10px 6px;">
+        <span style="font-family:var(--mono);font-size:18px;font-weight:700;
+                     color:var(--text-muted);">${l}</span>
+        <span style="font-family:'BankGothic','Oswald',sans-serif;font-size:28px;
+                     font-weight:700;color:var(--accent);">${sol[l] !== undefined ? sol[l] : sol[l.toLowerCase()]}</span>
+      </div>
+    `).join('');
+    solutionModal.classList.add('open');
+  }
 
-    if (showSolutionBtn) showSolutionBtn.addEventListener('click', openSolutionModal);
-    if (solutionClose)   solutionClose.addEventListener('click',  () => solutionModal.classList.remove('open'));
-    if (solutionModal)   solutionModal.addEventListener('click',  e => {
-      if (e.target === solutionModal) solutionModal.classList.remove('open');
-    });
+  if (showSolutionBtn) showSolutionBtn.addEventListener('click', openSolutionModal);
+  if (solutionClose)   solutionClose.addEventListener('click',  () => solutionModal.classList.remove('open'));
+  if (solutionModal)   solutionModal.addEventListener('click',  e => {
+    if (e.target === solutionModal) solutionModal.classList.remove('open');
+  });
 
 })();

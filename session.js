@@ -1,10 +1,7 @@
 // session.js — Six-Figure Logic mid-puzzle persistence
-// ─────────────────────────────────────────────────────────────────────────────
-// Requires three small patches to app.js — see bottom of this file.
-// Add as the last script tag in index.html, after app.js:
-//     <script src="app.js"></script>
-//     <script src="session.js"></script>
-// ─────────────────────────────────────────────────────────────────────────────
+// Autosaves the live puzzle (grid, answers, undo stack, timer, mistakes) to
+// localStorage every second, and restores it on page load if present.
+// Load order: app.js → session.js → daily.js → popup.js
 
 (function () {
   'use strict';
@@ -12,9 +9,9 @@
   const SAVE_KEY         = 'sfl_session_v1';
   const SAVE_INTERVAL_MS = 1000;
 
-  
-
-  // ─── Capture ──────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // CAPTURE — snapshot all live DOM/game state into a plain object
+  // ═══════════════════════════════════════════════════════════════════════
 
   function captureState() {
     if (!window._sfgame || !window._sfgame.gameActive) return null;
@@ -53,25 +50,21 @@
     const penaltyText = penaltyEl ? penaltyEl.textContent : '';
 
     // Clue highlight states
-const clueStates = [];
-const cluesList = document.getElementById('cluesList');
-if (cluesList) {
-  cluesList.querySelectorAll('li').forEach(li => {
-    clueStates.push(
-      li.classList.contains('clue-ok')   ? 'ok'   :
-      li.classList.contains('clue-fail') ? 'fail' : ''
-    );
-  });
-}
+    const clueStates = [];
+    const cluesList = document.getElementById('cluesList');
+    if (cluesList) {
+      cluesList.querySelectorAll('li').forEach(li => {
+        clueStates.push(
+          li.classList.contains('clue-ok')   ? 'ok'   :
+          li.classList.contains('clue-fail') ? 'fail' : ''
+        );
+      });
+    }
 
     // Mode — read from game state directly, not popup DOM (popup may be hidden)
-    let mode = (window._sfgame && typeof window._sfgame._getMode === 'function')
+    const mode = (window._sfgame && typeof window._sfgame._getMode === 'function')
       ? window._sfgame._getMode()
       : 'casual';
-
-    // Difficulty — diff-btns removed; use puzzle context if available
-    let selectedDiff = 'easy';
-    // (difficulty buttons no longer exist; selectedDiff kept for compat but unused)
 
     // Timer start epoch — read directly from the real closure variable
     const startEpoch = window._sflTimerStart ? window._sflTimerStart.get() : Date.now();
@@ -89,12 +82,13 @@ if (cluesList) {
       clueStates,
       startEpoch,
       mode,
-      selectedDiff,
       savedAt:        Date.now()
     };
   }
 
-  // ─── Storage ──────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // STORAGE
+  // ═══════════════════════════════════════════════════════════════════════
 
   function saveState() {
     const state = captureState();
@@ -113,7 +107,9 @@ if (cluesList) {
     } catch(e) { return null; }
   }
 
-  // ─── Autosave ─────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // AUTOSAVE TIMER
+  // ═══════════════════════════════════════════════════════════════════════
 
   let _autosaveHandle = null;
 
@@ -126,7 +122,9 @@ if (cluesList) {
     if (_autosaveHandle) { clearInterval(_autosaveHandle); _autosaveHandle = null; }
   }
 
-  // ─── Restore ──────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // RESTORE — rebuild DOM/game state from a saved snapshot
+  // ═══════════════════════════════════════════════════════════════════════
 
   function restoreSession(state) {
     if (!state || !state.solution) return;
@@ -144,18 +142,16 @@ if (cluesList) {
       ratedBtn.classList.toggle('active',  restoredMode === 'rated');
     }
     // Sync mode badge above reset button
-const badge = document.getElementById('modeDisplayBadge');
+    const badge = document.getElementById('modeDisplayBadge');
     if (badge) {
       badge.textContent = restoredMode === 'rated' ? 'RATED' : 'CASUAL';
       badge.className   = 'mode-display-badge ' + (restoredMode === 'rated' ? 'mode-display-rated' : 'mode-display-casual');
       badge.style.visibility = 'visible';
     }
 
-    // 2. Difficulty visual — diff-btns removed from main page; skip
-    // (popup.js owns difficulty selection now)
-
-    // 3. Render puzzle (resets grid, starts timer, locks UI)
+    // 2. Render puzzle (resets grid, starts timer, locks UI)
     window.applyNewPuzzle(state.solution);
+
     // Restore daily context (applyNewPuzzle/lockGame resets it to non-daily)
     if (state.puzzleContext && window._sflPuzzleContext) {
       window._sflPuzzleContext.isDaily = state.puzzleContext.isDaily || false;
@@ -163,12 +159,12 @@ const badge = document.getElementById('modeDisplayBadge');
       window._sflPuzzleContext.isReview = false; // never restore into review mode
     }
 
-    // 4. Fix timer — write the saved epoch directly into the real closure variable
+    // 3. Fix timer — write the saved epoch directly into the real closure variable
     if (window._sflTimerStart) {
       window._sflTimerStart.set(state.startEpoch);
     }
 
-    // 5. Restore grid
+    // 4. Restore grid
     const gridEl = document.getElementById('grid');
     if (gridEl && state.gridState) {
       gridEl.querySelectorAll('.cell').forEach(cell => {
@@ -178,7 +174,7 @@ const badge = document.getElementById('modeDisplayBadge');
       });
     }
 
-    // 6. Restore undo/redo stacks directly into the real arrays
+    // 5. Restore undo/redo stacks directly into the real arrays
     if (window._sflUndoStack && state.undoSnapshots) {
       window._sflUndoStack.length = 0;
       state.undoSnapshots.forEach(s => window._sflUndoStack.push(s));
@@ -187,10 +183,9 @@ const badge = document.getElementById('modeDisplayBadge');
       window._sflRedoStack.length = 0;
       state.redoSnapshots.forEach(s => window._sflRedoStack.push(s));
     }
-    // Refresh the undo/redo button enabled states
     if (typeof window.updateUndoRedoBtns === 'function') window.updateUndoRedoBtns();
 
-    // 7. Answer dropdowns
+    // 6. Answer dropdowns
     if (state.answers) {
       ['A','B','C','D','E','F'].forEach(id => {
         const el = document.getElementById(id);
@@ -198,7 +193,7 @@ const badge = document.getElementById('modeDisplayBadge');
       });
     }
 
-    // 8. Mistake boxes
+    // 7. Mistake boxes
     for (let i = 1; i <= 3; i++) {
       const box = document.getElementById('mistakeBox' + i);
       if (!box) continue;
@@ -207,38 +202,38 @@ const badge = document.getElementById('modeDisplayBadge');
       box.textContent = active ? '✗' : '';
     }
 
-    // 9. Penalty display
+    // 8. Penalty display
     const penaltyEl = document.getElementById('penaltyTime');
     if (penaltyEl) {
       penaltyEl.textContent = state.penaltyText || '';
       penaltyEl.classList.toggle('visible', !!(state.penaltyText));
     }
 
-    // 9b. Clue highlight states
-if (state.clueStates && state.clueStates.length) {
-  const cluesList = document.getElementById('cluesList');
-  if (cluesList) {
-    const items = cluesList.querySelectorAll('li');
-    state.clueStates.forEach((s, i) => {
-      if (!items[i]) return;
-      items[i].classList.remove('clue-ok', 'clue-fail');
-      if (s === 'ok')   items[i].classList.add('clue-ok');
-      if (s === 'fail') items[i].classList.add('clue-fail');
-    });
-  }
-}
+    // 9. Clue highlight states
+    if (state.clueStates && state.clueStates.length) {
+      const cluesList = document.getElementById('cluesList');
+      if (cluesList) {
+        const items = cluesList.querySelectorAll('li');
+        state.clueStates.forEach((s, i) => {
+          if (!items[i]) return;
+          items[i].classList.remove('clue-ok', 'clue-fail');
+          if (s === 'ok')   items[i].classList.add('clue-ok');
+          if (s === 'fail') items[i].classList.add('clue-fail');
+        });
+      }
+    }
 
-// 9c. Duplicate answer highlights
-if (typeof checkDuplicateAnswers === 'function') {
-  checkDuplicateAnswers();
-}
+    // 10. Duplicate answer highlights
+    if (typeof checkDuplicateAnswers === 'function') {
+      checkDuplicateAnswers();
+    }
 
-    // 10. Internal mistakeCount + penaltySecs
+    // 11. Internal mistakeCount + penaltySecs
     if (window._sfgame && typeof window._sfgame._setMistakeState === 'function') {
       window._sfgame._setMistakeState(state.mistakeCount || 0, state.penaltyText || '');
     }
 
-    // 11. Feedback banner
+    // 12. Feedback banner
     const feedbackEl = document.getElementById('feedback');
     if (feedbackEl) {
       feedbackEl.textContent = '⟳ Session restored';
@@ -252,7 +247,10 @@ if (typeof checkDuplicateAnswers === 'function') {
     }
   }
 
-  // ─── Lifecycle hooks ──────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // LIFECYCLE HOOKS — wrap app.js's applyNewPuzzle/stopTimer, wire up
+  // autosave triggers, and restore on load
+  // ═══════════════════════════════════════════════════════════════════════
 
   setTimeout(function () {
 
@@ -277,7 +275,7 @@ if (typeof checkDuplicateAnswers === 'function') {
       if (document.visibilityState === 'hidden') saveState();
     });
 
-const saved = loadState();
+    const saved = loadState();
     if (saved && !window._sflBlockSessionRestore) {
       restoreSession(saved);
       if (window.SFLPopup && typeof window.SFLPopup.showGame === 'function') {
@@ -288,4 +286,3 @@ const saved = loadState();
   }, 0);
 
 })();
-
