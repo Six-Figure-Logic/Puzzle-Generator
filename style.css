@@ -2143,10 +2143,10 @@ header h1 {
   .menu-btn-secondary { flex: 1; padding: 10px 4px; font-size: 11px; }
   .menu-btn-primary { min-height: 70px; font-size: 22px; }
 
-  /* Game layout — reflows to a 2-column grid, clues + solution SIDE BY SIDE
-     (not stacked) to cut down on mobile scrolling:
+  /* Game layout — reflows to a 2-column grid:
      Start
-     [Clues]      [Solution]
+     Clues
+     Solutions
      [Mode]   [Mistakes]
      [Reset]  [Check]
      Timer (full width)
@@ -2155,48 +2155,36 @@ header h1 {
   */
   .main-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 90px;
-    grid-template-rows: repeat(7, auto);
-    gap: 8px 10px;
-    align-items: start;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(8, auto);
+    gap: 10px;
+    align-items: center;
   }
 
   .topbar-clues   { grid-column: 1 / -1; grid-row: 1; justify-content: center; }
-  .clues-card     { grid-column: 1; grid-row: 2; }
-  .answers-card   { grid-column: 2; grid-row: 2; }
+  .clues-card     { grid-column: 1 / -1; grid-row: 2; }
+  .answers-card   { grid-column: 1 / -1; grid-row: 3; }
 
   .clues-card,
   .answers-card,
   .grid-card { width: 100%; max-height: none; }
-
-  .clues-card,
-  .answers-card { padding: 10px; }
 
   /* Lift each topbar's children into the grid individually */
   .topbar-answers,
   .topbar-grid,
   .mode-controls { display: contents !important; }
 
-  .mode-display-badge { grid-column: 1; grid-row: 3; justify-self: start; }
-  .mistake-boxes      { grid-column: 2; grid-row: 3; }
-  #resetGridBtn       { grid-column: 1; grid-row: 4; width: 100%; }
-  #checkBtn           { grid-column: 2; grid-row: 4; width: 100%; }
-  .timer-wrap         { grid-column: 1 / -1; grid-row: 5; margin-left: 0; justify-content: center; }
-  #feedback           { grid-column: 1 / -1; grid-row: 6; width: 100%; text-align: center; }
-  .grid-card          { grid-column: 1 / -1; grid-row: 7; }
+  .mode-display-badge { grid-column: 1; grid-row: 4; justify-self: start; }
+  .mistake-boxes      { grid-column: 2; grid-row: 4; }
+  #resetGridBtn       { grid-column: 1; grid-row: 5; width: 100%; }
+  #checkBtn           { grid-column: 2; grid-row: 5; width: 100%; }
+  .timer-wrap         { grid-column: 1 / -1; grid-row: 6; margin-left: 0; justify-content: center; }
+  #feedback           { grid-column: 1 / -1; grid-row: 7; width: 100%; text-align: center; }
+  .grid-card          { grid-column: 1 / -1; grid-row: 8; }
 
-  /* Answers — single narrow column (A=/B=/…) since it now sits beside clues */
-  .answers-grid { display: flex; flex-direction: column; gap: 5px; }
-  .answer-item { width: 100%; min-width: 0; height: 38px; gap: 4px; }
-  .answer-label { font-size: 14px; width: auto; white-space: nowrap; flex-shrink: 0; }
-  .answer-select { width: 100%; height: 30px; font-size: 14px; }
-
-  /* Clues — trim a bit so they fit comfortably in the narrower column */
-  #cluesList li { font-size: 12px; padding: 7px 8px; line-height: 1.35; }
-  #cluesList li::before { font-size: 9px; margin-bottom: 2px; }
-  .panel-label { margin-bottom: 8px; padding-bottom: 6px; font-size: 9px; }
-  .puzzle-rating { font-size: 9px; padding: 1px 6px; }
-  .puzzle-rating-label { font-size: 7px; }
+  /* Answers */
+  .answers-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .answer-item { width: 100%; min-width: 0; }
 
   /* Grid */
   .row { gap: 4px; }
@@ -2284,18 +2272,11 @@ header h1 {
 /* Extra-small phones */
 @media (max-width: 480px) {
   .daily-cards-grid { grid-template-columns: 1fr; }
+  .answer-item { flex: 0 0 calc(20% - 6px); }
   header h1 { font-size: clamp(1.4rem, 6vw, 2rem); }
 }
 
 @media (max-width: 768px) {
   .diff-legend { font-size: 14px; line-height: 1.4; margin-bottom: 10px; }
   .diff-chip { display: inline-block; margin-bottom: 4px; }
-}
-
-@media (max-width: 900px) {
-  .main-layout   { grid-template-columns: minmax(0, 1fr) 40px !important; }
-  .answers-card  { padding: 6px !important; }
-  .answer-item   { gap: 2px !important; }
-  .answer-label  { width: auto !important; white-space: nowrap !important; font-size: 12px !important; }
-  .answer-select { width: 32px !important; flex-shrink: 0 !important; min-width: 0 !important; padding: 0 2px !important; font-size: 12px !important; }
 }
