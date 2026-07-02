@@ -2155,15 +2155,15 @@ header h1 {
   */
   .main-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 2fr 1fr;
     grid-template-rows: repeat(8, auto);
     gap: 10px;
     align-items: center;
   }
 
   .topbar-clues   { grid-column: 1 / -1; grid-row: 1; justify-content: center; }
-  .clues-card     { grid-column: 1 / -1; grid-row: 2; }
-  .answers-card   { grid-column: 1 / -1; grid-row: 3; }
+  .clues-card     { grid-column: 1; grid-row: 2; align-self: stretch; }
+  .answers-card   { grid-column: 2; grid-row: 2; align-self: stretch; width: 100%; }
 
   .clues-card,
   .answers-card,
@@ -2183,8 +2183,8 @@ header h1 {
   .grid-card          { grid-column: 1 / -1; grid-row: 8; }
 
   /* Answers */
-  .answers-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .answer-item { width: 100%; min-width: 0; }
+  .answers-grid { display: flex; flex-direction: column; gap: 6px; }
+  .answer-item { width: 100%; min-width: 0; display: flex; align-items: center; gap: 6px; }
 
   /* Grid */
   .row { gap: 4px; }
