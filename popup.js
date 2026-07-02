@@ -434,7 +434,7 @@
       while (tried < end) {
         tried++;
         try {
-          const candidate = gen(poolSize);
+          const candidate = gen(poolSize, range.tier === 'hard' || range.tier === 'expert');
           if (!candidate || !candidate._rawClues) continue;
           const elim = score(candidate._rawClues, candidate);
           // ── perf: skip expensive WED calc, see maxPossibleRating ──
@@ -454,7 +454,7 @@
       if (sol || tried >= MAX) {
         if (!sol) {
           try {
-            sol = gen(poolSize);
+            sol = gen(poolSize, range.tier === 'hard' || range.tier === 'expert');
             if (sol && sol._rawClues) {
               const elim = score(sol._rawClues, sol);
               sol._rating = rate(sol._rawClues, elim, sol);

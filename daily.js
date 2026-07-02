@@ -82,7 +82,7 @@
 
     try {
       for (let attempt = 0; attempt < 5000; attempt++) {
-        const candidate = gen(poolSize);
+        const candidate = gen(poolSize, difficulty === 'hard' || difficulty === 'expert');
         if (!candidate || !candidate._rawClues) continue;
         if (!fallbackCandidate) fallbackCandidate = candidate;
         const elim = score(candidate._rawClues, candidate);

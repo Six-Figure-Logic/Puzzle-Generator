@@ -679,7 +679,7 @@ function findSolutionsForClues(clues, maxSolutions = 2) {
   // --- Fixed: generatePuzzleJS ---
 // Strategy: for puzzles <=1800, poolsize is 10.  For 1801-2000 its 12, and for 2001+ its 35.
 // then prune the pool exhaustively until no clue is redundant and count <= 6.
-function generatePuzzleJS(poolSize = 10) {
+function generatePuzzleJS(poolSize = 10, pruneEasiestFirst = false) {
   initLookups();
 
 // Exhaustive greedy prune: single forward pass, removing redundant clues
@@ -755,7 +755,12 @@ function exhaustivePrune(clues, targetSol) {
       continue; // pool doesn't pin the solution — try again
     }
 
-    // Step 3: exhaustively prune redundant clues
+    // Step 3: Prune redudnant clues. //
+    // For Hard/Expert, try pruning the easiest (lowest-scoring)
+    // clues first, so pruning favors keeping the harder ones in the final set.
+    if (pruneEasiestFirst) {
+      pool.sort((a, b) => clueComplexityScore(a) - clueComplexityScore(b));
+    }
     const pruned = exhaustivePrune(pool, sol);
 
     // Step 4: final validation — unique, correct solution, within clue limit
@@ -777,8 +782,6 @@ function exhaustivePrune(clues, targetSol) {
   // ── Difficulty scoring (translated from VBA RankPuzzleDifficulty) ──
   // Applies all clue eliminations iteratively on a virtual 6×10 candidate grid,
   // then counts remaining cells. Fewer remaining = easier.
-  // Thresholds (tunable): easy ≤20, medium ≤35, hard ≤45, expert >45
-
 
   function scorePuzzle(clues, sol) {
     // Virtual grid: grid[varIdx 0..5][val 1..10] = true if candidate still alive
@@ -2026,14 +2029,12 @@ populateAnswerSelects();
   }
 
   // ─── S (performance score) calculation ───────────────────────────────────
-  // S = clamp(0.5 - 0.35 × ln(effectiveTime / expectedTime), 0.05, 1.25)
-  // Give up / 3 mistakes before solve → S = 0 (hard loss)
 // S is determined solely by mistakes. Time affects effective puzzle rating, not S.
-  // mistakes=0 → 1.00, mistakes=1 → 0.75, mistakes=2 → 0.50, gave up/3 mistakes → 0.00
+  // mistakes=0 → 1.00, mistakes=1 → 0.66, mistakes=2 → 0.33, gave up/3 mistakes → 0.00
   function computeS(mistakes, gaveUp) {
     if (gaveUp || mistakes >= 3) return 0.00;
-    if (mistakes === 2) return 0.50;
-    if (mistakes === 1) return 0.75;
+    if (mistakes === 2) return 0.33;
+    if (mistakes === 1) return 0.66;
     return 1.00;
   }
 
