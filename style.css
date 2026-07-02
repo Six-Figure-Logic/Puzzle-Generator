@@ -2183,7 +2183,8 @@ header h1 {
   .grid-card          { grid-column: 1 / 4; grid-row: 6; }
 
   /* Answers */
-  .answers-grid { display: flex; flex-direction: column; gap: 6px; }
+  .answers-card { display: flex; flex-direction: column; }
+  .answers-grid { display: flex; flex-direction: column; flex: 1; justify-content: space-between; gap: 6px; }
   .answer-item { width: 100%; min-width: 0; display: flex; align-items: center; gap: 6px; }
 
   /* Grid */
@@ -2198,6 +2199,14 @@ header h1 {
   /* Clue table */
   .clue-row { display: flex; flex-direction: column; gap: 2px; }
   .clue-note { text-align: left; max-width: none; }
+
+  /* Puzzle rating chip — shorten label so it doesn't overflow the card */
+  .puzzle-rating-label { font-size: 0; }
+  .puzzle-rating-label::after {
+    content: "RATING";
+    font-size: 9px;
+    letter-spacing: 0.15em;
+  }
 
   /* Modals */
   .modal-overlay { padding: 8px; }
