@@ -2143,27 +2143,26 @@ header h1 {
   .menu-btn-secondary { flex: 1; padding: 10px 4px; font-size: 11px; }
   .menu-btn-primary { min-height: 70px; font-size: 22px; }
 
-  /* Game layout — reflows to a 2-column grid:
-     Start
-     Clues
-     Solutions
-     [Mode]   [Mistakes]
-     [Reset]  [Check]
-     Timer (full width)
-     Feedback (full width, below timer)
-     Grid
+  /* Game layout — reflows to a 3-column grid:
+     Start (left-aligned over clues)
+     Clues (2/3)        Solutions (1/3)
+     [Mode]              [Mistakes]
+     Timer (left-aligned, above Reset)
+     [Reset (1/3)]  [Check (2/3, no more overflow)]
+     Feedback (full width)
+     Grid (no extra row above it)
   */
   .main-layout {
     display: grid;
-    grid-template-columns: 2fr 1fr;
-    grid-template-rows: repeat(8, auto);
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(6, auto);
     gap: 10px;
     align-items: center;
   }
 
-  .topbar-clues   { grid-column: 1 / -1; grid-row: 1; justify-content: center; }
-  .clues-card     { grid-column: 1; grid-row: 2; align-self: stretch; }
-  .answers-card   { grid-column: 2; grid-row: 2; align-self: stretch; width: 100%; }
+  .topbar-clues   { grid-column: 1 / 3; grid-row: 1; justify-content: flex-start; }
+  .clues-card     { grid-column: 1 / 3; grid-row: 2; }
+  .answers-card   { grid-column: 3 / 4; grid-row: 2; }
 
   .clues-card,
   .answers-card,
@@ -2174,13 +2173,14 @@ header h1 {
   .topbar-grid,
   .mode-controls { display: contents !important; }
 
-  .mode-display-badge { grid-column: 1; grid-row: 4; justify-self: start; }
-  .mistake-boxes      { grid-column: 2; grid-row: 4; }
-  #resetGridBtn       { grid-column: 1; grid-row: 5; width: 100%; }
-  #checkBtn           { grid-column: 2; grid-row: 5; width: 100%; }
-  .timer-wrap         { grid-column: 1 / -1; grid-row: 6; margin-left: 0; justify-content: center; }
-  #feedback           { grid-column: 1 / -1; grid-row: 7; width: 100%; text-align: center; }
-  .grid-card          { grid-column: 1 / -1; grid-row: 8; }
+  .mode-display-badge { grid-column: 1; grid-row: 3; justify-self: start; }
+  .timer-wrap          { grid-column: 2; grid-row: 3; margin-left: 0; justify-content: flex-start; }
+  .mistake-boxes       { grid-column: 3; grid-row: 3; justify-self: end; }
+  #resetGridBtn       { grid-column: 1; grid-row: 4; width: 100%; font-size: 12px; padding: 9px 6px; }
+  #checkBtn           { grid-column: 2 / 4; grid-row: 4; width: 100%; }
+  #feedback           { grid-column: 1 / 4; grid-row: 5; width: 100%; text-align: center; }
+  #feedback:empty     { padding: 0; border: none; min-height: 0; }
+  .grid-card          { grid-column: 1 / 4; grid-row: 6; }
 
   /* Answers */
   .answers-grid { display: flex; flex-direction: column; gap: 6px; }
