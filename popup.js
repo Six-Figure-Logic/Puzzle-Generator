@@ -1093,7 +1093,7 @@
                   border-radius:8px;padding:10px 6px;">
         <span style="font-family:var(--mono);font-size:18px;font-weight:700;
                      color:var(--text-muted);">${l}</span>
-        <span style="font-family:'BankGothic','Oswald',sans-serif;font-size:28px;
+        <span style="font-family:var(--mono);font-size:28px;
                      font-weight:700;color:var(--accent);">${sol[l] !== undefined ? sol[l] : sol[l.toLowerCase()]}</span>
       </div>
     `).join('');
