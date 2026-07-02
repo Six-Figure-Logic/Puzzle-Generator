@@ -2155,7 +2155,7 @@ header h1 {
   */
   .main-layout {
     display: grid;
-    grid-template-columns: 3fr 2fr;
+    grid-template-columns: minmax(0, 1fr) 90px;
     grid-template-rows: repeat(7, auto);
     gap: 8px 10px;
     align-items: start;
@@ -2187,9 +2187,9 @@ header h1 {
 
   /* Answers — single narrow column (A=/B=/…) since it now sits beside clues */
   .answers-grid { display: flex; flex-direction: column; gap: 5px; }
-  .answer-item { width: 100%; min-width: 0; height: 38px; }
-  .answer-label { font-size: 16px; width: 28px; }
-  .answer-select { width: 100%; height: 30px; font-size: 16px; }
+  .answer-item { width: 100%; min-width: 0; height: 38px; gap: 4px; }
+  .answer-label { font-size: 14px; width: auto; white-space: nowrap; flex-shrink: 0; }
+  .answer-select { width: 100%; height: 30px; font-size: 14px; }
 
   /* Clues — trim a bit so they fit comfortably in the narrower column */
   #cluesList li { font-size: 12px; padding: 7px 8px; line-height: 1.35; }
