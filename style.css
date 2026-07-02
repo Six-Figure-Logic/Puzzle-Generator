@@ -2293,9 +2293,9 @@ header h1 {
 }
 
 @media (max-width: 900px) {
-  .main-layout   { grid-template-columns: minmax(0, 1fr) 70px !important; }
+  .main-layout   { grid-template-columns: minmax(0, 1fr) 40px !important; }
   .answers-card  { padding: 6px !important; }
   .answer-item   { gap: 2px !important; }
   .answer-label  { width: auto !important; white-space: nowrap !important; font-size: 12px !important; }
-  .answer-select { width: 100% !important; min-width: 0 !important; padding: 0 2px !important; font-size: 12px !important; }
+  .answer-select { width: 32px !important; flex-shrink: 0 !important; min-width: 0 !important; padding: 0 2px !important; font-size: 12px !important; }
 }
