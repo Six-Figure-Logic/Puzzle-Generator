@@ -529,6 +529,10 @@ header h1 {
   color: #c8d0e8;
   transition: all 0.04s ease;
   min-width: 0;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 .cell:hover {

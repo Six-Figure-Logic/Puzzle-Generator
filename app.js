@@ -54,6 +54,11 @@ function resetTimer() {
 }
 
 
+// Tracks the last touch interaction time so the desktop right-click
+// (contextmenu) handler can ignore contextmenu events that the browser
+// generates from a mobile long-press (those are handled separately below).
+let lastTouchAt = 0;
+
 // Build grid as rows A..F, columns 1..10 left-to-right
 function buildGridRows() {
   gridEl.innerHTML = '';
@@ -80,17 +85,16 @@ function buildGridRows() {
       cell.dataset.value = String(n);
       cell.textContent = String(n);
 
- // CTRL/⌘ + LEFT CLICK and RIGHT CLICK both just toggle the cell —
+ // CTRL/⌘ + LEFT CLICK and RIGHT CLICK (mouse) both just toggle the cell —
       // shared handler (toggleCell already calls pushHistory() itself).
       const toggleClickHandler = (e) => {
         e.preventDefault();
         toggleCell(cell);
       };
 
-      // LEFT CLICK: lock this value — eliminate row + column, fill answer
-      cell.addEventListener('click', (e) => {
-        if (e.ctrlKey || e.metaKey) { toggleClickHandler(e); return; }
-        e.preventDefault();
+      // Shared lock/select logic — eliminate row + column, fill answer.
+      // Used by desktop LEFT CLICK and by mobile LONG PRESS (below).
+      const lockCellValue = () => {
         pushHistory();
         const lockedRow = cell.dataset.row;
         const lockedVal = cell.dataset.value;
@@ -119,6 +123,13 @@ function buildGridRows() {
         const select = document.getElementById(lockedRow);
         if (select) select.value = lockedVal;
         checkDuplicateAnswers();
+      };
+
+      // LEFT CLICK (mouse only — see touch handling below): lock this value
+      cell.addEventListener('click', (e) => {
+        if (e.ctrlKey || e.metaKey) { toggleClickHandler(e); return; }
+        e.preventDefault();
+        lockCellValue();
       });
 
       cell.addEventListener('keydown', (e) => {
@@ -128,8 +139,58 @@ function buildGridRows() {
         }
       });
 
-      // RIGHT CLICK: toggle cell
-      cell.addEventListener('contextmenu', toggleClickHandler);
+      // RIGHT CLICK (desktop mouse): toggle cell. Ignore contextmenu events
+      // that the browser fires from a mobile long-press — those are handled
+      // by the touch listeners below instead, so this stays mouse-only.
+      cell.addEventListener('contextmenu', (e) => {
+        if (Date.now() - lastTouchAt < 700) { e.preventDefault(); return; }
+        toggleClickHandler(e);
+      });
+
+      // ── MOBILE TOUCH: tap = instant toggle, long-press = lock/select ──
+      // Desktop click/contextmenu above are untouched by this.
+      let touchTimer = null;
+      let touchStartX = 0, touchStartY = 0, touchMoved = false, longPressFired = false;
+      const LONG_PRESS_MS = 450;
+      const MOVE_CANCEL_PX = 10;
+
+      cell.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        lastTouchAt = Date.now();
+        touchMoved = false;
+        longPressFired = false;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchTimer = setTimeout(() => {
+          longPressFired = true;
+          lastTouchAt = Date.now();
+          lockCellValue();
+        }, LONG_PRESS_MS);
+      }, { passive: true });
+
+      cell.addEventListener('touchmove', (e) => {
+        if (!touchTimer || !e.touches.length) return;
+        const dx = e.touches[0].clientX - touchStartX;
+        const dy = e.touches[0].clientY - touchStartY;
+        if (Math.abs(dx) > MOVE_CANCEL_PX || Math.abs(dy) > MOVE_CANCEL_PX) {
+          touchMoved = true;
+          clearTimeout(touchTimer);
+        }
+      }, { passive: true });
+
+      cell.addEventListener('touchend', (e) => {
+        clearTimeout(touchTimer);
+        lastTouchAt = Date.now();
+        if (longPressFired) { e.preventDefault(); return; } // already handled
+        if (!touchMoved) {
+          e.preventDefault(); // instant toggle, and stop the synthetic click
+          toggleCell(cell);
+        }
+      });
+
+      cell.addEventListener('touchcancel', () => {
+        clearTimeout(touchTimer);
+      });
 
       cellsWrap.appendChild(cell);
     }
