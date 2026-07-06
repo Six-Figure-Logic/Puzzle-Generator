@@ -38,7 +38,7 @@ body {
   color: var(--text);
   min-height: 100vh;
   min-height: 100dvh;
-  padding: 20px 10px 0px;
+  padding: 0px 10px 0px;
   overflow-x: hidden;
 }
 
@@ -86,7 +86,7 @@ header h1 {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .header-right {
@@ -141,8 +141,8 @@ header h1 {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px;
-  margin-bottom: 12px;
+  padding: 14px;
+  margin-bottom: 6px;
 }
 
 .panel-label {
@@ -306,9 +306,9 @@ header h1 {
   counter-reset: clue-counter;
 }
 
-.answers-grid { display: flex; flex-direction: column; gap: 6px; }
+.answers-grid { display: flex; flex-direction: column; gap: 16px; }
 
-.answer-item { display: flex; align-items: center; gap: 6px; height: 48px; }
+.answer-item { display: flex; align-items: center; gap: 6px; height: 34px; }
 
 .answer-label {
   font-family: var(--mono);
@@ -391,14 +391,13 @@ header h1 {
   left: calc(50% + 500px);
   top: 50%;
   transform: translateY(-50%);
-  display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  visibility: hidden;
+  display: none; /* fully removed from layout below 1160px so it can't add invisible scroll height */
 }
 @media (min-width: 1160px) {
-  .books-sidebar { visibility: visible; }
+  .books-sidebar { display: flex; }
 }
 
 .books-sidebar .books-label {
@@ -490,13 +489,33 @@ header h1 {
 #cluesList li.clue-fail::before { color: rgba(255,77,106,0.5) !important; }
 
 /* ── Elimination Grid ── */
-.grid-rows { display: flex; flex-direction: column; gap: 20px; }
+.grid-rows { display: flex; flex-direction: column; gap: 14px; } 
+
+.answers-grid-spacer {
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.grid-instructions {
+  flex: 1;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  padding: 0 10px;
+}
+@media (max-width: 900px) {
+  .grid-instructions { display: none; } /* mobile uses tap/long-press, and there's no room */
+}
 
 .row { display: flex; align-items: center; gap: 8px; }
 
 .row-header {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--accent);
   width: 28px;
@@ -514,7 +533,7 @@ header h1 {
 
 .cell {
   aspect-ratio: 1;
-  height: 36px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -561,6 +580,16 @@ header h1 {
   box-shadow: inset 0 0 6px rgba(232,255,71,0.1);
   color: var(--accent);
 }
+
+.column-header-btns { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; justify-items: center;}
+.col-elim-btn {
+  aspect-ratio: 1; height: 26px; border-radius: 6px;
+  border: 1px solid var(--border-bright); background: var(--surface2);
+  color: var(--text-dim); font-family: var(--mono); font-weight: 700; font-size: 0.75rem;
+  cursor: pointer; transition: all 0.12s ease;
+}
+.col-elim-btn:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-dim); }
+.column-header-row { margin-bottom: -4px; }
 
 /* ── CASUAL | RATED pill toggle ── */
 .mode-pill {
@@ -2213,7 +2242,7 @@ header h1 {
 
   /* Grid */
   .row { gap: 4px; }
-  .row-header { width: 22px; font-size: 11px; }
+  .row-header { width: 22px; font-size: 14px; }
   .row-cells { gap: 2px; }
   .cell { height: 30px; font-size: 0.8rem; }
 

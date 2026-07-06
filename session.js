@@ -193,6 +193,11 @@
       });
     }
 
+    // 6b. Rebuild letterLocks so grid/dropdown revert logic works post-restore
+    if (typeof window._sflRebuildLetterLocks === 'function') {
+      window._sflRebuildLetterLocks();
+    }
+
     // 7. Mistake boxes
     for (let i = 1; i <= 3; i++) {
       const box = document.getElementById('mistakeBox' + i);

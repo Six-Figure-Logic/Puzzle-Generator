@@ -59,6 +59,172 @@ function resetTimer() {
 // generates from a mobile long-press (those are handled separately below).
 let lastTouchAt = 0;
 
+// ── LETTER LOCK TRACKING (lets us precisely revert a lock later) ───────────
+const letterLocks = {}; // { A: { value: '7', delta: [{row,value}, ...] } }
+
+function lockLetterToValue(letter, value) {
+  const delta = [];
+  gridEl.querySelectorAll(`.cell[data-row="${letter}"]`).forEach(c => {
+    if (c.dataset.value !== value && !c.classList.contains('crossed')) {
+      c.classList.add('crossed');
+      c.setAttribute('aria-pressed', 'true');
+      delta.push({ row: letter, value: c.dataset.value });
+    }
+  });
+  gridEl.querySelectorAll(`.cell[data-value="${value}"]`).forEach(c => {
+    if (c.dataset.row !== letter && !c.classList.contains('crossed')) {
+      c.classList.add('crossed');
+      c.setAttribute('aria-pressed', 'true');
+      delta.push({ row: c.dataset.row, value: value });
+    }
+  });
+  const selfCell = gridEl.querySelector(`.cell[data-row="${letter}"][data-value="${value}"]`);
+  if (selfCell) { selfCell.classList.remove('crossed'); selfCell.setAttribute('aria-pressed', 'false'); }
+  letterLocks[letter] = { value, delta };
+}
+
+function unlockLetter(letter) {
+  const lock = letterLocks[letter];
+  if (!lock) return;
+  lock.delta.forEach(({ row, value }) => {
+    const c = gridEl.querySelector(`.cell[data-row="${row}"][data-value="${value}"]`);
+    if (c) { c.classList.remove('crossed'); c.setAttribute('aria-pressed', 'false'); }
+  });
+  delete letterLocks[letter];
+}
+
+
+
+// Used by both the grid lock-click and the answer dropdown.
+function assignLetterValue(letter, value, recordHistory = true) {
+  if (recordHistory) pushHistory();
+  unlockLetter(letter);
+  if (value) lockLetterToValue(letter, value);
+  const select = document.getElementById(letter);
+  if (select) select.value = value || '';
+  checkDuplicateAnswers();
+  checkAutoAssignRows();
+}
+
+// Scans all rows; any row down to exactly one live candidate gets that
+// value auto-assigned to its dropdown (if not already set). Runs after
+// any grid mutation that could narrow a row: manual toggles, column
+// eliminations, undo/redo, and lock cascades.
+function checkAutoAssignRows() {
+  // Step 1: if a letter's assigned value is no longer its row's sole
+  // survivor (a sibling cell in its own row got reopened), clear the
+  // assignment. We only forget the lock bookkeeping here — we
+  // deliberately do NOT restore any crossed cells, since those reflect
+  // the player's own toggle history.
+  inputIds.forEach(letter => {
+    const select = document.getElementById(letter);
+    if (!select || !select.value) return;
+    const rowCells = gridEl.querySelectorAll(`.cell[data-row="${letter}"]`);
+    const uncrossed = Array.from(rowCells).filter(c => !c.classList.contains('crossed'));
+    const stillValid = uncrossed.length === 1 && uncrossed[0].dataset.value === select.value;
+    if (!stillValid) {
+      delete letterLocks[letter];
+      select.value = '';
+    }
+  });
+
+  // Step 2: lock in any row newly narrowed to a single live candidate —
+  // but only if it isn't already locked to that value. This is what lets
+  // a cascaded cell in another row be freely toggled back open without
+  // snapping straight back to crossed.
+  inputIds.forEach(letter => {
+    const rowCells = gridEl.querySelectorAll(`.cell[data-row="${letter}"]`);
+    const uncrossed = Array.from(rowCells).filter(c => !c.classList.contains('crossed'));
+    if (uncrossed.length !== 1) return;
+    const value = uncrossed[0].dataset.value;
+    const alreadyLocked = letterLocks[letter] && letterLocks[letter].value === value;
+    if (!alreadyLocked) {
+      assignLetterValue(letter, value, false);   // ← false: no new history step
+    }
+  });
+
+  checkDuplicateAnswers();
+}
+
+// Right-click / Ctrl-click / long-press: lock, unless already the sole
+// remaining candidate in its row — then revert instead.
+function lockOrUnlockCell(cell) {
+  const letter = cell.dataset.row;
+  const value = cell.dataset.value;
+  const rowCells = gridEl.querySelectorAll(`.cell[data-row="${letter}"]`);
+  const uncrossed = Array.from(rowCells).filter(c => !c.classList.contains('crossed'));
+  const isSoleSurvivor = uncrossed.length === 1 && uncrossed[0] === cell;
+  const hasRevertibleLock = letterLocks[letter] && letterLocks[letter].value === value;
+
+  if (isSoleSurvivor && hasRevertibleLock) {
+    pushHistory();
+    unlockLetter(letter);
+    const select = document.getElementById(letter);
+    if (select) select.value = '';
+    checkDuplicateAnswers();
+    checkAutoAssignRows();   // ← add
+  } else {
+    assignLetterValue(letter, value);
+  }
+}
+
+function buildColumnHeaderButtons() {
+  const headerRow = document.createElement('div');
+  headerRow.className = 'row column-header-row';
+
+  const spacer = document.createElement('div');
+  spacer.className = 'row-header';
+  spacer.setAttribute('aria-hidden', 'true');
+  headerRow.appendChild(spacer);
+
+  const btnsWrap = document.createElement('div');
+  btnsWrap.className = 'row-cells column-header-btns';
+
+  for (let n = 1; n <= 10; n++) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'col-elim-btn';
+    btn.textContent = '✕';
+    btn.title = `Cross out all ${n}s`;
+    btn.setAttribute('aria-label', `Cross out all ${n}s`);
+    btn.addEventListener('click', () => crossOutColumn(String(n)));
+    btnsWrap.appendChild(btn);
+  }
+  headerRow.appendChild(btnsWrap);
+  gridEl.insertBefore(headerRow, gridEl.firstChild);
+}
+
+const columnLocks = {}; // { '7': { delta: [{row, value}] } }
+
+function isColumnFullyCrossed(value) {
+  const cells = gridEl.querySelectorAll(`.cell[data-value="${value}"]`);
+  return Array.from(cells).every(c => c.classList.contains('crossed'));
+}
+
+function crossOutColumn(value) {
+  pushHistory();
+  if (isColumnFullyCrossed(value) && columnLocks[value]) {
+    // Column is fully blank AND we're the ones who did it — revert
+    columnLocks[value].delta.forEach(({ row }) => {
+      const c = gridEl.querySelector(`.cell[data-row="${row}"][data-value="${value}"]`);
+      if (c) { c.classList.remove('crossed'); c.setAttribute('aria-pressed', 'false'); }
+    });
+    delete columnLocks[value];
+  } else {
+    const delta = [];
+    gridEl.querySelectorAll(`.cell[data-value="${value}"]`).forEach(c => {
+      if (!c.classList.contains('crossed')) {
+        c.classList.add('crossed');
+        c.setAttribute('aria-pressed', 'true');
+        delta.push({ row: c.dataset.row, value });
+      }
+    });
+    columnLocks[value] = { delta };
+  }
+  updateUndoRedoBtns();
+  checkAutoAssignRows();
+}
+
 // Build grid as rows A..F, columns 1..10 left-to-right
 function buildGridRows() {
   gridEl.innerHTML = '';
@@ -85,51 +251,12 @@ function buildGridRows() {
       cell.dataset.value = String(n);
       cell.textContent = String(n);
 
- // CTRL/⌘ + LEFT CLICK and RIGHT CLICK (mouse) both just toggle the cell —
-      // shared handler (toggleCell already calls pushHistory() itself).
-      const toggleClickHandler = (e) => {
+      // LEFT CLICK (mouse): toggle a single candidate. Swapped per request —
+      // right-click/ctrl-click now handles locking.
+      cell.addEventListener('click', (e) => {
+        if (e.ctrlKey || e.metaKey) { e.preventDefault(); lockOrUnlockCell(cell); return; }
         e.preventDefault();
         toggleCell(cell);
-      };
-
-      // Shared lock/select logic — eliminate row + column, fill answer.
-      // Used by desktop LEFT CLICK and by mobile LONG PRESS (below).
-      const lockCellValue = () => {
-        pushHistory();
-        const lockedRow = cell.dataset.row;
-        const lockedVal = cell.dataset.value;
-
-        // Cross out all other cells in the same row (same letter, different value)
-        gridEl.querySelectorAll(`.cell[data-row="${lockedRow}"]`).forEach(c => {
-          if (c.dataset.value !== lockedVal) {
-            c.classList.add('crossed');
-            c.setAttribute('aria-pressed', 'true');
-          }
-        });
-
-        // Cross out all other cells in the same column (same value, different letter)
-        gridEl.querySelectorAll(`.cell[data-value="${lockedVal}"]`).forEach(c => {
-          if (c.dataset.row !== lockedRow) {
-            c.classList.add('crossed');
-            c.setAttribute('aria-pressed', 'true');
-          }
-        });
-
-        // Keep the clicked cell itself clear
-        cell.classList.remove('crossed');
-        cell.setAttribute('aria-pressed', 'false');
-
-        // Assign value to the corresponding answer dropdown
-        const select = document.getElementById(lockedRow);
-        if (select) select.value = lockedVal;
-        checkDuplicateAnswers();
-      };
-
-      // LEFT CLICK (mouse only — see touch handling below): lock this value
-      cell.addEventListener('click', (e) => {
-        if (e.ctrlKey || e.metaKey) { toggleClickHandler(e); return; }
-        e.preventDefault();
-        lockCellValue();
       });
 
       cell.addEventListener('keydown', (e) => {
@@ -139,12 +266,13 @@ function buildGridRows() {
         }
       });
 
-      // RIGHT CLICK (desktop mouse): toggle cell. Ignore contextmenu events
-      // that the browser fires from a mobile long-press — those are handled
-      // by the touch listeners below instead, so this stays mouse-only.
+      // RIGHT CLICK (desktop mouse): lock this value, or unlock if it's
+      // already the sole remaining candidate. Ignore contextmenu events
+      // fired from a mobile long-press — those are handled by touch below.
       cell.addEventListener('contextmenu', (e) => {
         if (Date.now() - lastTouchAt < 700) { e.preventDefault(); return; }
-        toggleClickHandler(e);
+        e.preventDefault();
+        lockOrUnlockCell(cell);
       });
 
       // ── MOBILE TOUCH: tap = instant toggle, long-press = lock/select ──
@@ -164,7 +292,7 @@ function buildGridRows() {
         touchTimer = setTimeout(() => {
           longPressFired = true;
           lastTouchAt = Date.now();
-          lockCellValue();
+          lockOrUnlockCell(cell);
         }, LONG_PRESS_MS);
       }, { passive: true });
 
@@ -241,6 +369,7 @@ if (undoBtn) undoBtn.addEventListener('click', () => {
   redoStack.push(getGridSnapshot());
   applyGridSnapshot(undoStack.pop());
   updateUndoRedoBtns();
+  checkAutoAssignRows();
 });
 
 if (redoBtn) redoBtn.addEventListener('click', () => {
@@ -248,6 +377,7 @@ if (redoBtn) redoBtn.addEventListener('click', () => {
   undoStack.push(getGridSnapshot());
   applyGridSnapshot(redoStack.pop());
   updateUndoRedoBtns();
+  checkAutoAssignRows();
 });
 
 function toggleCell(cell) {
@@ -255,6 +385,7 @@ function toggleCell(cell) {
   const isCrossed = cell.classList.toggle('crossed');
   cell.setAttribute('aria-pressed', String(isCrossed));
   updateUndoRedoBtns();
+  checkAutoAssignRows();
 }
 
 function resetGrid() {
@@ -263,6 +394,8 @@ function resetGrid() {
     c.classList.remove('crossed');
     c.setAttribute('aria-pressed','false');
   });
+  for (const k in letterLocks) delete letterLocks[k];
+  for (const k in columnLocks) delete columnLocks[k];   // ← add this
   updateUndoRedoBtns();
 }
 
@@ -277,7 +410,7 @@ function populateAnswerSelects() {
       opt.textContent = String(n);
       el.appendChild(opt);
     }
-    el.addEventListener('change', checkDuplicateAnswers);
+    el.addEventListener('change', () => assignLetterValue(id, el.value));
   });
 }
 
@@ -1979,6 +2112,7 @@ function attachClueTooltip(li, rawClue) {
 
 // Init
 buildGridRows();
+buildColumnHeaderButtons();
 populateAnswerSelects();
 
 // ══════════════════════════════════════════
@@ -3137,7 +3271,7 @@ function getShareData() {
 (function () {
   const TABS = [
     { id: 'howto', pages: 4 },
-    { id: 'rating', pages: 7 },
+    { id: 'rating', pages: 4 },
   ];
 
   TABS.forEach(({ id, pages }) => {

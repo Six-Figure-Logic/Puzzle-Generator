@@ -58,7 +58,7 @@
     </header>
 
 
-    <div class="player-rating-inline" style="margin-bottom:8px;">
+    <div class="player-rating-inline" style="margin-bottom:4px;">
       <span class="player-rating-label-inline">YOUR RATING:</span>
       <span class="player-rating-value" id="playerRatingValue">1000</span>
       <span class="player-rating-rd" id="playerRatingRd">± 350</span>
@@ -110,10 +110,10 @@
   <div class="modal-section-title">THE GOAL</div>
   <div class="modal-section">
     <ul>
-      <li>Eaach puzzle consists of a set of clues, and six unknown variables (A, B, C, D, E, F).</li>
-      <li> Your goal is to assign a unique number (1–10) to each of the six letters so that all clues are satisfied.</li>
+      <li>Each puzzle consists of a set of clues, and six unknown variables (A, B, C, D, E, F).</li>
+      <li>Your goal is to assign a unique number (1–10) to each of the six letters so that all clues are satisfied.</li>
       <li>Each letter must be assigned a different number. No repeats.</li>
-      <li> Each letter must be assigned a number even if that letter does not appear in any clue.</li>
+      <li>Each letter must be assigned a number even if that letter does not appear in any clue.</li>
     </ul>
   </div>
 </div>
@@ -121,18 +121,19 @@
 <div class="modal-page" id="howto-page-1" style="display:none">
   <div class="modal-section-title">THE ELIMINATION GRID</div>
   <div class="modal-section">
-    <p style="margin-bottom:10px">The grid is your scratch pad. Each row is a letter (A–F), each column is a possible value (1–10).</p>
+    <p style="margin-bottom:10px">The grid is your scratchpad. Each row is a letter (A–F), each column is a possible value (1–10).</p>
     <div class="tip-grid">
       <div class="tip-row">
-        <span class="tip-key"><span class="tip-input-desktop">Left click</span><span class="tip-input-mobile">Long press</span></span>
-        <span class="tip-desc">Lock in a value — crosses out everything else in that row and column.</span>
+        <span class="tip-key"><span class="tip-input-desktop">Left click</span><span class="tip-input-mobile">Tap</span></span>
+        <span class="tip-desc">Toggle a single cell — manually eliminate (or restore) a candidate.</span>
       </div>
       <div class="tip-row">
-        <span class="tip-key"><span class="tip-input-desktop">Right click</span><span class="tip-input-mobile">Tap</span></span>
-        <span class="tip-desc">Toggle a single cell — manually eliminate a candidate.</span>
+        <span class="tip-key"><span class="tip-input-desktop">Right click</span><span class="tip-input-mobile">Long press</span></span>
+        <span class="tip-desc">Lock in a value — crosses out everything else in that row and column.</span>
+
       </div>
       <div class="tip-row tip-row-desktop-only">
-        <span class="tip-key">Ctrl + left click</span>
+        <span class="tip-key">Ctrl + Left click</span>
         <span class="tip-desc">Same as right click.</span>
       </div>
       <div class="tip-row">
@@ -151,7 +152,7 @@
       <li>Press <span class="diff-chip easy">CHECK</span> when you think you have the solution.</li>
       <li>Each clue turns <span class="tip-green">green</span> if satisfied, or <span class="tip-red">red</span> if contradicted by your inputs.</li>
       <li>If all your clues turn <span class="tip-green">green</span>, you have solved the puzzle! If any clue turns <span class="tip-red">red</span>, you will receive a strike.</li>
-      <li>Three wrong checks (strikes) is an automatic forfeit.</li>
+      <li>Three wrong checks (strikes) result in an automatic forfeit.</li>
     </ul>
   </div>
 </div>
@@ -216,9 +217,24 @@
   <div class="modal-section">
     <ul>
       <li><span class="tip-green">CASUAL</span> — Play freely. Your rating is never affected.</li>
-      <li><em>RATED</em> — Your rating updates after every puzzle. Available for random puzzles only.</li>
-      <li>Daily puzzles are always casual — no rating pressure.</li>
+      <li><em>RATED</em> — Your rating updates after every puzzle. Available for RANDOM PUZZLES only.</li>
     </ul>
+  </div>
+  <br><br>
+  <div class="modal-section-title">DAILY PUZZLES</div>
+  <div class="modal-section">
+    <ul>
+      <li>DAILY PUZZLES are always casual — no rating pressure.</li>
+      <li>Four new puzzles each day — one per difficulty — refreshing at midnight Eastern Time.</li>
+    </ul>
+  </div>
+    <br><br>
+  <div class="modal-section-title">DIFFICULTY</div>
+  <div class="modal-section">
+    <div class="diff-legend"><span class="diff-chip easy">EASY</span> 800–1000 · Puzzles can be solved one clue at a time.</div>
+    <div class="diff-legend"><span class="diff-chip medium">MEDIUM</span> 1001–1400 · Stop and think how to combine clues to determine the solution.</div>
+    <div class="diff-legend"><span class="diff-chip hard">HARD</span> 1401–1800 · Elaborate multi-step deductions required throughout.</div>
+    <div class="diff-legend"><span class="diff-chip expert">EXPERT</span> 1801+ · Nothing collapses easily — expect to rack your brain every step of the way.</div>
   </div>
 </div>
 
@@ -231,6 +247,15 @@
       <li>Solving with 1 or 2 strikes (incorrect checks) may lower your rating depending on your rating vs. the puzzle's rating.</li>
       <li>If you forfeit or get 3 strikes your rating decreases.</li>
     </ul>
+    <br>
+    <div class="modal-section-title">YOUR RATING (± RD)</div>
+  <div class="modal-section">
+    <ul>
+      <li>Everyone starts at <strong>1000 ± 350</strong>. The ± number is your rating uncertainty — it shrinks as you play more rated puzzles.</li>
+      <li>Higher uncertainty means bigger swings after each rated game, in either direction.</li>
+      <li>If you stop playing rated puzzles for a while, the ± number increases.</li>
+    </ul>
+  </div>
   </div>
 </div>
 
@@ -239,45 +264,14 @@
   <div class="modal-section">
     <ul>
       <li>Each wrong <span class="diff-chip easy">CHECK</span> adds a strike and a time penalty.</li>
-      <li>Fewer mistakes = better result, regardless of solve time.</li>
+      <li>Fewer mistakes = A better result, regardless of solve time.</li>
       <li>Three mistakes triggers an automatic forfeit.</li>
-      <li>Giving up (forfeiting) always counts as a loss.</li>
+      <li>Forfeiting always counts as a loss.</li>
     </ul>
   </div>
 </div>
 
 <div class="modal-page" id="rating-page-3" style="display:none">
-  <div class="modal-section-title">YOUR RATING (± RD)</div>
-  <div class="modal-section">
-    <ul>
-      <li>Everyone starts at <strong>1000 ± 350</strong>. The ± number is your rating uncertainty — it shrinks as you play more.</li>
-      <li>Higher uncertainty means bigger swings after each game, in either direction.</li>
-      <li>If you stop playing for a while, uncertainty grows again.</li>
-    </ul>
-  </div>
-</div>
-
-<div class="modal-page" id="rating-page-4" style="display:none">
-  <div class="modal-section-title">DAILY PUZZLES</div>
-  <div class="modal-section">
-    <ul>
-      <li>Four new puzzles each day — one per difficulty — refreshing at midnight Eastern time.</li>
-      <li>Always casual. Your rating is never affected.</li>
-    </ul>
-  </div>
-</div>
-
-<div class="modal-page" id="rating-page-5" style="display:none">
-  <div class="modal-section-title">DIFFICULTY</div>
-  <div class="modal-section">
-    <div class="diff-legend"><span class="diff-chip easy">EASY</span> 800–1000 · Puzzles can be solved one clue at a time.</div>
-    <div class="diff-legend"><span class="diff-chip medium">MEDIUM</span> 1001–1400 · Stop and think how to combine clues to determine the solution.</div>
-    <div class="diff-legend"><span class="diff-chip hard">HARD</span> 1401–1800 · Elaborate multi-step deductions required throughout.</div>
-    <div class="diff-legend"><span class="diff-chip expert">EXPERT</span> 1801+ · Nothing collapses easily — expect to rack your brain every step of the way.</div>
-  </div>
-</div>
-
-<div class="modal-page" id="rating-page-6" style="display:none">
   <div class="modal-section-title">⚠ YOUR DATA</div>
   <div class="modal-section">
     <ul>
@@ -492,25 +486,27 @@
       <!-- [2,2] answers card -->
       <section class="card answers-card" aria-label="Answer inputs">
         <div class="panel-label">SOLUTION</div>
-        <div class="answers-grid">
-          <div class="answer-item"><span class="answer-label">A =</span><select id="A" class="answer-select" aria-label="A"></select></div>
-          <div class="answer-item"><span class="answer-label">B =</span><select id="B" class="answer-select" aria-label="B"></select></div>
-          <div class="answer-item"><span class="answer-label">C =</span><select id="C" class="answer-select" aria-label="C"></select></div>
-          <div class="answer-item"><span class="answer-label">D =</span><select id="D" class="answer-select" aria-label="D"></select></div>
-          <div class="answer-item"><span class="answer-label">E =</span><select id="E" class="answer-select" aria-label="E"></select></div>
-          <div class="answer-item"><span class="answer-label">F =</span><select id="F" class="answer-select" aria-label="F"></select></div>
-        </div>
+<div class="answers-grid">
+  <div class="answers-grid-spacer" aria-hidden="true"></div>
+  <div class="answer-item"><span class="answer-label">A =</span><select id="A" class="answer-select" aria-label="A"></select></div>
+  <div class="answer-item"><span class="answer-label">B =</span><select id="B" class="answer-select" aria-label="B"></select></div>
+  <div class="answer-item"><span class="answer-label">C =</span><select id="C" class="answer-select" aria-label="C"></select></div>
+  <div class="answer-item"><span class="answer-label">D =</span><select id="D" class="answer-select" aria-label="D"></select></div>
+  <div class="answer-item"><span class="answer-label">E =</span><select id="E" class="answer-select" aria-label="E"></select></div>
+  <div class="answer-item"><span class="answer-label">F =</span><select id="F" class="answer-select" aria-label="F"></select></div>
+</div>
       </section>
 
       <!-- [2,3] grid card -->
       <section class="card grid-card" aria-label="Candidates grid">
-        <div class="panel-label">
-          ELIMINATION GRID
-          <div class="undo-redo-btns">
-            <button id="undoBtn" class="btn-undoredo" title="Undo" disabled>&#x21B6;</button>
-            <button id="redoBtn" class="btn-undoredo" title="Redo" disabled>&#x21B7;</button>
-          </div>
-        </div>
+<div class="panel-label">
+  ELIMINATION GRID
+  <span class="grid-instructions">&ensp;LEFT CLICK: Toggle cell<br>&ensp;RIGHT CLICK / CTRL+LEFT CLICK: Set Value</span>
+  <div class="undo-redo-btns">
+    <button id="undoBtn" class="btn-undoredo" title="Undo" disabled>&#x21B6;</button>
+    <button id="redoBtn" class="btn-undoredo" title="Redo" disabled>&#x21B7;</button>
+  </div>
+</div>
         <div id="grid" class="grid-rows" role="grid"></div>
       </section>
 
