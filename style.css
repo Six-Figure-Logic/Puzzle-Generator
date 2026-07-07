@@ -2215,7 +2215,7 @@ header h1 {
   */
   .main-layout {
     display: grid;
-    grid-template-columns: 1.15fr 1.15fr minmax(92px, 0.7fr);
+    grid-template-columns: 1.18fr 1.18fr minmax(85px, 0.64fr);
     grid-template-rows: repeat(6, auto);
     gap: 6px;
     align-items: center;
@@ -2271,10 +2271,10 @@ header h1 {
     overflow: hidden;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 3px;
   }
   .answers-card  { padding-left: 8px; padding-right: 8px; }
-  .answer-label  { font-size: 16px; width: 34px; white-space: nowrap; flex-shrink: 0; }
+  .answer-label  { font-size: 16px; width: 30px; white-space: nowrap; flex-shrink: 0; letter-spacing: -0.5px; }
   .answer-select { width: 34px; height: 100%; max-height: 32px; font-size: 14px; }
 
   /* Grid */
