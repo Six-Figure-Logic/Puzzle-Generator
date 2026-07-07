@@ -587,6 +587,11 @@ header h1 {
   border: 1px solid var(--border-bright); background: var(--surface2);
   color: var(--text-dim); font-family: var(--mono); font-weight: 700; font-size: 0.75rem;
   cursor: pointer; transition: all 0.12s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
 }
 .col-elim-btn:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-dim); }
 .column-header-row { margin-bottom: -4px; }
@@ -2200,6 +2205,7 @@ header h1 {
   .clues-card,
   .answers-card,
   .grid-card { width: 100%; max-height: none; }
+  #cluesList li { padding: 8px 14px; }
 
   /* Lift each topbar's children into the grid individually */
   .topbar-answers,
@@ -2219,12 +2225,16 @@ header h1 {
      height evenly and can never exceed the card, no matter how tall or
      short the clues card ends up being */
   .answers-card { display: flex; flex-direction: column; }
+  /* This spacer only exists to align dropdowns with the grid header on
+     desktop. On mobile it was silently occupying one of the 6 grid rows,
+     pushing F into an extra unsized row and squishing it — hide it here. */
+  .answers-grid-spacer { display: none; }
   .answers-grid {
     display: grid;
     grid-template-rows: repeat(6, minmax(0, 1fr));
     flex: 1;
     min-height: 0;
-    gap: 4px;
+    gap: 10px;
   }
   .answer-item {
     width: 100%;

@@ -692,6 +692,12 @@
       const ctx = window._sflPuzzleContext;
       if (ctx.isReview) return;
 
+      // Guard against duplicate recording if stopTimer fires again for the
+      // same puzzle (e.g. user re-checks after already solving/failing).
+      const _sol = window.currentSolution;
+      if (_sol && _sol._sflResultRecorded) return;
+      if (_sol) _sol._sflResultRecorded = true;
+
       const timerEl = document.getElementById('timer');
       const timerText = timerEl ? timerEl.textContent : '00:00';
       const parts = timerText.split(':');
