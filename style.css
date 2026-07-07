@@ -304,6 +304,9 @@ header h1 {
   gap: 0;
   list-style: none;
   counter-reset: clue-counter;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .answers-grid { display: flex; flex-direction: column; gap: 16px; }
@@ -318,6 +321,9 @@ header h1 {
   width: 40px;
   text-align: center;
   flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .answer-select {
@@ -489,7 +495,14 @@ header h1 {
 #cluesList li.clue-fail::before { color: rgba(255,77,106,0.5) !important; }
 
 /* ── Elimination Grid ── */
-.grid-rows { display: flex; flex-direction: column; gap: 14px; } 
+.grid-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
 
 .answers-grid-spacer {
   height: 36px;
@@ -522,6 +535,9 @@ header h1 {
   text-align: center;
   flex-shrink: 0;
   padding: 6px 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .row-cells {
@@ -561,6 +577,9 @@ header h1 {
 }
 
 .cell:focus {
+  outline: none;
+}
+.cell:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
