@@ -7,8 +7,8 @@
   'use strict';
 
   const SAVE_KEY         = 'sfl_session_v1';
-  const SAVE_INTERVAL_MS = 1000;
-  window.SFLSession = { SAVE_KEY };
+  const SAVE_DEBOUNCE_MS = 500;
+  window.SFLSession = { SAVE_KEY, triggerSave: () => scheduleSave() };
 
   // ═══════════════════════════════════════════════════════════════════════
   // CAPTURE — snapshot all live DOM/game state into a plain object
@@ -112,15 +112,18 @@
   // AUTOSAVE TIMER
   // ═══════════════════════════════════════════════════════════════════════
 
-  let _autosaveHandle = null;
+  let _saveDebounceHandle = null;
 
-  function startAutosave() {
-    if (_autosaveHandle) return;
-    _autosaveHandle = setInterval(saveState, SAVE_INTERVAL_MS);
+  function scheduleSave() {
+    if (_saveDebounceHandle) return; // a save is already pending
+    _saveDebounceHandle = setTimeout(() => {
+      _saveDebounceHandle = null;
+      saveState();
+    }, SAVE_DEBOUNCE_MS);
   }
 
-  function stopAutosave() {
-    if (_autosaveHandle) { clearInterval(_autosaveHandle); _autosaveHandle = null; }
+  function cancelScheduledSave() {
+    if (_saveDebounceHandle) { clearTimeout(_saveDebounceHandle); _saveDebounceHandle = null; }
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -260,11 +263,10 @@
 
   setTimeout(function () {
 
-    // Fresh puzzle started — begin autosave
+    // Fresh puzzle started
     const _prevApply = window.applyNewPuzzle;
     window.applyNewPuzzle = function (sol) {
       _prevApply(sol);
-      startAutosave();
       setTimeout(saveState, 100);
     };
 
@@ -272,7 +274,7 @@
     const _prevStop = window.stopTimer;
     window.stopTimer = function () {
       _prevStop();
-      stopAutosave();
+      cancelScheduledSave();
       clearSave();
     };
 

@@ -2368,14 +2368,14 @@ header h1 {
   .result-delta { font-size: 11px; padding: 2px 6px; white-space: nowrap; }
 }
 
+@media (max-width: 768px) {
+  .diff-legend { font-size: 14px; line-height: 1.4; margin-bottom: 10px; }
+  .diff-chip { display: inline-block; margin-bottom: 4px; }
+}
+
 /* Extra-small phones */
 @media (max-width: 480px) {
   .daily-cards-grid { grid-template-columns: 1fr; }
   .answer-item { flex: 0 0 calc(20% - 6px); }
   header h1 { font-size: clamp(1.4rem, 6vw, 2rem); }
-}
-
-@media (max-width: 768px) {
-  .diff-legend { font-size: 14px; line-height: 1.4; margin-bottom: 10px; }
-  .diff-chip { display: inline-block; margin-bottom: 4px; }
 }

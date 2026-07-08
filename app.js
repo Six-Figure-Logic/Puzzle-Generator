@@ -127,6 +127,7 @@ function checkAutoAssignRows() {
   });
 
   checkDuplicateAnswers();
+  if (window.SFLSession && window.SFLSession.triggerSave) window.SFLSession.triggerSave();
 }
 
 // Right-click / Ctrl-click / long-press: lock, unless already the sole
@@ -378,6 +379,7 @@ function resetGrid() {
   for (const k in letterLocks) delete letterLocks[k];
   for (const k in columnLocks) delete columnLocks[k];   // ← add this
   updateUndoRedoBtns();
+  if (window.SFLSession && window.SFLSession.triggerSave) window.SFLSession.triggerSave();
 }
 
 // Populate selects 1..10
@@ -2279,6 +2281,7 @@ populateAnswerSelects();
 
     // Update mistake boxes
     updateMistakeBoxes(mistakeCount);
+    if (window.SFLSession && window.SFLSession.triggerSave) window.SFLSession.triggerSave();
 
     if (mistakeCount >= 3) {
       // Auto-forfeit — show result popup as failed
@@ -2985,6 +2988,35 @@ function getShareData() {
   return { text, url, puzzleRating };
 }
 
+    if (facebookA) {
+      facebookA.addEventListener('click', async function (e) {
+        e.preventDefault();
+        e.stopPropagation();  // ← prevent outside-click handler closing popover
+        const { text } = getShareData();
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch(err) {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+          document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); document.body.removeChild(ta);
+        }
+        // Flash green
+        const label = facebookA.querySelector('span');
+        facebookA.classList.add('copied');
+        if (label) label.textContent = '\u2713 Copied! Opening Facebook\u2026';
+        // Wait 1s then open Facebook
+        setTimeout(() => {
+          window.open('https://www.facebook.com/', '_blank', 'noopener');
+        }, 1000);
+        // Reset label after 1.5s
+        setTimeout(() => {
+          facebookA.classList.remove('copied');
+          if (label) label.textContent = 'Facebook (copy + open)';
+        }, 1500);
+      });
+    }
+
     shareBtn.addEventListener('click', async function (e) {
       e.stopPropagation();
 
@@ -3008,32 +3040,6 @@ function getShareData() {
        if (facebookA) {
   facebookA.removeAttribute('href');
   facebookA.style.cursor = 'pointer';
-  facebookA.addEventListener('click', async function(e) {
-    e.preventDefault();
-    e.stopPropagation();  // ← prevent outside-click handler closing popover
-    const { text } = getShareData();
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch(err) {
-      const ta = document.createElement('textarea');
-      ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
-      document.body.appendChild(ta); ta.select();
-      document.execCommand('copy'); document.body.removeChild(ta);
-    }
-    // Flash green
-    const label = facebookA.querySelector('span');
-    facebookA.classList.add('copied');
-    if (label) label.textContent = '\u2713 Copied! Opening Facebook\u2026';
-    // Wait 1s then open Facebook
-    setTimeout(() => {
-      window.open('https://www.facebook.com/', '_blank', 'noopener');
-    }, 1000);
-    // Reset label after 1.5s
-    setTimeout(() => {
-      facebookA.classList.remove('copied');
-      if (label) label.textContent = 'Facebook (copy + open)';
-    }, 1500);
-  });
 }
         // Reset copy btn
         const copyLabel = document.getElementById('copyBtnLabel');

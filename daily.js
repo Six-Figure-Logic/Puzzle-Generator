@@ -37,12 +37,12 @@
   // ═══════════════════════════════════════════════════════════════════════
 
   function getESTDateString() {
-    const now = new Date();
-    const est = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-    const y = est.getFullYear();
-    const m = String(est.getMonth() + 1).padStart(2, '0');
-    const d = String(est.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date());
+    const lookup = {};
+    parts.forEach(p => { lookup[p.type] = p.value; });
+    return `${lookup.year}-${lookup.month}-${lookup.day}`;
   }
 
   // ═══════════════════════════════════════════════════════════════════════
