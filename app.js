@@ -45,15 +45,6 @@ function stopTimer() {
   timerEl.className = 'timer stopped';
 }
 
-function resetTimer() {
-  clearInterval(timerInterval);
-  timerInterval = null;
-  timerSeconds = 0;
-  timerEl.textContent = '00:00';
-  timerEl.className = 'timer';
-}
-
-
 // Tracks the last touch interaction time so the desktop right-click
 // (contextmenu) handler can ignore contextmenu events that the browser
 // generates from a mobile long-press (those are handled separately below).
@@ -93,8 +84,6 @@ function unlockLetter(letter) {
   delete letterLocks[letter];
 }
 
-
-
 // Used by both the grid lock-click and the answer dropdown.
 function assignLetterValue(letter, value, recordHistory = true) {
   if (recordHistory) pushHistory();
@@ -106,15 +95,11 @@ function assignLetterValue(letter, value, recordHistory = true) {
   checkAutoAssignRows();
 }
 
-// Scans all rows; any row down to exactly one live candidate gets that
-// value auto-assigned to its dropdown (if not already set). Runs after
-// any grid mutation that could narrow a row: manual toggles, column
-// eliminations, undo/redo, and lock cascades.
+// Scans all rows; any row down to exactly one live candidate gets that value auto-assigned to its dropdown (if not already set). 
+// Runs after any grid mutation that could narrow a row: manual toggles, column eliminations, undo/redo, and lock cascades.
 function checkAutoAssignRows() {
-  // Step 1: if a letter's assigned value is no longer its row's sole
-  // survivor (a sibling cell in its own row got reopened), clear the
-  // assignment. We only forget the lock bookkeeping here — we
-  // deliberately do NOT restore any crossed cells, since those reflect
+  // Step 1: if a letter's assigned value is no longer its row's sole survivor (a sibling cell in its own row got reopened), clear the
+  // assignment. We only forget the lock bookkeeping here — we deliberately do NOT restore any crossed cells, since those reflect
   // the player's own toggle history.
   inputIds.forEach(letter => {
     const select = document.getElementById(letter);
@@ -128,10 +113,8 @@ function checkAutoAssignRows() {
     }
   });
 
-  // Step 2: lock in any row newly narrowed to a single live candidate —
-  // but only if it isn't already locked to that value. This is what lets
-  // a cascaded cell in another row be freely toggled back open without
-  // snapping straight back to crossed.
+  // Step 2: lock in any row newly narrowed to a single live candidate — but only if it isn't already locked to that value. This is what lets
+  // a cascaded cell in another row be freely toggled back open without snapping straight back to crossed.
   inputIds.forEach(letter => {
     const rowCells = gridEl.querySelectorAll(`.cell[data-row="${letter}"]`);
     const uncrossed = Array.from(rowCells).filter(c => !c.classList.contains('crossed'));
@@ -251,8 +234,8 @@ function buildGridRows() {
       cell.dataset.value = String(n);
       cell.textContent = String(n);
 
-      // LEFT CLICK (mouse): toggle a single candidate. Swapped per request —
-      // right-click/ctrl-click now handles locking.
+      // LEFT CLICK (mouse): toggle a single candidate.
+      // RIGHT CLICK/ctrl-click now handles locking.
       cell.addEventListener('click', (e) => {
         if (e.ctrlKey || e.metaKey) { e.preventDefault(); lockOrUnlockCell(cell); return; }
         e.preventDefault();
@@ -266,9 +249,7 @@ function buildGridRows() {
         }
       });
 
-      // RIGHT CLICK (desktop mouse): lock this value, or unlock if it's
-      // already the sole remaining candidate. Ignore contextmenu events
-      // fired from a mobile long-press — those are handled by touch below.
+      // RIGHT CLICK (desktop mouse): lock this value, or unlock if it's already the sole remaining candidate.
       cell.addEventListener('contextmenu', (e) => {
         if (Date.now() - lastTouchAt < 700) { e.preventDefault(); return; }
         e.preventDefault();
@@ -309,9 +290,9 @@ function buildGridRows() {
       cell.addEventListener('touchend', (e) => {
         clearTimeout(touchTimer);
         lastTouchAt = Date.now();
-        if (longPressFired) { e.preventDefault(); return; } // already handled
+        if (longPressFired) { e.preventDefault(); return; } 
         if (!touchMoved) {
-          e.preventDefault(); // instant toggle, and stop the synthetic click
+          e.preventDefault();
           toggleCell(cell);
         }
       });
@@ -466,8 +447,7 @@ function checkDuplicateAnswers() {
   }
 
   // --- GenerateRandomClue (18 types) ---
-    // Types 1–10 never fail — factored out so the fallback can reuse them
-  // instead of hardcoding one fixed clue.
+    // Types 1–10 never fail — factored out so the fallback can reuse them instead of hardcoding one fixed clue.
   function makeGuaranteedClue(vals, typeId) {
     const c = makeClue();
     let i, j, vi, vj, maxV, maxIdx, minV, minIdx;
@@ -489,7 +469,7 @@ function checkDuplicateAnswers() {
         else { c.Var1 = varNames[j]; c.Var2 = varNames[i]; c.Var1Index = j+1; c.Var2Index = i+1; }
         c.Operator = "-"; c.Value = Math.abs(vi - vj); return c;
 
-      case 4: // comparison > or 
+      case 4: // comparison > or <
         i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
         c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Var1Index = i+1; c.Var2Index = j+1;
         c.Operator = (vals[i] > vals[j]) ? ">" : "<"; c.Value = 0; return c;
@@ -760,10 +740,7 @@ function findSolutionsForClues(clues, maxSolutions = 2) {
   const globalClues = [];   // checked only when all 6 are assigned
   const partialClues = [];  // checked as soon as their vars are assigned
 
-  // These operators compare one variable against ALL others, so they can only be
-  // evaluated correctly when every variable has been assigned. Checking them early
-  // (when some vars are still 0) corrupts the max/min calculation and allows wrong
-  // solutions through (root cause of the "multiple solutions" bug).
+  // These operators compare one variable against ALL others, so they can only be evaluated correctly when every variable has been assigned.
   const GLOBAL_OPS = new Set(['largest','smallest','not largest','not smallest','no sum','no product']);
 
   for (const c of clues) {
@@ -813,82 +790,16 @@ function findSolutionsForClues(clues, maxSolutions = 2) {
   return solutions;
 }
 
-  // --- HasTrivialXorClues (detect trivial XOR + direct parity/primality clues) ---
-  function hasTrivialXorClues(clues) {
-    for (let i=0;i<clues.length;i++) {
-      const ci = clues[i];
-      if (ci.Operator === "xor even") {
-        const xorVar1 = ci.Var1Index, xorVar2 = ci.Var2Index;
-        for (let j=0;j<clues.length;j++) {
-          if (i===j) continue;
-          const cj = clues[j];
-          if ((cj.Operator === "even" || cj.Operator === "odd") &&
-              (cj.Var1Index === xorVar1 || cj.Var1Index === xorVar2)) return true;
-        }
-      }
-      if (ci.Operator === "xor prime") {
-        const xorVar1 = ci.Var1Index, xorVar2 = ci.Var2Index;
-        for (let j=0;j<clues.length;j++) {
-          if (i===j) continue;
-          const cj = clues[j];
-          if ((cj.Operator === "prime" || cj.Operator === "not prime") &&
-              (cj.Var1Index === xorVar1 || cj.Var1Index === xorVar2)) return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  // --- Greedy prune: remove any clue that is redundant while preserving uniqueness (uses robust solver) ---
-  function greedyPruneClues(clues, originalSolution) {
-    // start with all clues, try removing each one and keep removal if uniqueness remains
-    const final = clues.slice();
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (let i=0;i<final.length;i++) {
-        const test = final.slice(0,i).concat(final.slice(i+1));
-        const sols = findSolutionsForClues(test, 2);
-        if (sols.length === 1) {
-          // ensure the single solution equals the original solution (if provided)
-          if (!originalSolution || (
-              String(sols[0].a) === String(originalSolution.a) &&
-              String(sols[0].b) === String(originalSolution.b) &&
-              String(sols[0].c) === String(originalSolution.c) &&
-              String(sols[0].d) === String(originalSolution.d) &&
-              String(sols[0].e) === String(originalSolution.e) &&
-              String(sols[0].f) === String(originalSolution.f)
-            )) {
-            // removing final[i] still leaves unique solution -> drop it
-            final.splice(i,1);
-            changed = true;
-            break;
-          }
-        }
-      }
-    }
-    return final;
-  }
-
   // --- Fixed: generatePuzzleJS ---
-// Strategy: for puzzles <=1800, poolsize is 10.  For 1801-2000 its 12, and for 2001+ its 35.
-// then prune the pool exhaustively until no clue is redundant and count <= 6.
+// 1. For puzzles <=1800, poolsize is 10.  For 1801-2000 its 12, and for 2001+ its 20 to 35 (random).
+// 2. Check if clue pool forces unique solution
+// 3. Prune the pool exhaustively until no clue is redundant and count <= 6. For hard/expert, prune easiest clues first (lowest score) to favor keeping harder clues in the final set.
+// 4. Check if the final set satisfies the selected difficulty (by scoring the clues).
 function generatePuzzleJS(poolSize = 10, pruneEasiestFirst = false) {
   initLookups();
 
-// Exhaustive greedy prune: single forward pass, removing redundant clues
-  // as found (see invariant note below). Never restarts the scan.
 function exhaustivePrune(clues, targetSol) {
     const working = clues.slice();
-    // Single forward pass instead of restarting the scan from index 0 after
-    // every removal. Provably equivalent: removing a clue only shrinks the
-    // candidate solution set, so a clue already confirmed non-redundant
-    // against the current `working` array stays non-redundant after any
-    // later removal — uniqueness that already required it can't be restored
-    // by removing even more constraints. So indices before the current
-    // position never need re-testing; only the position of a removal
-    // (tested against the freshly shrunk array) does.
-    // ── invariant: no restart needed, see proof above ──
     let i = 0;
     while (i < working.length) {
       const without = working.filter((_, idx) => idx !== i);
@@ -912,18 +823,43 @@ function exhaustivePrune(clues, targetSol) {
       const candidate = generateRandomClue(solObj);
       if (existing.some(c => JSON.stringify(c) === JSON.stringify(candidate))) continue;
 
-      // Reject XOR clues that are trivialised by existing parity/prime clues
-      if (candidate.Operator === "xor even" || candidate.Operator === "xor prime") {
-        const v1 = candidate.Var1Index, v2 = candidate.Var2Index;
-        const trivial = existing.some(cc =>
-          (cc.Operator === "even" || cc.Operator === "odd") &&
-          (cc.Var1Index === v1 || cc.Var1Index === v2)
-        ) || existing.some(cc =>
-          (cc.Operator === "prime" || cc.Operator === "not prime") &&
-          (cc.Var1Index === v1 || cc.Var1Index === v2)
-        );
-        if (trivial) continue;
-      }
+// Reject XOR clues that are trivialised by existing parity/prime clues,
+// and reject direct parity/prime clues that would trivialise an existing XOR clue.
+if (candidate.Operator === "xor even") {
+  const v1 = candidate.Var1Index, v2 = candidate.Var2Index;
+  const trivial = existing.some(cc =>
+    (cc.Operator === "even" || cc.Operator === "odd") &&
+    (cc.Var1Index === v1 || cc.Var1Index === v2)
+  );
+  if (trivial) continue;
+}
+
+if (candidate.Operator === "xor prime") {
+  const v1 = candidate.Var1Index, v2 = candidate.Var2Index;
+  const trivial = existing.some(cc =>
+    (cc.Operator === "prime" || cc.Operator === "not prime") &&
+    (cc.Var1Index === v1 || cc.Var1Index === v2)
+  );
+  if (trivial) continue;
+}
+
+if (candidate.Operator === "even" || candidate.Operator === "odd") {
+  const v = candidate.Var1Index;
+  const trivializesXor = existing.some(cc =>
+    cc.Operator === "xor even" &&
+    (cc.Var1Index === v || cc.Var2Index === v)
+  );
+  if (trivializesXor) continue;
+}
+
+if (candidate.Operator === "prime" || candidate.Operator === "not prime") {
+  const v = candidate.Var1Index;
+  const trivializesXor = existing.some(cc =>
+    cc.Operator === "xor prime" &&
+    (cc.Var1Index === v || cc.Var2Index === v)
+  );
+  if (trivializesXor) continue;
+}
 
       return candidate;
     }
@@ -933,25 +869,24 @@ function exhaustivePrune(clues, targetSol) {
   while (true) {
     const sol = makeRandomSolution();
 
-    // Step 1: gather up to poolSize non-duplicate clues (all valid for sol, no uniqueness requirement yet)
+    // Step 1: gather up to poolSize non-duplicate clues (all valid for sol)
     const pool = [];
     for (let k = 0; k < poolSize; k++) {
       const clue = pickClue(pool, sol, 300);
       if (clue) pool.push(clue);
     }
 
-    // Step 2: verify the pool already forces a unique solution (needed before pruning)
+    // Step 2: verify the pool forces a unique solution (needed before pruning)
     const solsPool = findSolutionsForClues(pool, 2);
     if (solsPool.length !== 1 ||
         solsPool[0].a !== sol.a || solsPool[0].b !== sol.b ||
         solsPool[0].c !== sol.c || solsPool[0].d !== sol.d ||
         solsPool[0].e !== sol.e || solsPool[0].f !== sol.f) {
-      continue; // pool doesn't pin the solution — try again
+      continue; // pool doesn't pin the solution — redraw clue set.
     }
 
-    // Step 3: Prune redudnant clues. //
-    // For Hard/Expert, try pruning the easiest (lowest-scoring)
-    // clues first, so pruning favors keeping the harder ones in the final set.
+    // Step 3: Prune redudnant clues.
+    // For Hard/Expert, try pruning the easiest (lowest-scoring) clues first, so pruning favors keeping the harder ones in the final set.
     if (pruneEasiestFirst) {
       pool.sort((a, b) => clueComplexityScore(a) - clueComplexityScore(b));
     }
@@ -973,9 +908,7 @@ function exhaustivePrune(clues, targetSol) {
   }
 }
 
-  // ── Difficulty scoring (translated from VBA RankPuzzleDifficulty) ──
-  // Applies all clue eliminations iteratively on a virtual 6×10 candidate grid,
-  // then counts remaining cells. Fewer remaining = easier.
+  // Difficulty scoring. Calculates "wall size" (elim) and WED - combination of clue entangelment and clue complexity. Lower score = easier puzzle.
 
   function scorePuzzle(clues, sol) {
     // Virtual grid: grid[varIdx 0..5][val 1..10] = true if candidate still alive
@@ -1563,7 +1496,6 @@ case 'no product': {
   // clues that uniquely pins it across ALL distinct 1-10 assignments.
   // EC = sum of complexity scores of that subset.
   // WED_raw = average EC across all 6 variables (equal weights, no cascade).
-  // Returns { wed_norm, ecDetails, WED_raw }
 
   const GLOBAL_OPS_WED = new Set(['no sum','no product','largest','smallest','not largest','not smallest']);
 
@@ -1767,13 +1699,6 @@ function computePuzzleRating(rawClues, elim, sol) {
   // Rating
   const rating = Math.round(800 + (E_norm * 0.50 + WED_norm * 0.50) * 18);
 
-  computePuzzleRating._lastDebug = { wedResult, E_norm, WED_norm, elim, rating };
-  if (computePuzzleRating._logNext) {
-    computePuzzleRating._logNext = false;
-    // console.log('[WED cascade]', wedResult.ecDetails.map(d => `${d.varName}:${d.ec}×${d.weight}=${d.weightedEC.toFixed(1)}`).join(', '),
-    //   '→ WED_raw:', wedResult.WED_raw.toFixed(1), 'WED_norm:', WED_norm.toFixed(1),
-    //   'E_norm:', E_norm.toFixed(1), '→ rating:', rating);
-  }
   return rating;
 }
 
@@ -1955,93 +1880,6 @@ function checkAnswers() {
   }
 }
 
-// Wire events
-newPuzzleBtn.addEventListener('click', () => {
-  // Generation is now handled by popup.js — this listener only handles
-  // the forfeit case (when gameActive), which _sfgame intercepts via capture phase.
-  // If we reach here with no game active, popup.js capture phase already handled it.
-  return;
-  const gen = window.generatePuzzle;
-  if (typeof gen !== 'function') { alert('generatePuzzle is not defined.'); return; }
-
-  // Clear existing clues and reset state immediately
-  const cluesList = document.getElementById('cluesList');
-  if (cluesList) {
-    cluesList.innerHTML = '<li class="clue-placeholder">Generating…</li>';
-  }
-  undoStack.length = 0;
-  redoStack.length = 0;
-  updateUndoRedoBtns();
-  resetClueColors();
-  feedbackEl.textContent = '';
-  feedbackEl.className = 'feedback';
-
-const originalText = newPuzzleBtn.innerHTML;
-  newPuzzleBtn.innerHTML = '<span class="btn-icon"></span> Generating';
-  newPuzzleBtn.disabled = true;
-  // Immediately start fading down to 0.3 over 0.5s
-  newPuzzleBtn.style.transition = 'opacity 0.5s ease';
-  newPuzzleBtn.style.opacity = '0.3';
- 
-  // Run the search in small chunks separated by setTimeout(0) so the browser
-  // can repaint between chunks — this is what actually makes the pulse visible.
-  const CHUNK = 50;
-  const MAX_TRIES = 5000;
-  let tried = 0;
-  let sol = null;
-
-  function runChunk() {
-    const end = Math.min(tried + CHUNK, MAX_TRIES);
-    while (tried < end) {
-      tried++;
-      try {
-        const candidate = gen();
-        if (!candidate || !candidate._rawClues) continue;
-        const elim   = window._scorePuzzle(candidate._rawClues, candidate);
-        const rating = window._computePuzzleRating(candidate._rawClues, elim, candidate);
-      } catch(err) {
-        alert('Error: ' + err.message);
-        finish();
-        return;
-      }
-    }
-
-    if (sol || tried >= MAX_TRIES) {
-      if (!sol) { try { sol = gen(); } catch(e) { sol = null; } }
-      if (sol) applyNewPuzzle(sol);
-      finish();
-    } else {
-      setTimeout(runChunk, 0);
-    }
-  }
-
-  function finish() {
-    if (!window._sfgame || !window._sfgame.gameActive) {
-      newPuzzleBtn.innerHTML = originalText;
-      newPuzzleBtn.disabled = false;
-      newPuzzleBtn.style.transition = '';
-      newPuzzleBtn.style.opacity = '1';
-    } else {
-      newPuzzleBtn.disabled = false;
-      // Swap text immediately
-      newPuzzleBtn.innerHTML = '<span class="btn-icon"></span>Forfeit?';
-      newPuzzleBtn.classList.remove('generating');
-      newPuzzleBtn.style.opacity = '0.3';
-      // Ensure we're at 0.3 before starting the slow fade-in
-      newPuzzleBtn.style.transition = 'opacity 0.5s ease';
-      newPuzzleBtn.style.opacity = '0.3';
-      setTimeout(() => {
-        // Now slowly fade back to full opacity over 10s
-        newPuzzleBtn.style.transition = 'opacity 10s ease';
-        newPuzzleBtn.style.opacity = '1';
-      }, 500);
-    }
-  }
-
-  // One rAF to let the browser paint the disabled+pulsing state before we start
-  requestAnimationFrame(() => setTimeout(runChunk, 0));
-});
-
 checkBtn.addEventListener('click', checkAnswers);
 resetGridBtn.addEventListener('click', resetGrid);
 
@@ -2073,7 +1911,7 @@ modalTabs.forEach(tab => {
 
 // ══════════════════════════════════════════
 // CLUE HOVER TOOLTIPS
-// Attached when clues are rendered. Skip for +, -, * clues.
+// Skip for +, -, * clues.
 // ══════════════════════════════════════════
 const NO_TIP_OPS = new Set(['+', '-', '*']);
 
@@ -2236,8 +2074,7 @@ populateAnswerSelects();
   // ─── Glicko-2 update ─────────────────────────────────────────────────────
   // Uses continuous S in place of binary outcome.
   // puzzle is treated as the "opponent" with its own rating.
-  // PUZZLE_RD raised to 200 so upsets against much-harder puzzles
-  // yield appropriately large rating swings.
+
   const PUZZLE_RD = 200;
 
   function glicko2Update(profile, puzzleRating, S) {
@@ -2380,10 +2217,8 @@ populateAnswerSelects();
 
   // ─── DOM refs ─────────────────────────────────────────────────────────────
   const newPuzzleBtn   = document.getElementById('newPuzzleBtn');
-  // Mode pill is now inside the popup (popupModeCasual / popupModeRated)
-  // We reference them safely; if absent they're null and we guard all access.
   const penaltyEl      = document.getElementById('penaltyTime');
-  const mistakeEl      = document.getElementById('mistakeCounter'); // kept for compat but hidden
+  const mistakeEl      = document.getElementById('mistakeCounter');
   const ratingDisplayEl = document.getElementById('playerRatingValue');
   const ratingRdEl     = document.getElementById('playerRatingRd');
   const resultOverlay  = document.getElementById('resultOverlay');
@@ -2398,8 +2233,6 @@ populateAnswerSelects();
   refreshRatingDisplay();
 
   // ─── Mode pill ────────────────────────────────────────────────────────────
-  // Mode pill now lives in the popup; popup.js owns its visual state.
-  // _setMode() is called by popup.js before launching a puzzle.
   function setMode(mode) {
     gameMode = mode;
     // Sync popup pill if present
@@ -2417,7 +2250,7 @@ populateAnswerSelects();
     return m + ':' + String(s).padStart(2, '0');
   }
 
-  // ─── Mistake boxes (change 4) ─────────────────────────────────────────────
+  // ─── Mistake boxes ─────────────────────────────────────────────────────────
   function updateMistakeBoxes(count) {
     for (let i = 1; i <= 3; i++) {
       const box = document.getElementById('mistakeBox' + i);
@@ -2524,7 +2357,7 @@ populateAnswerSelects();
       refreshRatingDisplay();
     }
 
-    // Change 3: Casual give up → no popup at all; rated give up → show popup
+    // Casual give up → no popup at all; rated give up → show popup
     if (gameMode === 'rated') {
       showResultPopup(solveTime, true);
     }
@@ -2550,13 +2383,13 @@ populateAnswerSelects();
 
   // ─── Intercept New Puzzle button ──────────────────────────────────────────
   newPuzzleBtn.addEventListener('click', function (e) {
-    if (!gameActive) return; // let app.js generate normally
+    if (!gameActive) return;
 
     // Puzzle is active — this is "Give Up?"
     e.stopImmediatePropagation();
 
     showGiveUpConfirm();
-  }, true); // capture phase
+  }, true);
 
   // ─── Hook applyNewPuzzle to lock the game ────────────────────────────────
   const _originalApply = window.applyNewPuzzle;
@@ -2665,13 +2498,6 @@ window._computeLetterGrade = function(solveSeconds, mistakes, puzzleRating, play
     if (rating <= 1400) return 'var(--accent)';
     if (rating <= 1800) return '#ffa032';
     return 'var(--danger)';
-  }
-
-  function difficultyLabel(rating) {
-    if (rating <= 1000) return 'EASY';
-    if (rating <= 1400) return 'MEDIUM';
-    if (rating <= 1800) return 'HARD';
-    return 'EXPERT';
   }
 
   // ─── Result popup ─────────────────────────────────────────────────────────
@@ -2815,18 +2641,10 @@ window._sfgame = {
 })();
 
 
-
-
-
-/*═══════════════════════ TUTORIAL WALKTHROUGH ════════════════════ -->*/
+/*═══════════════════════ TUTORIAL WALKTHROUGH ════════════════════ */
 
 (function () {
   'use strict';
-
-  
-  /* ══════════════════════════════════════════
-     STEP BY STEP Example Sub-Modal
-  ══════════════════════════════════════════ */
 
   const WE_ROWS = ['A','B','C','D','E','F'];
   
@@ -3061,10 +2879,10 @@ if (openBtn) openBtn.addEventListener('click', (e) => {
     });
   });
 
-  /*═══════════════════════ END OF TUTORIAL WALKTHROUGH ════════════════════ -->*/
+  /*═══════════════════════ END OF TUTORIAL WALKTHROUGH ════════════════════ */
 
   /* ══════════════════════════════════════════
-     FEATURE B — Share Popover
+      Share Popover
   ══════════════════════════════════════════ */
 
   let _shareGaveUp = false;
@@ -3083,10 +2901,6 @@ function diffEmoji(r) {
   if (r <= 1800) return '\uD83D\uDFE0';   // 🟠
   return '\uD83D\uDD34';                   // 🔴
 }
-
-  function mistakeBar(n) {
-    let s = ''; for (let i = 0; i < 3; i++) s += (i < n ? '✗' : '○'); return s;
-  }
 
 function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakes, isDaily) {
 const site = 'sixfigurelogic.com';

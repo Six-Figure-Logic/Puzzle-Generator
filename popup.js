@@ -230,7 +230,7 @@
         window._sfgame._forceEndGame();
       }
       closeDailyPopup();
-      try { localStorage.removeItem('sfl_session_v1'); } catch(e) {}
+      try { localStorage.removeItem(window.SFLSession.SAVE_KEY); } catch(e) {}
       window._sflBlockSessionRestore = true;
       showLoading(true);
       showGameLayout();
@@ -275,7 +275,7 @@
     window._sflPuzzleContext.dailyDifficulty = difficulty;
     window._sflPuzzleContext.isReview = true;
 
-    try { localStorage.removeItem('sfl_session_v1'); } catch(e) {}
+    try { localStorage.removeItem(window.SFLSession.SAVE_KEY); } catch(e) {}
 
     const today = window.SFLDaily.getDateString();
     const sol = window.SFLDaily.getPuzzle(today, difficulty);
@@ -422,19 +422,25 @@
     }
 
    const range = RANGES[currentRangeIdx];
-    const poolSize = range.min >= 2001 ? 35 : (range.min >= 1801 ? 12 : 10);
     const gen   = window.generatePuzzle;
     const score = window._scorePuzzle;
     const rate  = window._computePuzzleRating;
     const CHUNK = 50, MAX = 5000;
     let tried = 0, sol = null;
 
+    // Pool size per attempt. 2001+ puzzles redraw with a random pool size
+    // between 20–35 each time (instead of a fixed 35) to vary the difficulty and reduce generation speed.
+    function nextPoolSize() {
+      if (range.min >= 2001) return 20 + Math.floor(Math.random() * 16); // 20..35
+      return range.min >= 1801 ? 12 : 10;
+    }
+
     function runChunk() {
       const end = Math.min(tried + CHUNK, MAX);
       while (tried < end) {
         tried++;
         try {
-          const candidate = gen(poolSize, range.tier === 'hard' || range.tier === 'expert');
+          const candidate = gen(nextPoolSize(), range.tier === 'hard' || range.tier === 'expert');
           if (!candidate || !candidate._rawClues) continue;
           const elim = score(candidate._rawClues, candidate);
           // ── perf: skip expensive WED calc, see maxPossibleRating ──
@@ -454,7 +460,7 @@
       if (sol || tried >= MAX) {
         if (!sol) {
           try {
-            sol = gen(poolSize, range.tier === 'hard' || range.tier === 'expert');
+            sol = gen(nextPoolSize(), range.tier === 'hard' || range.tier === 'expert');
             if (sol && sol._rawClues) {
               const elim = score(sol._rawClues, sol);
               sol._rating = rate(sol._rawClues, elim, sol);
@@ -929,7 +935,7 @@
       if (window._sfgame && window._sfgame.gameActive && typeof window._sfgame._forceEndGame === 'function') {
         window._sfgame._forceEndGame();
       }
-      try { localStorage.removeItem('sfl_session_v1'); } catch(e) {}
+      try { localStorage.removeItem(window.SFLSession.SAVE_KEY); } catch(e) {}
       window._sflBlockSessionRestore = true;
 
       showLoading(true);
@@ -1054,19 +1060,20 @@
       if (e.target === historyOverlay) closeHistoryOverlay();
     });
 
-    // ── Initial state on page load ─────────────────────────────────────
-    setPopupMode('casual');
+// ── Initial state on page load ─────────────────────────────────────
     updateRangeDisplay();
     try {
-      const _s = localStorage.getItem('sfl_session_v1');
+      const _s = localStorage.getItem(window.SFLSession.SAVE_KEY);
       const _parsed = _s ? JSON.parse(_s) : null;
       const _hasSave = !!(_parsed && _parsed.solution);
+      setPopupMode(_hasSave ? (_parsed.mode || 'casual') : 'casual');
       if (_hasSave) {
         showGameLayout();
       } else {
         showMainMenu();
       }
     } catch(e) {
+      setPopupMode('casual');
       showMainMenu();
     }
   });

@@ -201,7 +201,7 @@
         ...(existing || {}),
         started: true,
         puzzleRating,
-        startedAt: Date.now(),
+        startedAt: (existing && existing.startedAt) || Date.now(),
       });
     },
 

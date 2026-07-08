@@ -8,6 +8,7 @@
 
   const SAVE_KEY         = 'sfl_session_v1';
   const SAVE_INTERVAL_MS = 1000;
+  window.SFLSession = { SAVE_KEY };
 
   // ═══════════════════════════════════════════════════════════════════════
   // CAPTURE — snapshot all live DOM/game state into a plain object
