@@ -2366,6 +2366,33 @@ header h1 {
   .result-new-rating { font-size: 24px; }
   .result-arrow { font-size: 14px; }
   .result-delta { font-size: 11px; padding: 2px 6px; white-space: nowrap; }
+
+  /* ── Landscape fix ── */
+  @media (orientation: landscape) {
+    .modal-overlay,
+    .puzzle-select-overlay,
+    .result-overlay,
+    .giveup-overlay,
+    .we-overlay {
+      align-items: flex-start;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-top: 12px;
+      padding-bottom: 12px;
+    }
+
+    .modal-box,
+    .we-box {
+      height: auto;
+      max-height: none;
+    }
+
+    .puzzle-select-box,
+    .result-box,
+    .giveup-box {
+      max-height: none;
+    }
+  }
 }
 
 @media (max-width: 768px) {
