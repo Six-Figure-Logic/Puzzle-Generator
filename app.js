@@ -733,14 +733,28 @@ function checkDuplicateAnswers() {
 // Key fix: "global" clues (no sum, no product, largest, smallest, not largest, not smallest)
 // have Var indices of 0 and must be checked only at the leaf (varIndex === 6).
 // Clues with all indices <= varIndex are checked eagerly. Others wait for the leaf.
-function findSolutionsForClues(clues, maxSolutions = 2) {
+const DEFAULT_VALUE_ORDER = [1,2,3,4,5,6,7,8,9,10];
+
+// biasSol (optional): the solution the clue set is *expected* to pin. When provided,
+// each variable tries its known correct value FIRST. This never changes which
+// solutions exist or how many there are — it only changes the order the search
+// explores them in — but it means confirming "yes, sol is still a valid solution"
+// costs ~6 checks instead of however many wrong branches happen to sort before it
+// in the old fixed 1..10 order. Every caller in generatePuzzleJS already knows the
+// target solution up front (that's the whole point of the uniqueness/prune checks),
+// so this is pure speedup with zero behavior change.
+function findSolutionsForClues(clues, maxSolutions = 2, biasSol = null) {
   const solutions = [];
   const sol = { a: 0, b: 0, c: 0, d: 0, e: 0, f: 0 };
   const keys = ['a','b','c','d','e','f'];
 
-  // Partition clues once: those that need all 6 values vs those that can prune early
-  const globalClues = [];   // checked only when all 6 are assigned
-  const partialClues = [];  // checked as soon as their vars are assigned
+  // Partition clues once: those that need all 6 values vs those that can prune early.
+  // partialByIndex[v] holds only the clues whose LAST needed variable is v, so at
+  // each backtrack depth we scan just the handful of clues relevant to that depth
+  // instead of looping over every partial clue in the whole set and skipping most
+  // of them (the old approach re-scanned the full list at every single node).
+  const globalClues = [];
+  const partialByIndex = [null, [], [], [], [], [], []]; // index 1..6
 
   // These operators compare one variable against ALL others, so they can only be evaluated correctly when every variable has been assigned.
   const GLOBAL_OPS = new Set(['largest','smallest','not largest','not smallest','no sum','no product']);
@@ -751,9 +765,21 @@ function findSolutionsForClues(clues, maxSolutions = 2) {
     } else {
       const maxIdx = Math.max(c.Var1Index || 0, c.Var2Index || 0, c.Var3Index || 0);
       if (maxIdx === 0) globalClues.push(c);
-      else partialClues.push({ clue: c, maxIdx });
+      else partialByIndex[maxIdx].push(c);
     }
   }
+
+  // Precompute the value try-order per variable position once, up front,
+  // instead of rebuilding it on every recursive call.
+  const valueOrders = keys.map(key => {
+    if (biasSol) {
+      const first = biasSol[key];
+      const rest = [];
+      for (let n = 1; n <= 10; n++) if (n !== first) rest.push(n);
+      return [first, ...rest];
+    }
+    return DEFAULT_VALUE_ORDER;
+  });
 
   function backtrack(varIndex, usedMask) {
     if (solutions.length >= maxSolutions) return;
@@ -768,18 +794,19 @@ function findSolutionsForClues(clues, maxSolutions = 2) {
     }
 
     const key = keys[varIndex - 1];
-    for (let n = 1; n <= 10; n++) {
+    const order = valueOrders[varIndex - 1];
+    const relevantClues = partialByIndex[varIndex];
+    for (let oi = 0; oi < order.length; oi++) {
+      const n = order[oi];
       const bit = 1 << (n - 1);
       if (usedMask & bit) continue;
 
       sol[key] = n;
 
-      // Early pruning: check partial clues fully assigned up to varIndex
+      // Early pruning: only the clues that become fully assigned at this depth
       let ok = true;
-      for (const { clue, maxIdx } of partialClues) {
-        if (maxIdx === varIndex) {          // all vars of this clue now assigned
-          if (!checkClue(sol, clue)) { ok = false; break; }
-        }
+      for (let ci = 0; ci < relevantClues.length; ci++) {
+        if (!checkClue(sol, relevantClues[ci])) { ok = false; break; }
       }
 
       if (ok) backtrack(varIndex + 1, usedMask | bit);
@@ -805,7 +832,7 @@ function exhaustivePrune(clues, targetSol) {
     let i = 0;
     while (i < working.length) {
       const without = working.filter((_, idx) => idx !== i);
-      const sols = findSolutionsForClues(without, 2);
+      const sols = findSolutionsForClues(without, 2, targetSol);
       if (sols.length === 1 &&
           sols[0].a === targetSol.a && sols[0].b === targetSol.b &&
           sols[0].c === targetSol.c && sols[0].d === targetSol.d &&
@@ -879,7 +906,7 @@ if (candidate.Operator === "prime" || candidate.Operator === "not prime") {
     }
 
     // Step 2: verify the pool forces a unique solution (needed before pruning)
-    const solsPool = findSolutionsForClues(pool, 2);
+    const solsPool = findSolutionsForClues(pool, 2, sol);
     if (solsPool.length !== 1 ||
         solsPool[0].a !== sol.a || solsPool[0].b !== sol.b ||
         solsPool[0].c !== sol.c || solsPool[0].d !== sol.d ||
@@ -896,7 +923,7 @@ if (candidate.Operator === "prime" || candidate.Operator === "not prime") {
 
     // Step 4: final validation — unique, correct solution, within clue limit
     if (pruned.length > 6) continue;
-    const finalSols = findSolutionsForClues(pruned, 2);
+    const finalSols = findSolutionsForClues(pruned, 2, sol);
     if (finalSols.length !== 1) continue;
     if (finalSols[0].a !== sol.a || finalSols[0].b !== sol.b ||
         finalSols[0].c !== sol.c || finalSols[0].d !== sol.d ||

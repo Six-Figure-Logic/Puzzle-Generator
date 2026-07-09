@@ -78,11 +78,16 @@
     const gen = window.generatePuzzle;
     const score = window._scorePuzzle;
     const rate = window._computePuzzleRating;
-     const poolSize = difficulty === 'expert' ? 35 : 10;
+
+    // Pool size per attempt. Expert redraws with a random pool size between
+    // 10–25 each time to vary difficulty and reduce generation speed.
+    function nextPoolSize() {
+      return difficulty === 'expert' ? 10 + Math.floor(Math.random() * 16) : 10;
+    }
 
     try {
       for (let attempt = 0; attempt < 5000; attempt++) {
-        const candidate = gen(poolSize, difficulty === 'hard' || difficulty === 'expert');
+        const candidate = gen(nextPoolSize(), difficulty === 'hard' || difficulty === 'expert');
         if (!candidate || !candidate._rawClues) continue;
         if (!fallbackCandidate) fallbackCandidate = candidate;
         const elim = score(candidate._rawClues, candidate);

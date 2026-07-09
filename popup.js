@@ -428,11 +428,10 @@
     const CHUNK = 50, MAX = 5000;
     let tried = 0, sol = null;
 
-    // Pool size per attempt. 2001+ puzzles redraw with a random pool size
-    // between 20–35 each time (instead of a fixed 35) to vary the difficulty and reduce generation speed.
+// Pool size per attempt. Expert (1801+) redraws with a random pool size
+    // between 10–25 each time to vary the difficulty and reduce generation speed.
     function nextPoolSize() {
-      if (range.min >= 2001) return 20 + Math.floor(Math.random() * 16); // 20..35
-      return range.min >= 1801 ? 12 : 10;
+      return range.min >= 1801 ? 10 + Math.floor(Math.random() * 16) : 10; // expert: 10..25
     }
 
     function runChunk() {
