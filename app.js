@@ -2834,7 +2834,7 @@ window._sfgame = {
     weRenderStep(weStep);
   }
 
-window.openWorkedExample = window.openWorkedExample = function() {
+window.openWorkedExample = function() {
   const overlay = document.getElementById('workedExampleModal');
   if (!overlay) return;
   overlay.classList.add('open');
