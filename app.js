@@ -384,7 +384,7 @@ function resetGrid() {
   });
   updateUndoRedoBtns();
   if (window.SFLSession && window.SFLSession.triggerSave) window.SFLSession.triggerSave();
-}
+} 
 
 // Populate selects 1..10
 function populateAnswerSelects() {

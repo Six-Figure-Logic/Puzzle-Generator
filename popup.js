@@ -67,6 +67,7 @@
   window._sflPuzzleContext = {
     isDaily: false,
     dailyDifficulty: null,
+    dailyDate: null,
   };
 
   // ─── DOM refs (assigned on DOMContentLoaded) ────────────────────────────
@@ -255,6 +256,7 @@
 
     window._sflPuzzleContext.isDaily = true;
     window._sflPuzzleContext.dailyDifficulty = difficulty;
+    window._sflPuzzleContext.dailyDate = window.SFLDaily.getDateString();
 
     setTimeout(() => {
       const today = window.SFLDaily.getDateString();
@@ -546,6 +548,10 @@
   function captureDailyCompletionState(solveTime, gaveUp, mistakes, penaltySecs, grade) {
     const ctx = window._sflPuzzleContext;
     if (!ctx.isDaily || !ctx.dailyDifficulty) return;
+    // Puzzle spanned the midnight ET rollover — leave today's daily slot untouched so it's still playable. 
+    // Solve history recording (separate code path below, unaffected by this) still captures the result.
+    if (ctx.dailyDate && ctx.dailyDate !== window.SFLDaily.getDateString())
+      return;
 
     const gridEl = document.getElementById('grid');
     const gridState = {};

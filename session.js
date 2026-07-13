@@ -157,9 +157,10 @@
     window.applyNewPuzzle(state.solution);
 
     // Restore daily context (applyNewPuzzle/lockGame resets it to non-daily)
-    if (state.puzzleContext && window._sflPuzzleContext) {
+        if (state.puzzleContext && window._sflPuzzleContext) {
       window._sflPuzzleContext.isDaily = state.puzzleContext.isDaily || false;
       window._sflPuzzleContext.dailyDifficulty = state.puzzleContext.dailyDifficulty || null;
+      window._sflPuzzleContext.dailyDate = state.puzzleContext.dailyDate || null;
       window._sflPuzzleContext.isReview = false; // never restore into review mode
     }
 
