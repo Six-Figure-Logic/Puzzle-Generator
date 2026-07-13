@@ -377,7 +377,11 @@ function resetGrid() {
     c.setAttribute('aria-pressed','false');
   });
   for (const k in letterLocks) delete letterLocks[k];
-  for (const k in columnLocks) delete columnLocks[k];   // ← add this
+  for (const k in columnLocks) delete columnLocks[k];
+  inputIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.value = ''; el.classList.remove('answer-duplicate'); }
+  });
   updateUndoRedoBtns();
   if (window.SFLSession && window.SFLSession.triggerSave) window.SFLSession.triggerSave();
 }
