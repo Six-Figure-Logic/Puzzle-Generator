@@ -616,7 +616,9 @@ header h1 {
   padding: 0;
   line-height: 1;
 }
-.col-elim-btn:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-dim); }
+@media (hover: hover) and (pointer: fine) {
+  .col-elim-btn:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-dim); }
+}
 .column-header-row { margin-bottom: -4px; }
 
 /* ── CASUAL | RATED pill toggle ── */
