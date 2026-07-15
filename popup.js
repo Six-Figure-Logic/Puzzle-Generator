@@ -358,14 +358,19 @@
   function setBackMode(active) {
     if (!newPuzzleBtn) return;
     const solBtn = document.getElementById('showSolutionBtn');
+    const hintBtn = document.getElementById('hintBtn');
     if (active) {
       newPuzzleBtn.innerHTML = '<span class="btn-icon">< Back</span>';
       newPuzzleBtn.dataset.backMode = '1';
       if (solBtn) solBtn.style.display = '';
+      // Reviewing any puzzle (even a rated one) is free analysis —
+      // hint should be available just like show-solution.
+      if (hintBtn) hintBtn.style.display = '';
     } else {
       newPuzzleBtn.innerHTML = '<span class="btn-icon">START</span>';
       newPuzzleBtn.dataset.backMode = '';
       if (solBtn) solBtn.style.display = 'none';
+      if (hintBtn) hintBtn.style.display = 'none';
     }
   }
 
@@ -482,6 +487,7 @@
   // ═══════════════════════════════════════════════════════════════════════
 
   window._sflApplyPuzzleLayout = function (sol) {
+    if (window._sflClearHintGlow) window._sflClearHintGlow();
     if (sol && sol.A !== undefined && sol.a === undefined) {
       sol.a = sol.A; sol.b = sol.B; sol.c = sol.C;
       sol.d = sol.D; sol.e = sol.E; sol.f = sol.F;

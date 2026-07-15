@@ -206,8 +206,8 @@ header h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  padding: 9px 16px;
+  gap: 5px;
+  padding: 9px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
@@ -223,10 +223,12 @@ header h1 {
 
 .btn.primary {
   background: var(--accent);
-  width: 140px;
+  min-width: 100px;
+  width: fit-content;
+  padding: 0 15px;
   height: 48px;
   color: #0d0f14;
-  font-size: 18px;
+  font-size: 16px;
   border-color: var(--accent);
   -webkit-text-stroke-width: 1px;
   -webkit-text-stroke-color: #0d0f14;
@@ -276,6 +278,16 @@ header h1 {
   color: var(--text);
 }
 
+#hintBtn {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+#hintBtn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(232,255,71,0.1);
+}
+
 /* ══════════════════════════════════════════
    MAIN GAME LAYOUT (3-column: clues / answers / grid)
 ══════════════════════════════════════════ */
@@ -290,7 +302,7 @@ header h1 {
 
 .topbar-clues   { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 10px; }
 .topbar-answers { grid-column: 2; grid-row: 1; display: flex; align-items: center; justify-content: center; }
-.topbar-grid    { grid-column: 3; grid-row: 1; display: flex; align-items: center; gap: 10px; }
+.topbar-grid    { grid-column: 3; grid-row: 1; display: flex; align-items: flex-start; gap: 10px; }
 
 .clues-card   { grid-column: 1; grid-row: 2; align-self: stretch; display: flex; flex-direction: column; }
 .answers-card { grid-column: 2; grid-row: 2; align-self: stretch; width: 120px; }
@@ -368,6 +380,7 @@ header h1 {
   white-space: nowrap;
   flex: 1;
   min-width: 0;
+  margin-top: 24px;
 }
 .feedback.correct {
   color: var(--success);
@@ -378,6 +391,11 @@ header h1 {
   color: var(--danger);
   background: var(--danger-dim);
   border-color: rgba(255,77,106,0.25);
+}
+.feedback.hint {
+  color: var(--accent);
+  background: var(--accent-dim);
+  border-color: rgba(232,255,71,0.3);
 }
 
 .timer {
@@ -604,6 +622,20 @@ header h1 {
   }
 }
 
+/* ── Hint highlight ── */
+@keyframes hint-pulse-yellow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232,255,71,0); background: var(--surface2); }
+  50%       { box-shadow: 0 0 14px 4px rgba(232,255,71,0.55); background: rgba(232,255,71,0.28); }
+}
+.cell.hint-glow {
+  animation: hint-pulse-yellow 1s ease-in-out infinite;
+  border-color: var(--accent);
+}
+#cluesList li.clue-hint {
+  animation: hint-pulse-yellow 1s ease-in-out infinite;
+  border-color: var(--accent) !important;
+}
+
 .column-header-btns { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; flex: 1; }
 .col-elim-btn {
   aspect-ratio: 1; height: 26px; border-radius: 6px;
@@ -681,7 +713,7 @@ header h1 {
 }
 .penalty-time.visible { display: inline; }
 
-.topbar-clues { display: flex; flex-direction: row; align-items: center; gap: 6px; }
+.topbar-clues { display: flex; flex-direction: row; align-items: center; gap: 4px; flex-wrap: wrap;}
 .topbar-clues-row1 { display: flex; align-items: center; gap: 10px; }
 .topbar-clues-row2 { display: flex; align-items: center; gap: 10px; width: 100%; }
 
@@ -2223,8 +2255,8 @@ header h1 {
     align-items: center;
   }
 
-  .topbar-clues   { grid-column: 1 / 3; grid-row: 1; justify-content: flex-start; }
-  .clues-card     { grid-column: 1 / 3; grid-row: 2; }
+  .topbar-clues   { grid-column: 1 / 3; grid-row: 1; justify-content: flex-start; flex-wrap: nowrap; overflow: visible; }
+  #showSolutionBtn { flex-shrink: 0; }  .clues-card     { grid-column: 1 / 3; grid-row: 2; }
   .answers-card   { grid-column: 3 / 4; grid-row: 2; }
 
 .clues-card,
@@ -2246,7 +2278,7 @@ header h1 {
   .mistake-boxes       { grid-column: 3; grid-row: 3; justify-self: end; }
   #resetGridBtn       { grid-column: 1; grid-row: 4; width: 100%; font-size: 12px; padding: 9px 6px; }
   #checkBtn           { grid-column: 2 / 4; grid-row: 4; width: 100%; }
-  #feedback           { grid-column: 1 / 4; grid-row: 5; width: 100%; text-align: center; }
+  #feedback           { grid-column: 1 / 4; grid-row: 5; width: 100%; text-align: center; margin-top: 0; }
   #feedback:empty     { padding: 0; border: none; min-height: 0; }
   .grid-card          { grid-column: 1 / 4; grid-row: 6; }
 

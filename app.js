@@ -98,6 +98,7 @@ function assignLetterValue(letter, value, recordHistory = true) {
 // Scans all rows; any row down to exactly one live candidate gets that value auto-assigned to its dropdown (if not already set). 
 // Runs after any grid mutation that could narrow a row: manual toggles, column eliminations, undo/redo, and lock cascades.
 function checkAutoAssignRows() {
+  if (window._sflClearHintGlow) window._sflClearHintGlow();
   // Step 1: if a letter's assigned value is no longer its row's sole survivor (a sibling cell in its own row got reopened), clear the
   // assignment. We only forget the lock bookkeeping here — we deliberately do NOT restore any crossed cells, since those reflect
   // the player's own toggle history.
@@ -943,23 +944,18 @@ if (candidate.Operator === "prime" || candidate.Operator === "not prime") {
 
   // Difficulty scoring. Calculates "wall size" (elim) and WED - combination of clue entangelment and clue complexity. Lower score = easier puzzle.
 
-  function scorePuzzle(clues, sol) {
-    // Virtual grid: grid[varIdx 0..5][val 1..10] = true if candidate still alive
-    const grid = Array.from({ length: 6 }, () => {
-      const row = new Array(11).fill(false);
-      for (let v = 1; v <= 10; v++) row[v] = true;
-      return row;
-    });
-
+  // Standalone (not nested in scorePuzzle) so it can run against any grid —
+  // a fresh one (scorePuzzle) or a live DOM-derived snapshot (hint system).
+  // getMin/getMax/clear are scoped to the passed-in grid, no shared state.
+  function applyClueToGrid(grid, c) {
     function getMin(r) { for (let v=1;v<=10;v++) if (grid[r][v]) return v; return 0; }
     function getMax(r) { for (let v=10;v>=1;v--) if (grid[r][v]) return v; return 0; }
     function clear(r, v) { grid[r][v] = false; }
 
-    function applyClue(c) {
-      const r1 = c.Var1Index - 1, r2 = c.Var2Index - 1, r3 = c.Var3Index - 1;
-      const op = c.Operator;
+    const r1 = c.Var1Index - 1, r2 = c.Var2Index - 1, r3 = c.Var3Index - 1;
+    const op = c.Operator;
 
-      switch(op) {
+    switch(op) {
         case '+': {
           const n = c.Value;
           // remove values >= n from both; remove n/2 if n even; propagate
@@ -1417,8 +1413,16 @@ case 'no product': {
             }
           } break;
         }
-      }
-    }
+      } // end switch
+    } // end applyClueToGrid
+
+  function scorePuzzle(clues, sol) {
+    // Virtual grid: grid[varIdx 0..5][val 1..10] = true if candidate still alive
+    const grid = Array.from({ length: 6 }, () => {
+      const row = new Array(11).fill(false);
+      for (let v = 1; v <= 10; v++) row[v] = true;
+      return row;
+    });
 
     // UniqueEliminator: naked singles + naked pairs/triples/quads
     function uniqueElim() {
@@ -1463,7 +1467,7 @@ case 'no product': {
       for (let ri=0;ri<6;ri++) for(let v=1;v<=10;v++) if(grid[ri][v]) count++;
       if (count === prevCount) break;
       prevCount = count;
-      for (const c of clues) applyClue(c);
+      for (const c of clues) applyClueToGrid(grid, c);
       uniqueElim();
     }
 
@@ -1768,6 +1772,8 @@ function computePuzzleRating(rawClues, elim, sol) {
   window._computePuzzleRating = computePuzzleRating;
   window._maxPossibleRating   = maxPossibleRating;
   window._ratingToDifficulty  = ratingToDifficulty;
+  window._applyClueToGrid     = applyClueToGrid;
+  window._clueComplexityScore = clueComplexityScore;
 
   window.generatePuzzle    = generatePuzzleJS;
   window._checkCluePublic  = checkClue;
@@ -1776,6 +1782,7 @@ function computePuzzleRating(rawClues, elim, sol) {
 
 
 function applyNewPuzzle(sol) {
+  if (window._sflClearHintGlow) window._sflClearHintGlow();
   // Normalize uppercase keys {A..F} → lowercase {a..f} for scorePuzzle/checkClue
   if (sol && sol.A !== undefined && sol.a === undefined) {
     sol.a = sol.A; sol.b = sol.B; sol.c = sol.C;
@@ -1842,6 +1849,7 @@ function resetClueColors() {
 }
 
 function checkAnswers() {
+  if (window._sflClearHintGlow) window._sflClearHintGlow();
   if (!currentSolution) {
     feedbackEl.textContent = 'Generate a puzzle first.';
     feedbackEl.className = 'feedback incorrect';
@@ -2273,6 +2281,9 @@ populateAnswerSelects();
     const r = document.getElementById('popupModeRated');
     if (c) c.classList.toggle('active', mode === 'casual');
     if (r) r.classList.toggle('active', mode === 'rated');
+    // Hint only available in casual — rated play shouldn't get free eliminations
+    const hintBtn = document.getElementById('hintBtn');
+    if (hintBtn) hintBtn.style.display = (mode === 'rated') ? 'none' : '';
   }
   setMode('casual');
 
@@ -2368,12 +2379,16 @@ populateAnswerSelects();
     if (_pc2) _pc2.disabled = false;
     if (_pr2) _pr2.disabled = false;
 
-    newPuzzleBtn.innerHTML = '<span class="btn-icon">< BACK</span>';
+    newPuzzleBtn.innerHTML = '< BACK';
     newPuzzleBtn.dataset.backMode = '1';
     newPuzzleBtn.classList.remove('give-up-active');
     penaltyEl.classList.remove('visible');
     const solBtn = document.getElementById('showSolutionBtn');
     if (solBtn) solBtn.style.display = '';
+    // Once a puzzle ends (solved, failed, or given up) it's in free-review —
+    // hint should be available for analysis even if the game was rated.
+    const hintBtn = document.getElementById('hintBtn');
+    if (hintBtn) hintBtn.style.display = '';
   }
 
   // ─── Give up logic ────────────────────────────────────────────────────────
@@ -3151,4 +3166,217 @@ function getShareData() {
 
     update();
   });
+})();
+
+// ══════════════════════════════════════════
+// HINT SYSTEM (casual mode only)
+// Ported from the Excel "Wall Analysis" VBA (TestSubset/SearchAssignments):
+// for a candidate cell (row, val) still alive on the LIVE grid, a clue subset
+// "eliminates" it if there is NO valid assignment of the other five rows —
+// using only their CURRENT live candidates, all pairwise distinct — that
+// satisfies every clue in the subset while row=val. If no such assignment
+// exists anywhere in the search, that subset logically rules the cell out,
+// even though no single propagation rule may have caught it directly.
+//
+// This is a proper backtracking search (like findSolutionsForClues), not
+// constraint-propagation narrowing — which is what makes it able to find
+// multi-clue eliminations that pure per-clue rules miss.
+//
+// Staged fallback: 1 clue -> 2 clues -> 3 clues -> ... up to the puzzle's
+// full clue count. Within each size, combos are tried in ascending order of
+// combined complexity score, so the easiest clue/clue-combo is always the
+// one offered first.
+// ══════════════════════════════════════════
+(function () {
+  'use strict';
+
+  // Ops that only make sense once every variable is assigned (mirrors
+  // GLOBAL_OPS in findSolutionsForClues / computeWED) — can't be pruned
+  // incrementally mid-search, only checked at the leaf.
+  const GLOBAL_HINT_OPS = new Set(['largest','smallest','not largest','not smallest','no sum','no product']);
+
+  function snapshotGridFromDOM() {
+    const grid = Array.from({ length: 6 }, () => new Array(11).fill(false));
+    gridEl.querySelectorAll('.cell').forEach(cell => {
+      const r = inputIds.indexOf(cell.dataset.row);
+      const v = parseInt(cell.dataset.value, 10);
+      if (r >= 0) grid[r][v] = !cell.classList.contains('crossed'); // true = still alive
+    });
+    return grid;
+  }
+
+  function isFullyAssigned(c, fixed) {
+    return (!c.Var1Index || fixed[c.Var1Index - 1]) &&
+           (!c.Var2Index || fixed[c.Var2Index - 1]) &&
+           (!c.Var3Index || fixed[c.Var3Index - 1]);
+  }
+
+  // Backtracking search (VBA's SearchAssignments): does any valid assignment
+  // exist — using only `grid`'s current live candidates, all distinct —
+  // that satisfies every clue in comboIdxs while fixed[targetRow]=targetVal?
+  function existsValidAssignment(grid, rawClues, comboIdxs, targetRow, targetVal) {
+    const fixed = new Array(6).fill(0);
+    fixed[targetRow] = targetVal;
+    let found = false;
+
+    const globalIdxs = [], partialIdxs = [];
+    for (const idx of comboIdxs) {
+      const c = rawClues[idx];
+      (GLOBAL_HINT_OPS.has(c.Operator) ? globalIdxs : partialIdxs).push(idx);
+    }
+
+    function backtrack(rowIdx) {
+      if (found) return;
+      if (rowIdx === 6) {
+        const s = { a: fixed[0], b: fixed[1], c: fixed[2], d: fixed[3], e: fixed[4], f: fixed[5] };
+        for (const idx of globalIdxs) {
+          if (!window._checkCluePublic(s, rawClues[idx])) return;
+        }
+        found = true;
+        return;
+      }
+      if (fixed[rowIdx] !== 0) { backtrack(rowIdx + 1); return; }
+
+      for (let v = 1; v <= 10; v++) {
+        if (!grid[rowIdx][v]) continue; // must still be a live candidate
+        let used = false;
+        for (let r = 0; r < 6; r++) if (r !== rowIdx && fixed[r] === v) { used = true; break; }
+        if (used) continue;
+
+        fixed[rowIdx] = v;
+        const s = { a: fixed[0], b: fixed[1], c: fixed[2], d: fixed[3], e: fixed[4], f: fixed[5] };
+        let ok = true;
+        for (const idx of partialIdxs) {
+          const c = rawClues[idx];
+          if (isFullyAssigned(c, fixed) && !window._checkCluePublic(s, c)) { ok = false; break; }
+        }
+        if (ok) backtrack(rowIdx + 1);
+        fixed[rowIdx] = 0;
+        if (found) return;
+      }
+    }
+
+    backtrack(0);
+    return found;
+  }
+
+  function* combinationsIdx(n, k) {
+    if (k > n) return;
+    const idx = Array.from({ length: k }, (_, i) => i);
+    while (true) {
+      yield idx.slice();
+      let i = k - 1;
+      while (i >= 0 && idx[i] === n - k + i) i--;
+      if (i < 0) return;
+      idx[i]++;
+      for (let j = i + 1; j < k; j++) idx[j] = idx[j - 1] + 1;
+    }
+  }
+
+  function comboCost(combo, scores) {
+    return combo.reduce((p, idx) => p * scores[idx], 1);
+  }
+
+  // Cells eliminable from pure distinctness/pigeonhole alone — no clues
+  // involved. (E.g. two other rows locked to a naked pair {2,3} already
+  // forces every other row away from 2 and 3, regardless of what any clue
+  // says.) existsValidAssignment enforces "all six values distinct" as a
+  // hard constraint no matter which clues are passed in, so testing with
+  // comboIdxs=[] isolates exactly that baseline effect.
+  function computeBaselineImpossible(grid, rawClues) {
+    const impossible = new Set();
+    for (let row = 0; row < 6; row++) {
+      let aliveCount = 0;
+      for (let v = 1; v <= 10; v++) if (grid[row][v]) aliveCount++;
+      if (aliveCount <= 1) continue;
+      for (let v = 1; v <= 10; v++) {
+        if (!grid[row][v]) continue;
+        if (!existsValidAssignment(grid, rawClues, [], row, v)) {
+          impossible.add(row + ',' + v);
+        }
+      }
+    }
+    return impossible;
+  }
+
+  // Returns { clueIdxs: [...], cells: [{row,value}, ...] } or null if no
+  // clue subset of any size eliminates anything beyond the current grid.
+  function computeHint() {
+    const sol = window.currentSolution;
+    if (!sol || !sol._rawClues || !sol._rawClues.length) return null;
+    const rawClues = sol._rawClues;
+    const grid = snapshotGridFromDOM();
+    const n = rawClues.length;
+    const scores = rawClues.map(c => window._clueComplexityScore(c));
+
+    // Anything already forced by pure uniqueness (naked pairs/triples etc.)
+    // doesn't belong to any specific clue — exclude it so no combo gets
+    // wrongly credited for a deduction it had no part in.
+    const baseline = computeBaselineImpossible(grid, rawClues);
+
+    for (let size = 1; size <= n; size++) {
+      // Easiest clue/combo first — sorted ascending by combined complexity.
+      const combos = [...combinationsIdx(n, size)];
+      combos.sort((a, b) => comboCost(a, scores) - comboCost(b, scores));
+
+      for (const combo of combos) {
+        const cells = [];
+        for (let row = 0; row < 6; row++) {
+          let aliveCount = 0;
+          for (let v = 1; v <= 10; v++) if (grid[row][v]) aliveCount++;
+          if (aliveCount <= 1) continue; // already solved — nothing to hint here
+
+          for (let v = 1; v <= 10; v++) {
+            if (!grid[row][v]) continue;
+            if (baseline.has(row + ',' + v)) continue; // not this combo's doing
+            if (!existsValidAssignment(grid, rawClues, combo, row, v)) {
+              cells.push({ row, value: v });
+            }
+          }
+        }
+        if (cells.length) return { clueIdxs: combo, cells };
+      }
+    }
+    return null;
+  }
+
+  function clearHintGlow() {
+    gridEl.querySelectorAll('.cell.hint-glow').forEach(c => c.classList.remove('hint-glow'));
+    const cluesList = document.getElementById('cluesList');
+    if (cluesList) cluesList.querySelectorAll('li.clue-hint').forEach(li => li.classList.remove('clue-hint'));
+  }
+  window._sflClearHintGlow = clearHintGlow;
+
+  // Grammar-correct singular/plural for however many clues/cells this hint involves.
+  function buildHintMessage(hint) {
+    const nClues = hint.clueIdxs.length;
+    const nCells = hint.cells.length;
+    const hintPhrase  = nClues === 1 ? 'this hint'  : 'these hints';
+    const valuePhrase = nCells === 1 ? 'this value'  : 'these values';
+    return `Given the grid state, <br />${hintPhrase} can eliminate ${valuePhrase}`;
+  }
+
+  const hintBtn = document.getElementById('hintBtn');
+  if (hintBtn) {
+    hintBtn.addEventListener('click', () => {
+      clearHintGlow();
+      const hint = computeHint();
+      if (!hint) {
+        feedbackEl.innerHTML = 'Think you have the answer? click CHECK.<br />Stuck? Click UNDO [↶] or RESET GRID.';
+        feedbackEl.className = 'feedback hint';
+        return;
+      }
+      hint.cells.forEach(({ row, value }) => {
+        const cell = gridEl.querySelector(`.cell[data-row="${inputIds[row]}"][data-value="${value}"]`);
+        if (cell) cell.classList.add('hint-glow');
+      });
+      const cluesList = document.getElementById('cluesList');
+      if (cluesList) {
+        const items = cluesList.querySelectorAll('li:not(.clue-placeholder)');
+        hint.clueIdxs.forEach(idx => { if (items[idx]) items[idx].classList.add('clue-hint'); });
+      }
+      feedbackEl.innerHTML = buildHintMessage(hint);
+      feedbackEl.className = 'feedback hint';
+    });
+  }
 })();
