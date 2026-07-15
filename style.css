@@ -2351,10 +2351,9 @@ header h1 {
     overflow-y: auto;
     min-height: 0;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 24px;
   }
 
-  .modal-page { overflow: visible; min-height: auto; }
+  .modal-page { overflow: visible; min-height: auto; padding-bottom: 32px; }
 
   .modal-tab { font-size: 14px; padding: 12px 8px; }
   .modal-section-title { font-size: 18px; }
