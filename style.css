@@ -2382,6 +2382,7 @@ header h1 {
     padding-top: 8px;
     margin-top: 4px;
   }
+  .we-nav-btn.primary { font-size: 14px; padding: 0 10px; }
   .we-clues-block { padding: 8px; }
   .we-clues-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
   .we-clues-list li { text-align: center; padding: 4px 6px; font-size: 11px; }
