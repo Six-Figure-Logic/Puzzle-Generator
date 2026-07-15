@@ -3351,7 +3351,7 @@ function getShareData() {
   function buildHintMessage(hint) {
     const nClues = hint.clueIdxs.length;
     const nCells = hint.cells.length;
-    const hintPhrase  = nClues === 1 ? 'this hint'  : 'these hints';
+    const hintPhrase  = nClues === 1 ? 'this clue'  : 'these clues';
     const valuePhrase = nCells === 1 ? 'this value'  : 'these values';
     return `Given the grid state, <br />${hintPhrase} can eliminate ${valuePhrase}`;
   }
@@ -3362,7 +3362,7 @@ function getShareData() {
       clearHintGlow();
       const hint = computeHint();
       if (!hint) {
-        feedbackEl.innerHTML = 'Think you have the answer? click CHECK.<br />Stuck? Click UNDO [↶] or RESET GRID.';
+        feedbackEl.innerHTML = 'Think you have the answer? Click CHECK<br />Stuck? Click UNDO [↶] or RESET GRID';
         feedbackEl.className = 'feedback hint';
         return;
       }
