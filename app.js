@@ -2868,7 +2868,7 @@ window._sfgame = {
       nxt.disabled = false; // "Done" closes the sub-modal
       nxt.dataset.done = '1';
     } else {
-      nxt.innerHTML = 'Next Step &#x2192;';
+      nxt.innerHTML = 'Next <span class="we-next-full">Step </span>&#x2192;';
       nxt.dataset.done = '';
     }
   }
