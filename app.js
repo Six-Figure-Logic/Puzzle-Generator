@@ -3299,8 +3299,32 @@ function getShareData() {
     return impossible;
   }
 
-  // Returns { clueIdxs: [...], cells: [{row,value}, ...] } or null if no
+  // Classifies eliminated cells by whether their ROW is directly referenced
+  // by the combo's own clues (surface/primary) or not (cascade — that row's
+  // elimination is only a knock-on effect of the combo's own rows getting
+  // resolved first, propagating into rows the combo never mentions).
+  // Clues with no specific row (global ops: no sum/no product/largest/
+  // smallest/not largest/not smallest) implicate every row directly, since
+  // their effect isn't localized to named variables.
+  function getComboRowScope(rawClues, comboIdxs) {
+    const referencedRows = new Set();
+    let hasGlobalOp = false;
+    comboIdxs.forEach(idx => {
+      const c = rawClues[idx];
+      // GLOBAL_HINT_OPS clues (largest/smallest/not largest/not smallest/
+      // no sum/no product) compare against — or exclude pairs across — ALL
+      // six variables, so their elimination reach isn't limited to the row(s)
+      // in Var1Index/Var2Index/Var3Index even when one is set.
+      if (GLOBAL_HINT_OPS.has(c.Operator)) { hasGlobalOp = true; return; }
+      [c.Var1Index, c.Var2Index, c.Var3Index].filter(Boolean).forEach(i => referencedRows.add(i - 1));
+    });
+    return { referencedRows, hasGlobalOp };
+  }
+
+  // Returns { clueIdxs: [...], cells: [{row,value,depth}, ...] } or null if no
   // clue subset of any size eliminates anything beyond the current grid.
+  // depth is 'surface' (direct from the clue combo) or 'cascade' (only
+  // falls out after further propagation rounds).
   function computeHint() {
     const sol = window.currentSolution;
     if (!sol || !sol._rawClues || !sol._rawClues.length) return null;
@@ -3319,7 +3343,19 @@ function getShareData() {
       const combos = [...combinationsIdx(n, size)];
       combos.sort((a, b) => comboCost(a, scores) - comboCost(b, scores));
 
+      // Scan combos in ascending-cost order. Once we find the cheapest cost
+      // tier that eliminates anything, evaluate every combo tied at that
+      // same cost (ties are contiguous since combos are sorted) and pick
+      // among them by SURFACE-level elimination count only — cascaded
+      // eliminations (see classifyEliminationDepth) don't count toward this
+      // tiebreak, so a combo doesn't win just because it happens to trigger
+      // a long chain reaction.
+      let bestCombo = null, bestCells = null, bestSurface = -1, tieCost = null;
+
       for (const combo of combos) {
+        const cost = comboCost(combo, scores);
+        if (tieCost !== null && cost > tieCost) break; // past the tied tier — done
+
         const cells = [];
         for (let row = 0; row < 6; row++) {
           let aliveCount = 0;
@@ -3334,14 +3370,27 @@ function getShareData() {
             }
           }
         }
-        if (cells.length) return { clueIdxs: combo, cells };
+        if (!cells.length) continue;
+
+        const { referencedRows, hasGlobalOp } = getComboRowScope(rawClues, combo);
+        const isSurface = (row) => hasGlobalOp || referencedRows.has(row);
+        const surfaceCount = cells.filter(c => isSurface(c.row)).length;
+
+        if (tieCost === null) tieCost = cost;
+        if (surfaceCount > bestSurface) {
+          bestCombo = combo;
+          bestCells = cells.map(c => ({ ...c, depth: isSurface(c.row) ? 'surface' : 'cascade' }));
+          bestSurface = surfaceCount;
+        }
       }
+
+      if (bestCombo) return { clueIdxs: bestCombo, cells: bestCells };
     }
     return null;
   }
 
   function clearHintGlow() {
-    gridEl.querySelectorAll('.cell.hint-glow').forEach(c => c.classList.remove('hint-glow'));
+    gridEl.querySelectorAll('.cell.hint-glow, .cell.hint-glow-cascade').forEach(c => c.classList.remove('hint-glow', 'hint-glow-cascade'));
     const cluesList = document.getElementById('cluesList');
     if (cluesList) cluesList.querySelectorAll('li.clue-hint').forEach(li => li.classList.remove('clue-hint'));
   }
@@ -3366,9 +3415,9 @@ function getShareData() {
         feedbackEl.className = 'feedback hint';
         return;
       }
-      hint.cells.forEach(({ row, value }) => {
+      hint.cells.forEach(({ row, value, depth }) => {
         const cell = gridEl.querySelector(`.cell[data-row="${inputIds[row]}"][data-value="${value}"]`);
-        if (cell) cell.classList.add('hint-glow');
+        if (cell) cell.classList.add(depth === 'cascade' ? 'hint-glow-cascade' : 'hint-glow');
       });
       const cluesList = document.getElementById('cluesList');
       if (cluesList) {
