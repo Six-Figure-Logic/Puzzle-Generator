@@ -397,6 +397,11 @@ header h1 {
   background: var(--accent-dim);
   border-color: rgba(232,255,71,0.3);
 }
+.feedback.hint.hint-uniqueness {
+  color: #ffa032;
+  background: rgba(255,160,50,0.12);
+  border-color: rgba(255,160,50,0.4);
+}
 
 .timer {
   font-family: var(--mono);
@@ -638,6 +643,14 @@ header h1 {
 .cell.hint-glow-cascade {
   animation: hint-pulse-yellow-dim 1s ease-in-out infinite;
   border-color: rgba(232,255,71,0.3);
+}
+@keyframes hint-pulse-orange {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,160,50,0); background: var(--surface2); }
+  50%       { box-shadow: 0 0 14px 4px rgba(255,160,50,0.55); background: rgba(255,160,50,0.28); }
+}
+.cell.hint-glow-uniqueness {
+  animation: hint-pulse-orange 1s ease-in-out infinite;
+  border-color: #ffa032;
 }
 #cluesList li.clue-hint {
   animation: hint-pulse-yellow 1s ease-in-out infinite;

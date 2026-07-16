@@ -3338,6 +3338,19 @@ function getShareData() {
     // wrongly credited for a deduction it had no part in.
     const baseline = computeBaselineImpossible(grid, rawClues);
 
+    // Pure pigeonhole/uniqueness reasoning (no clue needed at all) is
+    // strictly cheaper than any clue-based hint — offer it first, as its
+    // own distinct hint type, so it isn't silently swallowed by the
+    // per-combo baseline exclusion below.
+    if (baseline.size > 0) {
+      const uniquenessCells = [];
+      baseline.forEach(key => {
+        const [r, v] = key.split(',').map(Number);
+        uniquenessCells.push({ row: r, value: v, depth: 'uniqueness' });
+      });
+      return { clueIdxs: [], cells: uniquenessCells, isUniqueness: true };
+    }
+
     for (let size = 1; size <= n; size++) {
       // Easiest clue/combo first — sorted ascending by combined complexity.
       const combos = [...combinationsIdx(n, size)];
@@ -3390,7 +3403,8 @@ function getShareData() {
   }
 
   function clearHintGlow() {
-    gridEl.querySelectorAll('.cell.hint-glow, .cell.hint-glow-cascade').forEach(c => c.classList.remove('hint-glow', 'hint-glow-cascade'));
+    gridEl.querySelectorAll('.cell.hint-glow, .cell.hint-glow-cascade, .cell.hint-glow-uniqueness')
+      .forEach(c => c.classList.remove('hint-glow', 'hint-glow-cascade', 'hint-glow-uniqueness'));
     const cluesList = document.getElementById('cluesList');
     if (cluesList) cluesList.querySelectorAll('li.clue-hint').forEach(li => li.classList.remove('clue-hint'));
   }
@@ -3398,11 +3412,14 @@ function getShareData() {
 
   // Grammar-correct singular/plural for however many clues/cells this hint involves.
   function buildHintMessage(hint) {
-    const nClues = hint.clueIdxs.length;
     const nCells = hint.cells.length;
-    const hintPhrase  = nClues === 1 ? 'this clue'  : 'these clues';
-    const valuePhrase = nCells === 1 ? 'this value'  : 'these values';
-    return `Given the grid state, <br />${hintPhrase} can eliminate ${valuePhrase}`;
+    const valuePhrase = nCells === 1 ? 'this value' : 'these values';
+    if (hint.isUniqueness) {
+      return `Given the grid state, the uniqueness <br />rule eliminates ${valuePhrase}`;
+    }
+    const nClues = hint.clueIdxs.length;
+    const hintPhrase = nClues === 1 ? 'this clue eliminates' : 'these clues eliminate';
+    return `Given the grid state, <br />${hintPhrase} ${valuePhrase}`;
   }
 
   const hintBtn = document.getElementById('hintBtn');
@@ -3417,7 +3434,11 @@ function getShareData() {
       }
       hint.cells.forEach(({ row, value, depth }) => {
         const cell = gridEl.querySelector(`.cell[data-row="${inputIds[row]}"][data-value="${value}"]`);
-        if (cell) cell.classList.add(depth === 'cascade' ? 'hint-glow-cascade' : 'hint-glow');
+        if (!cell) return;
+        const cls = depth === 'uniqueness' ? 'hint-glow-uniqueness'
+                  : depth === 'cascade'    ? 'hint-glow-cascade'
+                  : 'hint-glow';
+        cell.classList.add(cls);
       });
       const cluesList = document.getElementById('cluesList');
       if (cluesList) {
@@ -3425,7 +3446,7 @@ function getShareData() {
         hint.clueIdxs.forEach(idx => { if (items[idx]) items[idx].classList.add('clue-hint'); });
       }
       feedbackEl.innerHTML = buildHintMessage(hint);
-      feedbackEl.className = 'feedback hint';
+      feedbackEl.className = 'feedback hint' + (hint.isUniqueness ? ' hint-uniqueness' : '');
     });
   }
 })();
