@@ -1753,6 +1753,28 @@ function computePuzzleRating(rawClues, elim, sol) {
   return rating;
 }
 
+  // Fast upper-bound rating estimate using only the (already-computed) elim
+  // score, assuming best-case WED_norm = 100.
+
+  // ─────────────────────────────────────────────────────────────────
+  // ⚠ KEEP IN SYNC with computePuzzleRating's E_norm/rating formula.
+  // Any change there (weights, curve, constants) must be mirrored here
+  // or the WED-skip optimization below will reject valid puzzles.
+  // ─────────────────────────────────────────────────────────────────
+  function maxPossibleRating(elim) {
+    let E_norm;
+    if (elim <= 6) {
+      E_norm = 0;
+    } else if (elim <= 45) {
+      E_norm = Math.pow((elim - 6) / 39, 0.85) * 75;
+    } else {
+      E_norm = Math.min(100, 75 + Math.pow((elim - 45) / 9, 0.60) * 25);
+    }
+    // Best case WED_norm=100 is always >= E_norm, so it's the dominant
+    // term (weight 15) and E_norm is the secondary term (weight 7).
+    return Math.round(800 + E_norm * 15 + 100 * 7);
+  }
+
   function ratingToDifficulty(rating) {
     if (rating <= 1000) return 'easy';
     if (rating <= 1400) return 'medium';
@@ -1765,6 +1787,7 @@ function computePuzzleRating(rawClues, elim, sol) {
   // Expose
  window._scorePuzzle         = scorePuzzle;
   window._computePuzzleRating = computePuzzleRating;
+  window._maxPossibleRating   = maxPossibleRating;
   window._ratingToDifficulty  = ratingToDifficulty;
   window._applyClueToGrid     = applyClueToGrid;
   window._clueComplexityScore = clueComplexityScore;
