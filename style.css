@@ -202,6 +202,12 @@ header h1 {
   border-color: rgba(255,77,106,0.4);
 }
 
+.rating-extreme {
+  color: #a855f7;
+  background: rgba(168,85,247,0.14);
+  border-color: rgba(168,85,247,0.45);
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -401,6 +407,12 @@ header h1 {
   color: #ffa032;
   background: rgba(255,160,50,0.12);
   border-color: rgba(255,160,50,0.4);
+}
+.feedback.hint.hint-conflict {
+  color: var(--danger);
+  background: var(--danger-dim);
+  border-color: rgba(255,77,106,0.35);
+  white-space: normal;
 }
 
 .timer {
@@ -651,6 +663,18 @@ header h1 {
 .cell.hint-glow-uniqueness {
   animation: hint-pulse-orange 1s ease-in-out infinite;
   border-color: #ffa032;
+}
+@keyframes hint-pulse-orange-dim {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,160,50,0); background: var(--surface2); }
+  50%       { box-shadow: 0 0 14px 2px rgba(255,160,50,0.22); background: rgba(255,160,50,0.08); }
+}
+.cell.hint-glow-uniqueness-cascade {
+  animation: hint-pulse-orange-dim 1s ease-in-out infinite;
+  border-color: rgba(255,160,50,0.3);
+}
+#cluesList li.clue-hint-uniqueness {
+  animation: hint-pulse-orange 1s ease-in-out infinite;
+  border-color: #ffa032 !important;
 }
 #cluesList li.clue-hint {
   animation: hint-pulse-yellow 1s ease-in-out infinite;
@@ -963,6 +987,7 @@ header h1 {
 .diff-chip.medium { color: var(--accent); background: rgba(232,255,71,0.10); border-color: rgba(232,255,71,0.4); }
 .diff-chip.hard   { color: #ffa032; background: rgba(255,160,50,0.12); border-color: rgba(255,160,50,0.4); }
 .diff-chip.expert { color: var(--danger); background: rgba(255,77,106,0.12); border-color: rgba(255,77,106,0.4); }
+.diff-chip.extreme { color: #a855f7; background: rgba(168,85,247,0.14); border-color: rgba(168,85,247,0.45); }
 
 .clue-table { display: flex; flex-direction: column; gap: 4px; }
 
@@ -2006,6 +2031,7 @@ header h1 {
 .random-range-tier.rating-medium { color: var(--accent); background: rgba(232,255,71,0.10); border-color: rgba(232,255,71,0.35); }
 .random-range-tier.rating-hard   { color: #ffa032; background: rgba(255,160,50,0.12); border-color: rgba(255,160,50,0.35); }
 .random-range-tier.rating-expert { color: var(--danger); background: rgba(255,77,106,0.12); border-color: rgba(255,77,106,0.35); }
+.random-range-tier.rating-extreme { color: #a855f7; background: rgba(168,85,247,0.14); border-color: rgba(168,85,247,0.45); }
 
 .random-launch-btn {
   width: 100%;
@@ -2122,6 +2148,21 @@ header h1 {
 .site-footer a { color: rgba(255,255,255,0.35); text-decoration: none; }
 .site-footer a:hover { color: rgba(255,255,255,0.6); }
 .main-layout:not(.hidden) ~ .site-footer { display: none; }
+
+.whats-new-bar {
+  width: 100vw;
+  position: relative;
+  font-family: bankgothic, oswald, sans-serif;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  padding: 16px 16px 0;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+}
+.whats-new-bar a { color: rgba(255, 255, 255, 0.664); text-decoration: none; }
+.whats-new-bar a:hover { color: rgb(255, 255, 255); }
+.main-layout:not(.hidden) ~ .whats-new-bar { display: none; }
 
 /* ══════════════════════════════════════════
    HISTORY OVERLAY

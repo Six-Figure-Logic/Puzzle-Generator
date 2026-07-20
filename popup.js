@@ -10,7 +10,7 @@
   'use strict';
 
   const HISTORY_KEY = 'sfl_history_v1';
-  const HISTORY_CAP = 200; // per mode (casual/rated), stored together in one array
+  const HISTORY_CAP = 500; // per mode (casual/rated), stored together in one array
 
   function loadHistory() {
     try {
@@ -55,11 +55,26 @@
     { min: 800,  max: 1000, label: '800–1000',  tier: 'easy',   tierLabel: 'EASY' },
     { min: 1001, max: 1200, label: '1001–1200', tier: 'medium', tierLabel: 'MEDIUM' },
     { min: 1201, max: 1400, label: '1201–1400', tier: 'medium', tierLabel: 'MEDIUM' },
-    { min: 1401, max: 1600, label: '1401–1600', tier: 'hard',   tierLabel: 'HARD' },
-    { min: 1601, max: 1800, label: '1601–1800', tier: 'hard',   tierLabel: 'HARD' },
-    { min: 1801, max: 2000, label: '1801–2000', tier: 'expert', tierLabel: 'EXPERT' },
-    { min: 2001, max: 9999, label: '2001+',     tier: 'expert', tierLabel: 'EXPERT' },
+    { min: 1401, max: 1600, label: '1401–1600', tier: 'hard',   tierLabel: 'HARD', locked: true, unlockRating: 1400 },
+    { min: 1601, max: 1800, label: '1601–1800', tier: 'hard',   tierLabel: 'HARD', locked: true, unlockRating: 1400 },
+    { min: 1801, max: 2000, label: '1801–2000', tier: 'expert',  tierLabel: 'EXPERT', locked: true, unlockRating: 1800 },
+    { min: 2001, max: 2200, label: '2001–2200', tier: 'expert',  tierLabel: 'EXPERT', locked: true, unlockRating: 1800 },
+    { min: 2201, max: 2400, label: '2201–2400', tier: 'expert',  tierLabel: 'EXPERT', locked: true, unlockRating: 1800 },
+    { min: 2401, max: 2600, label: '2401–2600', tier: 'extreme', tierLabel: 'EXTREME', locked: true, unlockRating: 2400 },
+    { min: 2601, max: 9999, label: '2601+',     tier: 'extreme', tierLabel: 'EXTREME', locked: true, unlockRating: 2400 },
   ];
+
+  // Player's live rating, used to gate the locked Extreme tier above.
+  function getPlayerRating() {
+    try {
+      return (window.SFLRating && window.SFLRating.getProfile().rating) || 800;
+    } catch (e) { return 800; }
+  }
+
+  function isRangeLocked(range) {
+    if (popupMode !== 'rated') return false; // tiers only lock in rated mode, always open in casual
+    return !!(range.locked && getPlayerRating() < range.unlockRating);
+  }
 
   let currentRangeIdx = 0;
   let popupMode = 'casual';
@@ -140,16 +155,20 @@
     if (window._sfgame && typeof window._sfgame._setMode === 'function') {
       window._sfgame._setMode(mode);
     }
-    if (randomLaunchBtn) {
-      if (mode === 'rated') {
-        randomLaunchBtn.style.background = 'rgba(232,255,71,0.12)';
-        randomLaunchBtn.style.borderColor = 'rgba(232,255,71,0.35)';
-        randomLaunchBtn.style.color = 'var(--accent)';
-      } else {
-        randomLaunchBtn.style.background = '';
-        randomLaunchBtn.style.borderColor = '';
-        randomLaunchBtn.style.color = '';
-      }
+    applyLaunchBtnModeStyle(mode);
+    updateRangeDisplay();
+  }
+
+  function applyLaunchBtnModeStyle(mode) {
+    if (!randomLaunchBtn || isRangeLocked(RANGES[currentRangeIdx])) return;
+    if (mode === 'rated') {
+      randomLaunchBtn.style.background = 'var(--accent-dim)';
+      randomLaunchBtn.style.borderColor = 'rgba(232,255,71,0.35)';
+      randomLaunchBtn.style.color = 'var(--accent)';
+    } else {
+      randomLaunchBtn.style.background = '';
+      randomLaunchBtn.style.borderColor = '';
+      randomLaunchBtn.style.color = '';
     }
   }
 
@@ -401,9 +420,44 @@
   function updateRangeDisplay() {
     const r = RANGES[currentRangeIdx];
     if (!rangeLabelEl || !rangeTierEl) return;
+    const locked = isRangeLocked(r);
+
     rangeLabelEl.textContent = r.label;
-    rangeTierEl.textContent  = r.tierLabel;
+    rangeTierEl.textContent  = locked ? `🔒 ${r.tierLabel}` : r.tierLabel;
     rangeTierEl.className    = `random-range-tier rating-${r.tier}`;
+
+    if (locked) {
+      const tip = `Reach a rating of ${r.unlockRating}+ to unlock ${r.tierLabel} puzzles (you're currently ${getPlayerRating()}).`;
+      rangeTierEl.title  = tip;
+      rangeLabelEl.title = tip;
+      rangeTierEl.style.cursor  = 'help';
+      rangeLabelEl.style.cursor = 'help';
+    } else {
+      rangeTierEl.title  = '';
+      rangeLabelEl.title = '';
+      rangeTierEl.style.cursor  = '';
+      rangeLabelEl.style.cursor = '';
+    }
+
+    if (randomLaunchBtn) {
+      randomLaunchBtn.disabled = locked;
+      randomLaunchBtn.title = locked
+        ? `Reach a rating of ${r.unlockRating}+ to unlock ${r.tierLabel} puzzles.`
+        : '';
+      if (locked) {
+        randomLaunchBtn.style.background   = 'rgba(150,150,150,0.12)';
+        randomLaunchBtn.style.borderColor  = 'rgba(150,150,150,0.35)';
+        randomLaunchBtn.style.color        = '#8a8a8a';
+        randomLaunchBtn.style.cursor       = 'not-allowed';
+      } else {
+        randomLaunchBtn.style.background  = '';
+        randomLaunchBtn.style.borderColor = '';
+        randomLaunchBtn.style.color       = '';
+        randomLaunchBtn.style.cursor      = '';
+        applyLaunchBtnModeStyle(popupMode); // re-apply the casual/rated pill styling
+      }
+    }
+
     if (rangeLeftBtn)  rangeLeftBtn.disabled  = currentRangeIdx === 0;
     if (rangeRightBtn) rangeRightBtn.disabled = currentRangeIdx === RANGES.length - 1;
   }
@@ -429,13 +483,14 @@
     }
 
    const range = RANGES[currentRangeIdx];
+    if (isRangeLocked(range)) return; // guarded UI shouldn't allow this, but double-check
     const gen   = window.generatePuzzle;
     const score = window._scorePuzzle;
     const rate  = window._computePuzzleRating;
     const CHUNK = 50, MAX = 5000;
     let tried = 0, sol = null;
 
-// Pool size per attempt. Expert (1801+) redraws with a random pool size
+// Pool size per attempt. Expert & Extreme (1801+) redraws with a random pool size
     // between 10–25 each time to vary the difficulty and reduce generation speed.
     function nextPoolSize() {
       return range.min >= 1801 ? 10 + Math.floor(Math.random() * 16) : 10; // expert: 10..25
@@ -446,7 +501,7 @@
       while (tried < end) {
         tried++;
         try {
-          const candidate = gen(nextPoolSize(), range.tier === 'hard' || range.tier === 'expert');
+          const candidate = gen(nextPoolSize(), range.tier === 'hard' || range.tier === 'expert' || range.tier === 'extreme');
           if (!candidate || !candidate._rawClues) continue;
           const elim = score(candidate._rawClues, candidate);
           // ── perf: skip expensive WED calc, see maxPossibleRating ──
@@ -466,7 +521,7 @@
       if (sol || tried >= MAX) {
         if (!sol) {
           try {
-            sol = gen(nextPoolSize(), range.tier === 'hard' || range.tier === 'expert');
+            sol = gen(nextPoolSize(), range.tier === 'hard' || range.tier === 'expert' || range.tier === 'extreme');
             if (sol && sol._rawClues) {
               const elim = score(sol._rawClues, sol);
               sol._rating = rate(sol._rawClues, elim, sol);
@@ -863,7 +918,8 @@
       if (r <= 1000) return { color: '#00e5a0', bg: 'rgba(0,229,160,0.12)', border: 'rgba(0,229,160,0.4)' };
       if (r <= 1400) return { color: 'var(--accent)', bg: 'rgba(232,255,71,0.10)', border: 'rgba(232,255,71,0.4)' };
       if (r <= 1800) return { color: '#ffa032', bg: 'rgba(255,160,50,0.12)', border: 'rgba(255,160,50,0.4)' };
-      return { color: 'var(--danger)', bg: 'rgba(255,77,106,0.12)', border: 'rgba(255,77,106,0.4)' };
+      if (r <= 2400) return { color: 'var(--danger)', bg: 'rgba(255,77,106,0.12)', border: 'rgba(255,77,106,0.4)' };
+      return { color: '#a855f7', bg: 'rgba(168,85,247,0.14)', border: 'rgba(168,85,247,0.45)' };
     }
 
     function fmtTime(secs) {

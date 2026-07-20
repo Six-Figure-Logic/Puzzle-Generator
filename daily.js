@@ -53,7 +53,7 @@
     easy:   { min: 800,  max: 1000, label: 'EASY',   color: 'easy' },
     medium: { min: 1001, max: 1400, label: 'MEDIUM',  color: 'medium' },
     hard:   { min: 1401, max: 1800, label: 'HARD',    color: 'hard' },
-    expert: { min: 1801, max: 9999, label: 'EXPERT',  color: 'expert' },
+    expert: { min: 1801, max: 2400, label: 'EXPERT',  color: 'expert' },
   };
   const DAILY_KEYS = ['easy', 'medium', 'hard', 'expert'];
 

@@ -41,7 +41,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.2" />
+  <link rel="stylesheet" href="style.css?v=3.0" />
   <link rel="icon" type="image/png" href="favicon.png">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -226,7 +226,7 @@
   <div class="modal-section">
     <ul>
       <li>DAILY PUZZLES are always casual — no rating pressure.</li>
-      <li>Four new puzzles each day — one per difficulty — refreshing at midnight Eastern Time.</li>
+      <li>Four new puzzles each day — refreshing at midnight Eastern Time.</li>
     </ul>
   </div>
     <br><br>
@@ -235,7 +235,8 @@
     <div class="diff-legend"><span class="diff-chip easy">EASY</span> 800–1000 · Puzzles can be solved one clue at a time.</div>
     <div class="diff-legend"><span class="diff-chip medium">MEDIUM</span> 1001–1400 · Stop and think how to combine clues to determine the solution.</div>
     <div class="diff-legend"><span class="diff-chip hard">HARD</span> 1401–1800 · Elaborate multi-step deductions required throughout.</div>
-    <div class="diff-legend"><span class="diff-chip expert">EXPERT</span> 1801+ · Nothing collapses easily — expect to rack your brain every step of the way.</div>
+    <div class="diff-legend"><span class="diff-chip expert">EXPERT</span> 1801–2400 · Nothing collapses easily — expect to rack your brain every step of the way.</div>
+    <div class="diff-legend"><span class="diff-chip extreme">EXTREME</span> 2401+ · For elite solvers only.</div>
   </div>
 </div>
 
@@ -517,12 +518,38 @@
 
     </div><!-- /main-layout -->
 
+<div class="whats-new-bar">
+  <a href="#" id="whatsNewBtn">WHAT'S NEW?</a>
+</div>
+
 <footer class="site-footer">
   &copy; 2026 Six-Figure Logic &nbsp;·&nbsp;
   <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">All rights reserved</a>
   &nbsp;·&nbsp;
   <a href="mailto:6figurelogic@gmail.com">Contact</a>
 </footer>
+
+<!-- WHAT'S NEW MODAL -->
+<div id="whatsNewModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="What's New">
+  <div class="modal-box" style="max-width:760px;">
+    <button class="modal-close" id="whatsNewClose" aria-label="Close">&times;</button>
+    <div class="modal-body" style="padding-top:28px;">
+
+      <div class="modal-section">
+        <div class="modal-section-title">July 20, 2026</div>
+        <ul>
+          <li><strong>Select Difficulty</strong> now includes rating ranges up to <strong>2600+</strong> for RANDOM puzzles.</li>
+          <li>Puzzles rated <strong>2401+</strong> are now grouped into a new <span class="diff-chip extreme">EXTREME</span> difficulty tier.</li>
+          <li>Hard, Expert, and Extreme puzzles (in <em>RATED</em> mode) must now be unlocked by reaching the required player rating.</li>
+          <li>Improved the puzzle difficulty rating algorithm.</li>
+          <li>Updated the hint system.</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</div>
+<!-- END WHAT'S NEW MODAL -->
 
 <!-- SOLUTION MODAL -->
 <div id="solutionModal" class="giveup-overlay" role="dialog" aria-modal="true">
@@ -644,7 +671,7 @@
   </div>
   <!-- ── END HISTORY OVERLAY ──────────────────────────────────────── -->
 
-  <script src="app.js?v=2.2"></script>
+  <script src="app.js?v=3.0"></script>
   <script src="session.js"></script>
   <script src="daily.js"></script>
   <script src="popup.js"></script>
