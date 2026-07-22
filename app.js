@@ -787,6 +787,23 @@ function findSolutionsForClues(clues, maxSolutions = 2, biasSol = null) {
     return DEFAULT_VALUE_ORDER;
   });
 
+  // largest/smallest pre-filter.
+  const extremumClues = globalClues.filter(c => c.Operator === 'largest' || c.Operator === 'smallest');
+
+  function violatesExtremum(c) {
+    const r1 = c.Var1Index - 1;
+    const targetVal = sol[keys[r1]];
+    if (!targetVal) return false;
+    for (let i = 0; i < 6; i++) {
+      if (i === r1) continue;
+      const v = sol[keys[i]];
+      if (!v) continue;
+      if (c.Operator === 'largest' && v >= targetVal) return true;
+      if (c.Operator === 'smallest' && v <= targetVal) return true;
+    }
+    return false;
+  }
+
   function backtrack(varIndex, usedMask) {
     if (solutions.length >= maxSolutions) return;
 
@@ -814,6 +831,11 @@ function findSolutionsForClues(clues, maxSolutions = 2, biasSol = null) {
       for (let ci = 0; ci < relevantClues.length; ci++) {
         if (!checkClue(sol, relevantClues[ci])) { ok = false; break; }
       }
+      if (ok) {
+        for (let ei = 0; ei < extremumClues.length; ei++) {
+          if (violatesExtremum(extremumClues[ei])) { ok = false; break; }
+        }
+      }
 
       if (ok) backtrack(varIndex + 1, usedMask | bit);
       if (solutions.length >= maxSolutions) return;
@@ -826,11 +848,11 @@ function findSolutionsForClues(clues, maxSolutions = 2, biasSol = null) {
 }
 
   // --- Fixed: generatePuzzleJS ---
-// 1. For puzzles <=1800, poolsize is 10.  For 1801+ its 20 to 35 (random).
+// 1. Clue pool size based on selected difficulty - see function nextPoolSize().
 // 2. Check if clue pool forces unique solution
-// 3. Prune the pool exhaustively until no clue is redundant and count <= 6. For hard/expert, prune easiest clues first (lowest score) to favor keeping harder clues in the final set.
-// 4. Check if the final set satisfies the selected difficulty (by scoring the clues).
-function generatePuzzleJS(poolSize = 10, pruneEasiestFirst = false) {
+// 3. Prune the pool exhaustively until no clue is redundant and count <= 6. For hard/expert, prune easiest clues first (lowest score).
+// 4. Check if the final set satisfies the selected difficulty.
+function generatePuzzleJS(poolSize = 10, pruneEasiestFirst = false, minClueScore = 0) {
   initLookups();
 
 function exhaustivePrune(clues, targetSol) {
@@ -853,10 +875,13 @@ function exhaustivePrune(clues, targetSol) {
   }
 
   // Generate a clue that is valid for sol and not a duplicate
-  function pickClue(existing, solObj, tries = 300) {
+  function pickClue(existing, solObj, tries = 300, minClueScore = 0) {
     for (let t = 0; t < tries; t++) {
       const candidate = generateRandomClue(solObj);
       if (existing.some(c => JSON.stringify(c) === JSON.stringify(candidate))) continue;
+      // Extreme-tier prefilter: skip clues too easy to be worth including —
+      // see clueComplexityScore. Only active when minClueScore > 0.
+      if (minClueScore > 0 && clueComplexityScore(candidate) <= minClueScore) continue;
 
 // Reject XOR clues that are trivialised by existing parity/prime clues,
 // and reject direct parity/prime clues that would trivialise an existing XOR clue.
@@ -907,7 +932,7 @@ if (candidate.Operator === "prime" || candidate.Operator === "not prime") {
     // Step 1: gather up to poolSize non-duplicate clues (all valid for sol)
     const pool = [];
     for (let k = 0; k < poolSize; k++) {
-      const clue = pickClue(pool, sol, 300);
+      const clue = pickClue(pool, sol, 300, minClueScore);
       if (clue) pool.push(clue);
     }
 

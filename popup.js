@@ -490,18 +490,33 @@
     const CHUNK = 50, MAX = 5000;
     let tried = 0, sol = null;
 
-// Pool size per attempt. Expert & Extreme (1801+) redraws with a random pool size
-    // between 10–25 each time to vary the difficulty and reduce generation speed.
-    function nextPoolSize() {
-      return range.min >= 1801 ? 10 + Math.floor(Math.random() * 16) : 10; // expert: 10..25
-    }
+// Pool size per attempt to vary the difficulty and reduce generation speed.
+function nextPoolSize() {
+  return range.min >= 2601 // High-Extreme
+    ? 10 + Math.floor(Math.random() * 5) // 10-14
+    : range.min >= 2401 // Low-Extreme
+      ? 12 + Math.floor(Math.random() * 5) // 12-16
+      : range.min >= 1801 // Expert
+        ? 10 + Math.floor(Math.random() * 16) // 10-25
+        : range.min >= 1401 // Hard
+          ? 10 + Math.floor(Math.random() * 11) // 10-20
+          : 10;
+}
+
+// Extreme-tier only: exclude clues too easy to be worth including (e.g.
+// A*B=35, largest/smallest) before they ever enter the pool.
+function nextMinClueScore() {
+  return range.min >= 2601 ? 10
+       : range.min >= 2401 ? 8
+       : 0;
+}
 
     function runChunk() {
       const end = Math.min(tried + CHUNK, MAX);
       while (tried < end) {
         tried++;
         try {
-          const candidate = gen(nextPoolSize(), range.tier === 'hard' || range.tier === 'expert' || range.tier === 'extreme');
+          const candidate = gen(nextPoolSize(), range.tier === 'hard' || range.tier === 'expert' || range.tier === 'extreme', nextMinClueScore());
           if (!candidate || !candidate._rawClues) continue;
           const elim = score(candidate._rawClues, candidate);
           // ── perf: skip expensive WED calc, see maxPossibleRating ──
@@ -521,7 +536,7 @@
       if (sol || tried >= MAX) {
         if (!sol) {
           try {
-            sol = gen(nextPoolSize(), range.tier === 'hard' || range.tier === 'expert' || range.tier === 'extreme');
+            sol = gen(nextPoolSize(), range.tier === 'hard' || range.tier === 'expert' || range.tier === 'extreme', nextMinClueScore());
             if (sol && sol._rawClues) {
               const elim = score(sol._rawClues, sol);
               sol._rating = rate(sol._rawClues, elim, sol);
