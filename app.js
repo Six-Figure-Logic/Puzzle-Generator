@@ -1985,8 +1985,8 @@ resetGridBtn.addEventListener('click', resetGrid);
 // ══════════════════════════════════════════
 const modal        = document.getElementById('tutorialModal');
 const modalClose   = document.getElementById('modalClose');
-const modalTabs    = document.querySelectorAll('.modal-tab');
-const modalBodies  = document.querySelectorAll('.modal-body');
+const modalTabs    = modal.querySelectorAll('.modal-tab');
+const modalBodies  = modal.querySelectorAll('.modal-body');
 
 function openModal() { modal.classList.add('open'); }
 function closeModal() { modal.classList.remove('open'); }
