@@ -16,6 +16,7 @@ window._sflSetCurrentSolution = function(sol) { currentSolution = sol; };
 // current puzzle, so re-submitting the same wrong combo doesn't add
 // another strike — just a "already attempted" message.
 let attemptedWrongCombos = new Set();
+window._sflResetAttemptedWrongCombos = function () { attemptedWrongCombos = new Set(); };
 
 //timer variables
 let timerInterval = null;

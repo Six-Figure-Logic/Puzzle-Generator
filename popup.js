@@ -558,6 +558,7 @@ function nextMinClueScore() {
 
   window._sflApplyPuzzleLayout = function (sol) {
     if (window._sflClearHintGlow) window._sflClearHintGlow();
+    if (window._sflResetAttemptedWrongCombos) window._sflResetAttemptedWrongCombos();
     if (sol && sol.A !== undefined && sol.a === undefined) {
       sol.a = sol.A; sol.b = sol.B; sol.c = sol.C;
       sol.d = sol.D; sol.e = sol.E; sol.f = sol.F;
