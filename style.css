@@ -2413,6 +2413,7 @@ header h1 {
     overflow-y: auto;
     min-height: 0;
     -webkit-overflow-scrolling: touch;
+    padding-bottom: 32px;
   }
 
   .modal-page { overflow: visible; min-height: auto; padding-bottom: 32px; }
