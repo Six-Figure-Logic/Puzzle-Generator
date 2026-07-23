@@ -12,6 +12,11 @@ inputIds.forEach(id => inputs[id] = document.getElementById(id));
 let currentSolution = null;
 window._sflSetCurrentSolution = function(sol) { currentSolution = sol; };
 
+// Tracks answer combinations already checked and found wrong for the
+// current puzzle, so re-submitting the same wrong combo doesn't add
+// another strike — just a "already attempted" message.
+let attemptedWrongCombos = new Set();
+
 //timer variables
 let timerInterval = null;
 let timerStart = 0;
@@ -1825,6 +1830,7 @@ function computePuzzleRating(rawClues, elim, sol) {
 
 function applyNewPuzzle(sol) {
   if (window._sflClearHintGlow) window._sflClearHintGlow();
+  attemptedWrongCombos = new Set();
   // Normalize uppercase keys {A..F} → lowercase {a..f} for scorePuzzle/checkClue
   if (sol && sol.A !== undefined && sol.a === undefined) {
     sol.a = sol.A; sol.b = sol.B; sol.c = sol.C;
@@ -1958,8 +1964,15 @@ function checkAnswers() {
     feedbackEl.className = 'feedback correct';
     stopTimer();
   } else {
-    feedbackEl.textContent = '✗ Some clues not satisfied.';
-    feedbackEl.className = 'feedback incorrect';
+    const comboKey = inputIds.map(id => user[id]).join(',');
+    if (attemptedWrongCombos.has(comboKey)) {
+      feedbackEl.innerHTML = 'This solution was already attempted <br>and is not correct';
+      feedbackEl.className = 'feedback incorrect';
+    } else {
+      attemptedWrongCombos.add(comboKey);
+      feedbackEl.textContent = '✗ Some clues not satisfied.';
+      feedbackEl.className = 'feedback incorrect';
+    }
   }
 }
 
