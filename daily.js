@@ -138,9 +138,15 @@
     return store[today] || {};
   }
 
-  function saveDifficultyRecord(difficulty, data) {
+  function getRecordForDate(dateStr, difficulty) {
     const store = loadDailyStore();
-    const today = getESTDateString();
+    const rec = store[dateStr] || {};
+    return rec[difficulty] || null;
+  }
+
+  function saveDifficultyRecord(difficulty, data, dateStr) {
+    const store = loadDailyStore();
+    const today = dateStr || getESTDateString();
     if (!store[today]) store[today] = {};
     store[today][difficulty] = data;
 
@@ -212,13 +218,17 @@
 
     // Mark a daily as completed.
     // data: { solved, gaveUp, time, mistakes, grade, ratingDelta, gridState, answerState, clueStates, penaltyText, puzzleRating }
-    markCompleted(difficulty, data) {
-      const existing = getDifficultyRecord(difficulty);
+    // dateStr: the date the puzzle was STARTED (ctx.dailyDate) — important if
+    // the puzzle spanned the midnight ET rollover, so completion lands on the
+    // correct day's slot instead of "today's" (which may now be a new day).
+    markCompleted(difficulty, data, dateStr) {
+      const targetDate = dateStr || getESTDateString();
+      const existing = getRecordForDate(targetDate, difficulty);
       saveDifficultyRecord(difficulty, {
         ...(existing || {}),
         ...data,
         completedAt: Date.now(),
-      });
+      }, targetDate);
     },
   };
 

@@ -625,10 +625,6 @@ function nextMinClueScore() {
   function captureDailyCompletionState(solveTime, gaveUp, mistakes, penaltySecs, grade) {
     const ctx = window._sflPuzzleContext;
     if (!ctx.isDaily || !ctx.dailyDifficulty) return;
-    // Puzzle spanned the midnight ET rollover — leave today's daily slot untouched so it's still playable. 
-    // Solve history recording (separate code path below, unaffected by this) still captures the result.
-    if (ctx.dailyDate && ctx.dailyDate !== window.SFLDaily.getDateString())
-      return;
 
     const gridEl = document.getElementById('grid');
     const gridState = {};
@@ -658,10 +654,13 @@ function nextMinClueScore() {
     const penaltyText = penaltyEl ? penaltyEl.textContent : '';
     const puzzleRating = (window.currentSolution && window.currentSolution._rating) || 1000;
 
+    // Record against the date the puzzle was started — if it spanned the
+    // midnight ET rollover, ctx.dailyDate is yesterday, and this correctly
+    // marks that day's slot instead of silently dropping the record.
     window.SFLDaily.markCompleted(ctx.dailyDifficulty, {
       solved: !gaveUp, gaveUp, time: solveTime, mistakes, grade,
       puzzleRating, gridState, answerState, clueStates, mistakeBoxes, penaltyText,
-    });
+    }, ctx.dailyDate);
   }
 
   // ═══════════════════════════════════════════════════════════════════════

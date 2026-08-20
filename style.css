@@ -436,6 +436,7 @@ header h1 {
   align-items: center;
   gap: 10px;
   display: none; /* fully removed from layout below 1160px so it can't add invisible scroll height */
+  z-index: 5;
 }
 @media (min-width: 1160px) {
   .books-sidebar { display: flex; }
