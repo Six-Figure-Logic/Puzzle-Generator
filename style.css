@@ -2268,9 +2268,6 @@ header h1 {
 
   .history-box { max-height: 92vh; padding: 16px 12px 12px; }
 
-  .history-table th[data-col="date"],
-  .history-table td:nth-child(5) { display: none; }
-
   .history-table th,
   .history-table td { padding: 8px 5px; font-size: 11px; }
 
@@ -2387,13 +2384,9 @@ header h1 {
   .clue-row { display: flex; flex-direction: column; gap: 2px; }
   .clue-note { text-align: left; max-width: none; }
 
-  /* Puzzle rating chip — shorten label so it doesn't overflow the card */
-  .puzzle-rating-label { font-size: 0; }
-  .puzzle-rating-label::after {
-    content: "RATING";
-    font-size: 9px;
-    letter-spacing: 0.15em;
-  }
+  /* Puzzle rating chip — now holds the short difficulty word (EASY/HARD/etc),
+     so it no longer needs the old ::after "RATING" truncation hack */
+  .puzzle-rating-label { font-size: 9px; letter-spacing: 0.15em; }
 
   /* Modals */
   .modal-overlay { padding: 8px; }

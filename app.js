@@ -1862,6 +1862,8 @@ function applyNewPuzzle(sol) {
     const rating = sol._rating;
     document.getElementById('puzzleRatingValue').textContent = '  ★ ' + rating;
     ratingEl.className = 'puzzle-rating rating-' + window._ratingToDifficulty(rating);
+    const ratingLabelEl = ratingEl.querySelector('.puzzle-rating-label');
+    if (ratingLabelEl) ratingLabelEl.textContent = window._ratingToDifficulty(rating).toUpperCase();
     ratingEl.style.display = 'inline';
   } else if (ratingEl) {
     ratingEl.style.display = 'none';
@@ -2090,17 +2092,27 @@ populateAnswerSelects();
 
   // ─── Storage helpers ─────────────────────────────────────────────────────
   function loadProfile() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch(e) {}
-    return {
+    const defaults = {
       rating:    INIT_RATING,
       rd:        INIT_RD,
       vol:       INIT_VOL,
       lastPlayed: null,
       gamesPlayed: 0
     };
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Backfill any missing/invalid fields to avoid NaN propagation in Glicko-2 math.
+        const merged = { ...defaults, ...parsed };
+        if (!Number.isFinite(merged.rating))      merged.rating      = defaults.rating;
+        if (!Number.isFinite(merged.rd))          merged.rd          = defaults.rd;
+        if (!Number.isFinite(merged.vol))         merged.vol         = defaults.vol;
+        if (!Number.isFinite(merged.gamesPlayed)) merged.gamesPlayed = defaults.gamesPlayed;
+        return merged;
+      }
+    } catch(e) {}
+    return { ...defaults };
   }
 
   function saveProfile(p) {
@@ -2635,18 +2647,20 @@ window._computeLetterGrade = function(solveSeconds, mistakes, puzzleRating, play
     const ratingRowEl = document.getElementById('resultRatingRow');
     const casualNoteEl = document.getElementById('resultCasualNote');
 
+    const dc = difficultyColor(puzzleRating);
+    const diffLabel = (window._ratingToDifficulty ? window._ratingToDifficulty(puzzleRating) : 'medium').toUpperCase();
+
     if (gaveUp) {
-      title.textContent = '✗  PUZZLE FAILED';
+      title.innerHTML = `<span style="color:${dc}">${diffLabel}</span><br>✗  PUZZLE FAILED`;
       title.className   = 'result-title failed-title';
     } else {
-      title.textContent = '✓  PUZZLE SOLVED';
+      title.innerHTML = `<span style="color:${dc}">${diffLabel}</span><br>✓  PUZZLE SOLVED`;
       title.className   = 'result-title' + (isRated ? '' : ' casual-title');
     }
 
     const p = window.SFLRating.getProfile();
     const grade = computeLetterGrade(solveTime, mistakeCount, puzzleRating, p.rating, gaveUp);
     const gc = gradeColor(grade);
-    const dc = difficultyColor(puzzleRating);
 
     const mistakesDisplay = mistakeCount > 0 ? mistakeCount : '—';
     const mistakesColor = mistakeCount > 0 ? 'var(--danger)' : 'var(--success)';

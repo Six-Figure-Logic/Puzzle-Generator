@@ -597,6 +597,8 @@ function nextMinClueScore() {
       sol._rating = rating;
       document.getElementById('puzzleRatingValue').textContent = '  ★ ' + rating;
       ratingEl.className = 'puzzle-rating rating-' + window._ratingToDifficulty(rating);
+      const ratingLabelEl = ratingEl.querySelector('.puzzle-rating-label');
+      if (ratingLabelEl) ratingLabelEl.textContent = window._ratingToDifficulty(rating).toUpperCase();
       ratingEl.style.display = 'inline';
     } else if (ratingEl) {
       ratingEl.style.display = 'none';
