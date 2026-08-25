@@ -946,6 +946,17 @@ function nextMinClueScore() {
       return `${m}:${s}`;
     }
 
+    // Shortens the full month name.
+    const MONTH_ABBR = {
+      January:'Jan', February:'Feb', March:'Mar', April:'Apr', May:'May',
+      June:'Jun', July:'Jul', August:'Aug', September:'Sep', October:'Oct',
+      November:'Nov', December:'Dec'
+    };
+    function abbrevDate(dateStr) {
+      if (!dateStr) return '';
+      return dateStr.replace(/^([A-Za-z]+)/, m => MONTH_ABBR[m] || m);
+    }
+
     const GRADE_ORDER = ['A+','A','A−','B+','B','B−','C+','C','C−','D+','D','D−','F'];
 
     function sortValue(entry, col) {
@@ -998,7 +1009,7 @@ function nextMinClueScore() {
           <td>${timeDisplay}</td>
           <td>${mistakesDisplay}</td>
           <td><span class="history-grade" style="color:${gc}">${entry.grade || '?'}</span></td>
-          <td style="color:var(--text-muted);font-size:11px">${entry.date || ''}</td>
+          <td style="color:var(--text-muted);font-size:11px">${abbrevDate(entry.date)}</td>
         `;
         tr.addEventListener('click', () => launchHistoryReview(entry));
         historyBody.appendChild(tr);

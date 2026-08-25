@@ -2271,6 +2271,9 @@ header h1 {
   .history-table th,
   .history-table td { padding: 8px 5px; font-size: 11px; }
 
+  .history-table th[data-col="date"],
+  .history-table td:nth-child(5) { white-space: nowrap; min-width: 92px; }
+
   .history-table th[data-col="solveTime"],
   .history-table td:nth-child(2) { padding-right: 10px; }
 
