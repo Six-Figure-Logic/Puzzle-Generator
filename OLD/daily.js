@@ -1,11 +1,14 @@
 // daily.js — Daily puzzle system for Six-Figure Logic
 // Seeded PRNG + daily state persistence
-// Must be loaded BEFORE popup.js, AFTER app.js
+// Load order: app.js → session.js → daily.js → popup.js
 
 (function () {
   'use strict';
 
-  // ─── Seeded PRNG (sfc32) ────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // SEEDED PRNG (sfc32) — deterministic per date+difficulty
+  // ═══════════════════════════════════════════════════════════════════════
+
   function hashStr(str) {
     let h = 0;
     for (let i = 0; i < str.length; i++) {
@@ -29,66 +32,93 @@
     };
   }
 
-  // ─── EST date string ────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // DATE HELPERS — daily puzzles rotate at midnight Eastern
+  // ═══════════════════════════════════════════════════════════════════════
+
   function getESTDateString() {
-    const now = new Date();
-    const est = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-    const y = est.getFullYear();
-    const m = String(est.getMonth() + 1).padStart(2, '0');
-    const d = String(est.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date());
+    const lookup = {};
+    parts.forEach(p => { lookup[p.type] = p.value; });
+    return `${lookup.year}-${lookup.month}-${lookup.day}`;
   }
 
-  // ─── Rating ranges ──────────────────────────────────────────────────────
-  // Daily puzzles use 4 fixed difficulty bands
+  // ═══════════════════════════════════════════════════════════════════════
+  // DIFFICULTY BANDS — 4 fixed bands for daily puzzles
+  // ═══════════════════════════════════════════════════════════════════════
+
   const DAILY_BANDS = {
     easy:   { min: 800,  max: 1000, label: 'EASY',   color: 'easy' },
     medium: { min: 1001, max: 1400, label: 'MEDIUM',  color: 'medium' },
     hard:   { min: 1401, max: 1800, label: 'HARD',    color: 'hard' },
-    expert: { min: 1801, max: 9999, label: 'EXPERT',  color: 'expert' },
+    expert: { min: 1801, max: 2400, label: 'EXPERT',  color: 'expert' },
   };
   const DAILY_KEYS = ['easy', 'medium', 'hard', 'expert'];
 
-  // ─── Generate a puzzle using seeded random ──────────────────────────────
-  // Temporarily replaces Math.random with seeded version for the generator
+  // ═══════════════════════════════════════════════════════════════════════
+  // PUZZLE GENERATION — seeded so every player gets the same puzzle per day
+  // ═══════════════════════════════════════════════════════════════════════
+  // Swaps Math.random for a seeded PRNG for the duration of this synchronous
+  // call only. After generation, Math.random is restored and a fixed number
+  // of values are burned from it so daily generation never leaves the real
+  // PRNG at a predictable state relative to random-puzzle generation.
   function generateDailyPuzzle(dateStr, difficulty) {
     const band = DAILY_BANDS[difficulty];
     if (!band) return null;
 
     const seed = `${dateStr}-${difficulty}`;
     const seeded = makeSeededRandom(seed);
-
-    // Patch Math.random
     const origRandom = Math.random;
     Math.random = seeded;
 
     let result = null;
+    let fallbackCandidate = null;
     const gen = window.generatePuzzle;
     const score = window._scorePuzzle;
     const rate = window._computePuzzleRating;
-    const toDiff = window._ratingToDifficulty;
+
+    // Pool size per attempt. Expert redraws with a random pool size between
+    // 10–25 each time to vary difficulty and reduce generation speed.
+    function nextPoolSize() {
+      return difficulty === 'expert' ? 10 + Math.floor(Math.random() * 16) : 10;
+    }
 
     try {
-      // Try up to 3000 times to find a puzzle in band
-      for (let attempt = 0; attempt < 3000; attempt++) {
-        const candidate = gen();
+      for (let attempt = 0; attempt < 5000; attempt++) {
+        const candidate = gen(nextPoolSize(), difficulty === 'hard' || difficulty === 'expert');
         if (!candidate || !candidate._rawClues) continue;
+        if (!fallbackCandidate) fallbackCandidate = candidate;
         const elim = score(candidate._rawClues, candidate);
+        // ── perf: skip expensive WED calc, see maxPossibleRating ──
+        if (window._maxPossibleRating(elim) < band.min) continue;
         const rating = rate(candidate._rawClues, elim, candidate);
+        candidate._rating = rating;
         if (rating >= band.min && rating <= band.max) {
-          candidate._rating = rating;
           result = candidate;
           break;
         }
       }
+      if (!result && fallbackCandidate) {
+        if (!fallbackCandidate._rating) {
+          const elim = score(fallbackCandidate._rawClues, fallbackCandidate);
+          fallbackCandidate._rating = rate(fallbackCandidate._rawClues, elim, fallbackCandidate);
+        }
+        result = fallbackCandidate;
+      }
     } finally {
       Math.random = origRandom;
+      for (let i = 0; i < 37; i++) origRandom();
     }
 
     return result;
   }
 
-  // ─── Daily state storage ────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // DAILY STATE STORAGE — per-date record of started/completed puzzles
+  // ═══════════════════════════════════════════════════════════════════════
+
   const DAILY_STORAGE_KEY = 'sfl_daily_v2';
 
   function loadDailyStore() {
@@ -108,15 +138,26 @@
     return store[today] || {};
   }
 
-  function saveDifficultyRecord(difficulty, data) {
+  function getRecordForDate(dateStr, difficulty) {
     const store = loadDailyStore();
-    const today = getESTDateString();
+    const rec = store[dateStr] || {};
+    return rec[difficulty] || null;
+  }
+
+  function saveDifficultyRecord(difficulty, data, dateStr) {
+    const store = loadDailyStore();
+    const today = dateStr || getESTDateString();
     if (!store[today]) store[today] = {};
     store[today][difficulty] = data;
-    // Prune old dates (keep last 7)
+
+    // Prune dates older than the last 7, including their cached puzzle objects
     const keys = Object.keys(store).sort();
     while (keys.length > 7) {
-      delete store[keys.shift()];
+      const oldDate = keys.shift();
+      delete store[oldDate];
+      DAILY_KEYS.forEach(diff => {
+        try { localStorage.removeItem('sfl_daily_puzzle_' + oldDate + '_' + diff); } catch(e) {}
+      });
     }
     saveDailyStore(store);
   }
@@ -126,43 +167,68 @@
     return rec[difficulty] || null;
   }
 
-  // ─── Public API ─────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // PUBLIC API
+  // ═══════════════════════════════════════════════════════════════════════
+
   window.SFLDaily = {
     BANDS: DAILY_BANDS,
     KEYS: DAILY_KEYS,
 
     getDateString: getESTDateString,
 
-    // Returns a puzzle object for today + difficulty (may take a moment)
-    getPuzzle: generateDailyPuzzle,
+    // Returns a puzzle object for date + difficulty (cached once rating is frozen)
+    getPuzzle: function(dateStr, difficulty) {
+      const cacheKey = 'sfl_daily_puzzle_' + dateStr + '_' + difficulty;
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed._rating) return parsed; // only trust cache once rating is frozen
+        }
+      } catch(e) {}
+
+      const puzzle = generateDailyPuzzle(dateStr, difficulty);
+      if (puzzle) {
+        if (!puzzle._rating && puzzle._rawClues) {
+          const elim = window._scorePuzzle(puzzle._rawClues, puzzle);
+          puzzle._rating = window._computePuzzleRating(puzzle._rawClues, elim, puzzle);
+        }
+        try { localStorage.setItem(cacheKey, JSON.stringify(puzzle)); } catch(e) {}
+      }
+      return puzzle;
+    },
 
     // State management
     getTodayRecord,
     getDifficultyRecord,
     saveDifficultyRecord,
 
-    // Mark a daily as in-progress (called when puzzle starts)
+    // Mark a daily as in-progress (called when puzzle starts). Never overwrites a completed record.
     markStarted(difficulty, puzzleRating) {
       const existing = getDifficultyRecord(difficulty);
-      // Don't overwrite a completed record
       if (existing && (existing.solved || existing.gaveUp)) return;
       saveDifficultyRecord(difficulty, {
         ...(existing || {}),
         started: true,
         puzzleRating,
-        startedAt: Date.now(),
+        startedAt: (existing && existing.startedAt) || Date.now(),
       });
     },
 
-    // Mark a daily as completed
-    markCompleted(difficulty, data) {
-      // data: { solved, gaveUp, time, mistakes, grade, ratingDelta, gridState, answerState, clueStates, penaltyText, puzzleRating }
-      const existing = getDifficultyRecord(difficulty);
+    // Mark a daily as completed.
+    // data: { solved, gaveUp, time, mistakes, grade, ratingDelta, gridState, answerState, clueStates, penaltyText, puzzleRating }
+    // dateStr: the date the puzzle was STARTED (ctx.dailyDate) — important if
+    // the puzzle spanned the midnight ET rollover, so completion lands on the
+    // correct day's slot instead of "today's" (which may now be a new day).
+    markCompleted(difficulty, data, dateStr) {
+      const targetDate = dateStr || getESTDateString();
+      const existing = getRecordForDate(targetDate, difficulty);
       saveDifficultyRecord(difficulty, {
         ...(existing || {}),
         ...data,
         completedAt: Date.now(),
-      });
+      }, targetDate);
     },
   };
 

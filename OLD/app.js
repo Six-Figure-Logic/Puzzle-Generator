@@ -10,6 +10,13 @@ const inputs = {};
 inputIds.forEach(id => inputs[id] = document.getElementById(id));
 
 let currentSolution = null;
+window._sflSetCurrentSolution = function(sol) { currentSolution = sol; };
+
+// Tracks answer combinations already checked and found wrong for the
+// current puzzle, so re-submitting the same wrong combo doesn't add
+// another strike — just a "already attempted" message.
+let attemptedWrongCombos = new Set();
+window._sflResetAttemptedWrongCombos = function () { attemptedWrongCombos = new Set(); };
 
 //timer variables
 let timerInterval = null;
@@ -44,14 +51,170 @@ function stopTimer() {
   timerEl.className = 'timer stopped';
 }
 
-function resetTimer() {
-  clearInterval(timerInterval);
-  timerInterval = null;
-  timerSeconds = 0;
-  timerEl.textContent = '00:00';
-  timerEl.className = 'timer';
+// Tracks the last touch interaction time so the desktop right-click
+// (contextmenu) handler can ignore contextmenu events that the browser
+// generates from a mobile long-press (those are handled separately below).
+let lastTouchAt = 0;
+
+// ── LETTER LOCK TRACKING (lets us precisely revert a lock later) ───────────
+const letterLocks = {}; // { A: { value: '7', delta: [{row,value}, ...] } }
+
+function lockLetterToValue(letter, value) {
+  const delta = [];
+  gridEl.querySelectorAll(`.cell[data-row="${letter}"]`).forEach(c => {
+    if (c.dataset.value !== value && !c.classList.contains('crossed')) {
+      c.classList.add('crossed');
+      c.setAttribute('aria-pressed', 'true');
+      delta.push({ row: letter, value: c.dataset.value });
+    }
+  });
+  gridEl.querySelectorAll(`.cell[data-value="${value}"]`).forEach(c => {
+    if (c.dataset.row !== letter && !c.classList.contains('crossed')) {
+      c.classList.add('crossed');
+      c.setAttribute('aria-pressed', 'true');
+      delta.push({ row: c.dataset.row, value: value });
+    }
+  });
+  const selfCell = gridEl.querySelector(`.cell[data-row="${letter}"][data-value="${value}"]`);
+  if (selfCell) { selfCell.classList.remove('crossed'); selfCell.setAttribute('aria-pressed', 'false'); }
+  letterLocks[letter] = { value, delta };
 }
 
+function unlockLetter(letter) {
+  const lock = letterLocks[letter];
+  if (!lock) return;
+  lock.delta.forEach(({ row, value }) => {
+    const c = gridEl.querySelector(`.cell[data-row="${row}"][data-value="${value}"]`);
+    if (c) { c.classList.remove('crossed'); c.setAttribute('aria-pressed', 'false'); }
+  });
+  delete letterLocks[letter];
+}
+
+// Used by both the grid lock-click and the answer dropdown.
+function assignLetterValue(letter, value, recordHistory = true) {
+  if (recordHistory) pushHistory();
+  unlockLetter(letter);
+  if (value) lockLetterToValue(letter, value);
+  const select = document.getElementById(letter);
+  if (select) select.value = value || '';
+  checkDuplicateAnswers();
+  checkAutoAssignRows();
+}
+
+// Scans all rows; any row down to exactly one live candidate gets that value auto-assigned to its dropdown (if not already set). 
+// Runs after any grid mutation that could narrow a row: manual toggles, column eliminations, undo/redo, and lock cascades.
+function checkAutoAssignRows() {
+  if (window._sflClearHintGlow) window._sflClearHintGlow();
+  // Step 1: if a letter's assigned value is no longer its row's sole survivor (a sibling cell in its own row got reopened), clear the
+  // assignment. We only forget the lock bookkeeping here — we deliberately do NOT restore any crossed cells, since those reflect
+  // the player's own toggle history.
+  inputIds.forEach(letter => {
+    const select = document.getElementById(letter);
+    if (!select || !select.value) return;
+    const rowCells = gridEl.querySelectorAll(`.cell[data-row="${letter}"]`);
+    const uncrossed = Array.from(rowCells).filter(c => !c.classList.contains('crossed'));
+    const stillValid = uncrossed.length === 1 && uncrossed[0].dataset.value === select.value;
+    if (!stillValid) {
+      delete letterLocks[letter];
+      select.value = '';
+    }
+  });
+
+  // Step 2: lock in any row newly narrowed to a single live candidate — but only if it isn't already locked to that value. This is what lets
+  // a cascaded cell in another row be freely toggled back open without snapping straight back to crossed.
+  inputIds.forEach(letter => {
+    const rowCells = gridEl.querySelectorAll(`.cell[data-row="${letter}"]`);
+    const uncrossed = Array.from(rowCells).filter(c => !c.classList.contains('crossed'));
+    if (uncrossed.length !== 1) return;
+    const value = uncrossed[0].dataset.value;
+    const alreadyLocked = letterLocks[letter] && letterLocks[letter].value === value;
+    if (!alreadyLocked) {
+      assignLetterValue(letter, value, false);   // ← false: no new history step
+    }
+  });
+
+  checkDuplicateAnswers();
+  if (window.SFLSession && window.SFLSession.triggerSave) window.SFLSession.triggerSave();
+}
+
+// Right-click / Ctrl-click / long-press: lock, unless already the sole
+// remaining candidate in its row — then revert instead.
+function lockOrUnlockCell(cell) {
+  const letter = cell.dataset.row;
+  const value = cell.dataset.value;
+  const rowCells = gridEl.querySelectorAll(`.cell[data-row="${letter}"]`);
+  const uncrossed = Array.from(rowCells).filter(c => !c.classList.contains('crossed'));
+  const isSoleSurvivor = uncrossed.length === 1 && uncrossed[0] === cell;
+  const hasRevertibleLock = letterLocks[letter] && letterLocks[letter].value === value;
+
+  if (isSoleSurvivor && hasRevertibleLock) {
+    pushHistory();
+    unlockLetter(letter);
+    const select = document.getElementById(letter);
+    if (select) select.value = '';
+    checkDuplicateAnswers();
+    checkAutoAssignRows();   // ← add
+  } else {
+    assignLetterValue(letter, value);
+  }
+}
+
+function buildColumnHeaderButtons() {
+  const headerRow = document.createElement('div');
+  headerRow.className = 'row column-header-row';
+
+  const spacer = document.createElement('div');
+  spacer.className = 'row-header';
+  spacer.setAttribute('aria-hidden', 'true');
+  headerRow.appendChild(spacer);
+
+  const btnsWrap = document.createElement('div');
+  btnsWrap.className = 'row-cells column-header-btns';
+
+  for (let n = 1; n <= 10; n++) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'col-elim-btn';
+    btn.textContent = '✕';
+    btn.title = `Cross out all ${n}s`;
+    btn.setAttribute('aria-label', `Cross out all ${n}s`);
+    btn.addEventListener('click', () => crossOutColumn(String(n)));
+    btnsWrap.appendChild(btn);
+  }
+  headerRow.appendChild(btnsWrap);
+  gridEl.insertBefore(headerRow, gridEl.firstChild);
+}
+
+const columnLocks = {}; // { '7': { delta: [{row, value}] } }
+
+function isColumnFullyCrossed(value) {
+  const cells = gridEl.querySelectorAll(`.cell[data-value="${value}"]`);
+  return Array.from(cells).every(c => c.classList.contains('crossed'));
+}
+
+function crossOutColumn(value) {
+  pushHistory();
+  if (isColumnFullyCrossed(value) && columnLocks[value]) {
+    // Column is fully blank AND we're the ones who did it — revert
+    columnLocks[value].delta.forEach(({ row }) => {
+      const c = gridEl.querySelector(`.cell[data-row="${row}"][data-value="${value}"]`);
+      if (c) { c.classList.remove('crossed'); c.setAttribute('aria-pressed', 'false'); }
+    });
+    delete columnLocks[value];
+  } else {
+    const delta = [];
+    gridEl.querySelectorAll(`.cell[data-value="${value}"]`).forEach(c => {
+      if (!c.classList.contains('crossed')) {
+        c.classList.add('crossed');
+        c.setAttribute('aria-pressed', 'true');
+        delta.push({ row: c.dataset.row, value });
+      }
+    });
+    columnLocks[value] = { delta };
+  }
+  updateUndoRedoBtns();
+  checkAutoAssignRows();
+}
 
 // Build grid as rows A..F, columns 1..10 left-to-right
 function buildGridRows() {
@@ -79,37 +242,12 @@ function buildGridRows() {
       cell.dataset.value = String(n);
       cell.textContent = String(n);
 
-      // LEFT CLICK: lock this value — eliminate row + column, fill answer
+      // LEFT CLICK (mouse): toggle a single candidate.
+      // RIGHT CLICK/ctrl-click now handles locking.
       cell.addEventListener('click', (e) => {
+        if (e.ctrlKey || e.metaKey) { e.preventDefault(); lockOrUnlockCell(cell); return; }
         e.preventDefault();
-        pushHistory();
-        const lockedRow = cell.dataset.row;
-        const lockedVal = cell.dataset.value;
-
-        // Cross out all other cells in the same row (same letter, different value)
-        gridEl.querySelectorAll(`.cell[data-row="${lockedRow}"]`).forEach(c => {
-          if (c.dataset.value !== lockedVal) {
-            c.classList.add('crossed');
-            c.setAttribute('aria-pressed', 'true');
-          }
-        });
-
-        // Cross out all other cells in the same column (same value, different letter)
-        gridEl.querySelectorAll(`.cell[data-value="${lockedVal}"]`).forEach(c => {
-          if (c.dataset.row !== lockedRow) {
-            c.classList.add('crossed');
-            c.setAttribute('aria-pressed', 'true');
-          }
-        });
-
-        // Keep the clicked cell itself clear
-        cell.classList.remove('crossed');
-        cell.setAttribute('aria-pressed', 'false');
-
-        // Assign value to the corresponding answer dropdown
-        const select = document.getElementById(lockedRow);
-        if (select) select.value = lockedVal;
-        checkDuplicateAnswers();
+        toggleCell(cell);
       });
 
       cell.addEventListener('keydown', (e) => {
@@ -119,10 +257,56 @@ function buildGridRows() {
         }
       });
 
-      // RIGHT CLICK: simple toggle cross
+      // RIGHT CLICK (desktop mouse): lock this value, or unlock if it's already the sole remaining candidate.
       cell.addEventListener('contextmenu', (e) => {
+        if (Date.now() - lastTouchAt < 700) { e.preventDefault(); return; }
         e.preventDefault();
-        toggleCell(cell);
+        lockOrUnlockCell(cell);
+      });
+
+      // ── MOBILE TOUCH: tap = instant toggle, long-press = lock/select ──
+      // Desktop click/contextmenu above are untouched by this.
+      let touchTimer = null;
+      let touchStartX = 0, touchStartY = 0, touchMoved = false, longPressFired = false;
+      const LONG_PRESS_MS = 450;
+      const MOVE_CANCEL_PX = 10;
+
+      cell.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        lastTouchAt = Date.now();
+        touchMoved = false;
+        longPressFired = false;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchTimer = setTimeout(() => {
+          longPressFired = true;
+          lastTouchAt = Date.now();
+          lockOrUnlockCell(cell);
+        }, LONG_PRESS_MS);
+      }, { passive: true });
+
+      cell.addEventListener('touchmove', (e) => {
+        if (!touchTimer || !e.touches.length) return;
+        const dx = e.touches[0].clientX - touchStartX;
+        const dy = e.touches[0].clientY - touchStartY;
+        if (Math.abs(dx) > MOVE_CANCEL_PX || Math.abs(dy) > MOVE_CANCEL_PX) {
+          touchMoved = true;
+          clearTimeout(touchTimer);
+        }
+      }, { passive: true });
+
+      cell.addEventListener('touchend', (e) => {
+        clearTimeout(touchTimer);
+        lastTouchAt = Date.now();
+        if (longPressFired) { e.preventDefault(); return; } 
+        if (!touchMoved) {
+          e.preventDefault();
+          toggleCell(cell);
+        }
+      });
+
+      cell.addEventListener('touchcancel', () => {
+        clearTimeout(touchTimer);
       });
 
       cellsWrap.appendChild(cell);
@@ -133,7 +317,7 @@ function buildGridRows() {
   }
 }
 
-// ── Undo / Redo ──────────────────────────────────────────────────────────────
+// ── UNDO / REDO ──────────────────────────────────────────────────────────────
 const undoStack = [];
 const redoStack = [];
 window._sflUndoStack = undoStack;
@@ -174,6 +358,7 @@ if (undoBtn) undoBtn.addEventListener('click', () => {
   redoStack.push(getGridSnapshot());
   applyGridSnapshot(undoStack.pop());
   updateUndoRedoBtns();
+  checkAutoAssignRows();
 });
 
 if (redoBtn) redoBtn.addEventListener('click', () => {
@@ -181,6 +366,7 @@ if (redoBtn) redoBtn.addEventListener('click', () => {
   undoStack.push(getGridSnapshot());
   applyGridSnapshot(redoStack.pop());
   updateUndoRedoBtns();
+  checkAutoAssignRows();
 });
 
 function toggleCell(cell) {
@@ -188,6 +374,7 @@ function toggleCell(cell) {
   const isCrossed = cell.classList.toggle('crossed');
   cell.setAttribute('aria-pressed', String(isCrossed));
   updateUndoRedoBtns();
+  checkAutoAssignRows();
 }
 
 function resetGrid() {
@@ -196,8 +383,16 @@ function resetGrid() {
     c.classList.remove('crossed');
     c.setAttribute('aria-pressed','false');
   });
+  for (const k in letterLocks) delete letterLocks[k];
+  for (const k in columnLocks) delete columnLocks[k];
+  inputIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.value = ''; el.classList.remove('answer-duplicate'); }
+  });
   updateUndoRedoBtns();
-}
+  if (window._sflClearHintGlow) window._sflClearHintGlow();
+  if (window.SFLSession && window.SFLSession.triggerSave) window.SFLSession.triggerSave();
+} 
 
 // Populate selects 1..10
 function populateAnswerSelects() {
@@ -210,7 +405,7 @@ function populateAnswerSelects() {
       opt.textContent = String(n);
       el.appendChild(opt);
     }
-    el.addEventListener('change', checkDuplicateAnswers);
+    el.addEventListener('change', () => assignLetterValue(id, el.value));
   });
 }
 
@@ -226,8 +421,6 @@ function checkDuplicateAnswers() {
 }
 
 // ======= Puzzle generator translated from VBA to JS =======
-// Drop this into app.js and call generatePuzzle() from your UI.
-// Returns { A:.., B:.., C:.., D:.., E:.., F:.., _clues: [ ... ] }
 
 (function(){
   // --- Lookups and globals ---
@@ -236,23 +429,14 @@ function checkDuplicateAnswers() {
   const ValidProductsList = [];
 
   function initLookups() {
-    // primes 1..10 (VBA hardcoded)
-    PrimeLookup[1] = false;
-    PrimeLookup[2] = true;
-    PrimeLookup[3] = true;
-    PrimeLookup[4] = false;
-    PrimeLookup[5] = true;
-    PrimeLookup[6] = false;
-    PrimeLookup[7] = true;
-    PrimeLookup[8] = false;
-    PrimeLookup[9] = false;
-    PrimeLookup[10] = false;
+    if (ValidProductsList.length > 0) return; // already initialized
+      [2, 3, 5, 7].forEach(p => PrimeLookup[p] = true);
     for (let i = 1; i <= 10; i++) EvenLookup[i] = (i % 2 === 0);
-
-    // valid products (VBA list)
     const list = [6,8,9,10,12,14,15,16,18,20,21,24,27,28,30,32,35,36,40,42,45,48,50,54,56,60,63,70,72,80,90];
     for (let v of list) ValidProductsList.push(v);
   }
+
+  initLookups(); // initialize immediately so PrimeLookup/EvenLookup are ready for checkClue
 
   // --- Utilities ---
   function randInt(maxExclusive) { return Math.floor(Math.random() * maxExclusive); }
@@ -277,75 +461,84 @@ function checkDuplicateAnswers() {
   }
 
   // --- GenerateRandomClue (18 types) ---
+    // Types 1–10 never fail — factored out so the fallback can reuse them instead of hardcoding one fixed clue.
+  function makeGuaranteedClue(vals, typeId) {
+    const c = makeClue();
+    let i, j, vi, vj, maxV, maxIdx, minV, minIdx;
+    switch(typeId) {
+      case 1: // sum pair
+        i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
+        c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Operator = "+"; c.Value = vals[i] + vals[j];
+        c.Var1Index = i+1; c.Var2Index = j+1; return c;
+
+      case 2: // product pair
+        i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
+        c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Operator = "*"; c.Value = vals[i] * vals[j];
+        c.Var1Index = i+1; c.Var2Index = j+1; return c;
+
+      case 3: // diff (larger - smaller)
+        i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
+        vi = vals[i]; vj = vals[j];
+        if (vi > vj) { c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Var1Index = i+1; c.Var2Index = j+1; }
+        else { c.Var1 = varNames[j]; c.Var2 = varNames[i]; c.Var1Index = j+1; c.Var2Index = i+1; }
+        c.Operator = "-"; c.Value = Math.abs(vi - vj); return c;
+
+      case 4: // comparison > or <
+        i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
+        c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Var1Index = i+1; c.Var2Index = j+1;
+        c.Operator = (vals[i] > vals[j]) ? ">" : "<"; c.Value = 0; return c;
+
+      case 5: // parity unary
+        i = randInt(6);
+        c.Var1 = varNames[i]; c.Var1Index = i+1;
+        c.Operator = EvenLookup[vals[i]] ? "even" : "odd"; c.Value = 0; return c;
+
+      case 6: // prime unary
+        i = randInt(6);
+        c.Var1 = varNames[i]; c.Var1Index = i+1;
+        c.Operator = PrimeLookup[vals[i]] ? "prime" : "not prime"; c.Value = 0; return c;
+
+      case 7: // largest
+        maxV = vals[0]; maxIdx = 0;
+        for (let t=1;t<6;t++){ if (vals[t] > maxV){ maxV = vals[t]; maxIdx = t; } }
+        c.Var1 = varNames[maxIdx]; c.Var1Index = maxIdx+1; c.Operator = "largest"; return c;
+
+      case 8: // smallest
+        minV = vals[0]; minIdx = 0;
+        for (let t=1;t<6;t++){ if (vals[t] < minV){ minV = vals[t]; minIdx = t; } }
+        c.Var1 = varNames[minIdx]; c.Var1Index = minIdx+1; c.Operator = "smallest"; return c;
+
+      case 9: // not largest (random non-max)
+        maxV = vals[0]; maxIdx = 0;
+        for (let t=1;t<6;t++){ if (vals[t] > maxV){ maxV = vals[t]; maxIdx = t; } }
+        i = randInt(6); while (i===maxIdx) i = randInt(6);
+        c.Var1 = varNames[i]; c.Var1Index = i+1; c.Operator = "not largest"; return c;
+
+      case 10: // not smallest
+        minV = vals[0]; minIdx = 0;
+        for (let t=1;t<6;t++){ if (vals[t] < minV){ minV = vals[t]; minIdx = t; } }
+        i = randInt(6); while (i===minIdx) i = randInt(6);
+        c.Var1 = varNames[i]; c.Var1Index = i+1; c.Operator = "not smallest"; return c;
+    }
+  }
+
   function generateRandomClue(sol) {
     const vals = [sol.a, sol.b, sol.c, sol.d, sol.e, sol.f];
     let attempts = 0;
 
-    // Declare all variables used across switch cases at function scope
-    // to avoid "Cannot access 'X' before initialization" TDZ errors.
+    // Declare all variables used across switch cases (11–18) at function
+    // scope to avoid "Cannot access 'X' before initialization" TDZ errors.
     let i, j, k;
     let vi, vj, vk;
     let innerTries;
-    let maxV, maxIdx, minV, minIdx;
 
     while (attempts++ < 500) {
       const c = makeClue();
       const typeId = Math.floor(Math.random() * 18) + 1;
 
+      if (typeId <= 10) return makeGuaranteedClue(vals, typeId);
+
       switch(typeId) {
-        case 1: // sum pair
-          i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
-          c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Operator = "+"; c.Value = vals[i] + vals[j];
-          c.Var1Index = i+1; c.Var2Index = j+1; return c;
-
-        case 2: // product pair
-          i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
-          c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Operator = "*"; c.Value = vals[i] * vals[j];
-          c.Var1Index = i+1; c.Var2Index = j+1; return c;
-
-        case 3: // diff (larger - smaller)
-          i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
-          vi = vals[i]; vj = vals[j];
-          if (vi > vj) { c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Var1Index = i+1; c.Var2Index = j+1; }
-          else { c.Var1 = varNames[j]; c.Var2 = varNames[i]; c.Var1Index = j+1; c.Var2Index = i+1; }
-          c.Operator = "-"; c.Value = Math.abs(vi - vj); return c;
-
-        case 4: // comparison > or <
-          i = randInt(6); j = randInt(6); while (j===i) j = randInt(6);
-          c.Var1 = varNames[i]; c.Var2 = varNames[j]; c.Var1Index = i+1; c.Var2Index = j+1;
-          c.Operator = (vals[i] > vals[j]) ? ">" : "<"; c.Value = 0; return c;
-
-        case 5: // parity unary
-          i = randInt(6);
-          c.Var1 = varNames[i]; c.Var1Index = i+1;
-          c.Operator = EvenLookup[vals[i]] ? "even" : "odd"; c.Value = 0; return c;
-
-        case 6: // prime unary
-          i = randInt(6);
-          c.Var1 = varNames[i]; c.Var1Index = i+1;
-          c.Operator = PrimeLookup[vals[i]] ? "prime" : "not prime"; c.Value = 0; return c;
-
-        case 7: // largest
-          maxV = vals[0]; maxIdx = 0;
-          for (let t=1;t<6;t++){ if (vals[t] > maxV){ maxV = vals[t]; maxIdx = t; } }
-          c.Var1 = varNames[maxIdx]; c.Var1Index = maxIdx+1; c.Operator = "largest"; return c;
-
-        case 8: // smallest
-          minV = vals[0]; minIdx = 0;
-          for (let t=1;t<6;t++){ if (vals[t] < minV){ minV = vals[t]; minIdx = t; } }
-          c.Var1 = varNames[minIdx]; c.Var1Index = minIdx+1; c.Operator = "smallest"; return c;
-
-        case 9: // not largest (random non-max)
-          maxV = vals[0]; maxIdx = 0;
-          for (let t=1;t<6;t++){ if (vals[t] > maxV){ maxV = vals[t]; maxIdx = t; } }
-          i = randInt(6); while (i===maxIdx) i = randInt(6);
-          c.Var1 = varNames[i]; c.Var1Index = i+1; c.Operator = "not largest"; return c;
-
-        case 10: // not smallest
-          minV = vals[0]; minIdx = 0;
-          for (let t=1;t<6;t++){ if (vals[t] < minV){ minV = vals[t]; minIdx = t; } }
-          i = randInt(6); while (i===minIdx) i = randInt(6);
-          c.Var1 = varNames[i]; c.Var1Index = i+1; c.Operator = "not smallest"; return c;
 
         case 11: // adjacent
           innerTries = 0;
@@ -425,7 +618,8 @@ function checkDuplicateAnswers() {
         case 17: // no sum
           innerTries = 0;
           do {
-            const sumN = 5 + Math.floor(Math.random() * 13); // 5..17
+            const offset = 1 + Math.floor(Math.random() * 6); // 1..6
+            const sumN = 11 + (Math.random() < 0.5 ? -offset : offset); // 5..17, never 11
             let hasPairSum = false;
             for (let p=0;p<6 && !hasPairSum;p++){
               for (let q=p+1;q<6;q++){
@@ -454,10 +648,8 @@ function checkDuplicateAnswers() {
       } // switch
     } // attempts loop
 
-    // fallback: return a simple parity clue
-    const fallback = makeClue();
-    fallback.Var1 = "A"; fallback.Var1Index = 1; fallback.Operator = (EvenLookup[sol.a] ? "even" : "odd");
-    return fallback;
+    // fallback: types 1–10 never fail, so just draw a random one
+    return makeGuaranteedClue(vals, 1 + Math.floor(Math.random() * 10));
   }
 
   // --- Clue to human string ---
@@ -553,19 +745,30 @@ function checkDuplicateAnswers() {
 // Key fix: "global" clues (no sum, no product, largest, smallest, not largest, not smallest)
 // have Var indices of 0 and must be checked only at the leaf (varIndex === 6).
 // Clues with all indices <= varIndex are checked eagerly. Others wait for the leaf.
-function findSolutionsForClues(clues, maxSolutions = 2) {
+const DEFAULT_VALUE_ORDER = [1,2,3,4,5,6,7,8,9,10];
+
+// biasSol (optional): the solution the clue set is *expected* to pin. When provided,
+// each variable tries its known correct value FIRST. This never changes which
+// solutions exist or how many there are — it only changes the order the search
+// explores them in — but it means confirming "yes, sol is still a valid solution"
+// costs ~6 checks instead of however many wrong branches happen to sort before it
+// in the old fixed 1..10 order. Every caller in generatePuzzleJS already knows the
+// target solution up front (that's the whole point of the uniqueness/prune checks),
+// so this is pure speedup with zero behavior change.
+function findSolutionsForClues(clues, maxSolutions = 2, biasSol = null) {
   const solutions = [];
   const sol = { a: 0, b: 0, c: 0, d: 0, e: 0, f: 0 };
   const keys = ['a','b','c','d','e','f'];
 
-  // Partition clues once: those that need all 6 values vs those that can prune early
-  const globalClues = [];   // checked only when all 6 are assigned
-  const partialClues = [];  // checked as soon as their vars are assigned
+  // Partition clues once: those that need all 6 values vs those that can prune early.
+  // partialByIndex[v] holds only the clues whose LAST needed variable is v, so at
+  // each backtrack depth we scan just the handful of clues relevant to that depth
+  // instead of looping over every partial clue in the whole set and skipping most
+  // of them (the old approach re-scanned the full list at every single node).
+  const globalClues = [];
+  const partialByIndex = [null, [], [], [], [], [], []]; // index 1..6
 
-  // These operators compare one variable against ALL others, so they can only be
-  // evaluated correctly when every variable has been assigned. Checking them early
-  // (when some vars are still 0) corrupts the max/min calculation and allows wrong
-  // solutions through (root cause of the "multiple solutions" bug).
+  // These operators compare one variable against ALL others, so they can only be evaluated correctly when every variable has been assigned.
   const GLOBAL_OPS = new Set(['largest','smallest','not largest','not smallest','no sum','no product']);
 
   for (const c of clues) {
@@ -574,8 +777,37 @@ function findSolutionsForClues(clues, maxSolutions = 2) {
     } else {
       const maxIdx = Math.max(c.Var1Index || 0, c.Var2Index || 0, c.Var3Index || 0);
       if (maxIdx === 0) globalClues.push(c);
-      else partialClues.push({ clue: c, maxIdx });
+      else partialByIndex[maxIdx].push(c);
     }
+  }
+
+  // Precompute the value try-order per variable position once, up front,
+  // instead of rebuilding it on every recursive call.
+  const valueOrders = keys.map(key => {
+    if (biasSol) {
+      const first = biasSol[key];
+      const rest = [];
+      for (let n = 1; n <= 10; n++) if (n !== first) rest.push(n);
+      return [first, ...rest];
+    }
+    return DEFAULT_VALUE_ORDER;
+  });
+
+  // largest/smallest pre-filter.
+  const extremumClues = globalClues.filter(c => c.Operator === 'largest' || c.Operator === 'smallest');
+
+  function violatesExtremum(c) {
+    const r1 = c.Var1Index - 1;
+    const targetVal = sol[keys[r1]];
+    if (!targetVal) return false;
+    for (let i = 0; i < 6; i++) {
+      if (i === r1) continue;
+      const v = sol[keys[i]];
+      if (!v) continue;
+      if (c.Operator === 'largest' && v >= targetVal) return true;
+      if (c.Operator === 'smallest' && v <= targetVal) return true;
+    }
+    return false;
   }
 
   function backtrack(varIndex, usedMask) {
@@ -591,17 +823,23 @@ function findSolutionsForClues(clues, maxSolutions = 2) {
     }
 
     const key = keys[varIndex - 1];
-    for (let n = 1; n <= 10; n++) {
+    const order = valueOrders[varIndex - 1];
+    const relevantClues = partialByIndex[varIndex];
+    for (let oi = 0; oi < order.length; oi++) {
+      const n = order[oi];
       const bit = 1 << (n - 1);
       if (usedMask & bit) continue;
 
       sol[key] = n;
 
-      // Early pruning: check partial clues fully assigned up to varIndex
+      // Early pruning: only the clues that become fully assigned at this depth
       let ok = true;
-      for (const { clue, maxIdx } of partialClues) {
-        if (maxIdx === varIndex) {          // all vars of this clue now assigned
-          if (!checkClue(sol, clue)) { ok = false; break; }
+      for (let ci = 0; ci < relevantClues.length; ci++) {
+        if (!checkClue(sol, relevantClues[ci])) { ok = false; break; }
+      }
+      if (ok) {
+        for (let ei = 0; ei < extremumClues.length; ei++) {
+          if (violatesExtremum(extremumClues[ei])) { ok = false; break; }
         }
       }
 
@@ -615,142 +853,114 @@ function findSolutionsForClues(clues, maxSolutions = 2) {
   return solutions;
 }
 
-  // --- HasTrivialXorClues (detect trivial XOR + direct parity/primality clues) ---
-  function hasTrivialXorClues(clues) {
-    for (let i=0;i<clues.length;i++) {
-      const ci = clues[i];
-      if (ci.Operator === "xor even") {
-        const xorVar1 = ci.Var1Index, xorVar2 = ci.Var2Index;
-        for (let j=0;j<clues.length;j++) {
-          if (i===j) continue;
-          const cj = clues[j];
-          if ((cj.Operator === "even" || cj.Operator === "odd") &&
-              (cj.Var1Index === xorVar1 || cj.Var1Index === xorVar2)) return true;
-        }
-      }
-      if (ci.Operator === "xor prime") {
-        const xorVar1 = ci.Var1Index, xorVar2 = ci.Var2Index;
-        for (let j=0;j<clues.length;j++) {
-          if (i===j) continue;
-          const cj = clues[j];
-          if ((cj.Operator === "prime" || cj.Operator === "not prime") &&
-              (cj.Var1Index === xorVar1 || cj.Var1Index === xorVar2)) return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  // --- Greedy prune: remove any clue that is redundant while preserving uniqueness (uses robust solver) ---
-  function greedyPruneClues(clues, originalSolution) {
-    // start with all clues, try removing each one and keep removal if uniqueness remains
-    const final = clues.slice();
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (let i=0;i<final.length;i++) {
-        const test = final.slice(0,i).concat(final.slice(i+1));
-        const sols = findSolutionsForClues(test, 2);
-        if (sols.length === 1) {
-          // ensure the single solution equals the original solution (if provided)
-          if (!originalSolution || (
-              String(sols[0].a) === String(originalSolution.a) &&
-              String(sols[0].b) === String(originalSolution.b) &&
-              String(sols[0].c) === String(originalSolution.c) &&
-              String(sols[0].d) === String(originalSolution.d) &&
-              String(sols[0].e) === String(originalSolution.e) &&
-              String(sols[0].f) === String(originalSolution.f)
-            )) {
-            // removing final[i] still leaves unique solution -> drop it
-            final.splice(i,1);
-            changed = true;
-            break;
-          }
-        }
-      }
-    }
-    return final;
-  }
-
   // --- Fixed: generatePuzzleJS ---
-// Strategy: always generate UP TO 8 clues first (not stopping early at uniqueness),
-// then prune exhaustively until no clue is redundant and count <= 6.
-function generatePuzzleJS(maxAttempts = 5000) {
+// 1. Clue pool size based on selected difficulty - see function nextPoolSize().
+// 2. Check if clue pool forces unique solution
+// 3. Prune the pool exhaustively until no clue is redundant and count <= 6. For hard/expert, prune easiest clues first (lowest score).
+// 4. Check if the final set satisfies the selected difficulty.
+function generatePuzzleJS(poolSize = 10, pruneEasiestFirst = false, minClueScore = 0) {
   initLookups();
 
-  // Exhaustive greedy prune: repeatedly scan and remove any redundant clue
-  // until no more can be removed. More thorough than single-pass.
-  function exhaustivePrune(clues, targetSol) {
+function exhaustivePrune(clues, targetSol) {
     const working = clues.slice();
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (let i = 0; i < working.length; i++) {
-        const without = working.filter((_, idx) => idx !== i);
-        const sols = findSolutionsForClues(without, 2);
-        if (sols.length === 1 &&
-            sols[0].a === targetSol.a && sols[0].b === targetSol.b &&
-            sols[0].c === targetSol.c && sols[0].d === targetSol.d &&
-            sols[0].e === targetSol.e && sols[0].f === targetSol.f) {
-          working.splice(i, 1);
-          changed = true;
-          break; // restart scan after any removal
-        }
+    let i = 0;
+    while (i < working.length) {
+      const without = working.filter((_, idx) => idx !== i);
+      const sols = findSolutionsForClues(without, 2, targetSol);
+      if (sols.length === 1 &&
+          sols[0].a === targetSol.a && sols[0].b === targetSol.b &&
+          sols[0].c === targetSol.c && sols[0].d === targetSol.d &&
+          sols[0].e === targetSol.e && sols[0].f === targetSol.f) {
+        working.splice(i, 1);
+        // don't increment — the next clue has shifted into index i
+      } else {
+        i++;
       }
     }
     return working;
   }
 
   // Generate a clue that is valid for sol and not a duplicate
-  function pickClue(existing, solObj, tries = 300) {
+  function pickClue(existing, solObj, tries = 300, minClueScore = 0) {
     for (let t = 0; t < tries; t++) {
       const candidate = generateRandomClue(solObj);
       if (existing.some(c => JSON.stringify(c) === JSON.stringify(candidate))) continue;
+      // Extreme-tier prefilter: skip clues too easy to be worth including —
+      // see clueComplexityScore. Only active when minClueScore > 0.
+      if (minClueScore > 0 && clueComplexityScore(candidate) <= minClueScore) continue;
 
-      // Reject XOR clues that are trivialised by existing parity/prime clues
-      if (candidate.Operator === "xor even" || candidate.Operator === "xor prime") {
-        const v1 = candidate.Var1Index, v2 = candidate.Var2Index;
-        const trivial = existing.some(cc =>
-          (cc.Operator === "even" || cc.Operator === "odd") &&
-          (cc.Var1Index === v1 || cc.Var1Index === v2)
-        ) || existing.some(cc =>
-          (cc.Operator === "prime" || cc.Operator === "not prime") &&
-          (cc.Var1Index === v1 || cc.Var1Index === v2)
-        );
-        if (trivial) continue;
-      }
+// Reject XOR clues that are trivialised by existing parity/prime clues,
+// and reject direct parity/prime clues that would trivialise an existing XOR clue.
+if (candidate.Operator === "xor even") {
+  const v1 = candidate.Var1Index, v2 = candidate.Var2Index;
+  const trivial = existing.some(cc =>
+    (cc.Operator === "even" || cc.Operator === "odd") &&
+    (cc.Var1Index === v1 || cc.Var1Index === v2)
+  );
+  if (trivial) continue;
+}
+
+if (candidate.Operator === "xor prime") {
+  const v1 = candidate.Var1Index, v2 = candidate.Var2Index;
+  const trivial = existing.some(cc =>
+    (cc.Operator === "prime" || cc.Operator === "not prime") &&
+    (cc.Var1Index === v1 || cc.Var1Index === v2)
+  );
+  if (trivial) continue;
+}
+
+if (candidate.Operator === "even" || candidate.Operator === "odd") {
+  const v = candidate.Var1Index;
+  const trivializesXor = existing.some(cc =>
+    cc.Operator === "xor even" &&
+    (cc.Var1Index === v || cc.Var2Index === v)
+  );
+  if (trivializesXor) continue;
+}
+
+if (candidate.Operator === "prime" || candidate.Operator === "not prime") {
+  const v = candidate.Var1Index;
+  const trivializesXor = existing.some(cc =>
+    cc.Operator === "xor prime" &&
+    (cc.Var1Index === v || cc.Var2Index === v)
+  );
+  if (trivializesXor) continue;
+}
 
       return candidate;
     }
     return null;
   }
 
-  let attempt = 0;
-  while (attempt++ < maxAttempts) {
+  while (true) {
     const sol = makeRandomSolution();
 
-    // Step 1: gather up to 8 non-duplicate clues (all valid for sol, no uniqueness requirement yet)
+    // Step 1: gather up to poolSize non-duplicate clues (all valid for sol)
     const pool = [];
-    for (let k = 0; k < 8; k++) {
-      const clue = pickClue(pool, sol, 300);
+    for (let k = 0; k < poolSize; k++) {
+      const clue = pickClue(pool, sol, 300, minClueScore);
       if (clue) pool.push(clue);
     }
 
-    // Step 2: verify the pool already forces a unique solution (needed before pruning)
-    const solsPool = findSolutionsForClues(pool, 2);
+    // Step 2: verify the pool forces a unique solution (needed before pruning)
+    const solsPool = findSolutionsForClues(pool, 2, sol);
     if (solsPool.length !== 1 ||
         solsPool[0].a !== sol.a || solsPool[0].b !== sol.b ||
         solsPool[0].c !== sol.c || solsPool[0].d !== sol.d ||
         solsPool[0].e !== sol.e || solsPool[0].f !== sol.f) {
-      continue; // pool doesn't pin the solution — try again
+      continue; // pool doesn't pin the solution — redraw clue set.
     }
 
-    // Step 3: exhaustively prune redundant clues
+    // Step 3: Prune redudnant clues.
+    // For Hard/Expert, try pruning the easiest (lowest-scoring) clues first, so pruning favors keeping the harder ones in the final set.
+    if (pruneEasiestFirst) {
+      pool.sort((a, b) => clueComplexityScore(a) - clueComplexityScore(b));
+    }
     const pruned = exhaustivePrune(pool, sol);
 
     // Step 4: final validation — unique, correct solution, within clue limit
     if (pruned.length > 6) continue;
-    const finalSols = findSolutionsForClues(pruned, 2);
+    const finalSols = findSolutionsForClues(pruned, 2, sol);
     if (finalSols.length !== 1) continue;
     if (finalSols[0].a !== sol.a || finalSols[0].b !== sol.b ||
         finalSols[0].c !== sol.c || finalSols[0].d !== sol.d ||
@@ -762,39 +972,22 @@ function generatePuzzleJS(maxAttempts = 5000) {
       _rawClues: pruned
     };
   }
-
-  // Fallback (should be very rare)
-  const sol = makeRandomSolution();
-  return {
-    A: sol.a, B: sol.b, C: sol.c, D: sol.d, E: sol.e, F: sol.f,
-    _clues: [`A + B = ${sol.a + sol.b}`, `C + D = ${sol.c + sol.d}`, `E + F = ${sol.e + sol.f}`],
-    _rawClues: []
-  };
 }
 
-  // ── Difficulty scoring (translated from VBA RankPuzzleDifficulty) ──
-  // Applies all clue eliminations iteratively on a virtual 6×10 candidate grid,
-  // then counts remaining cells. Fewer remaining = easier.
-  // Thresholds (tunable): easy ≤20, medium ≤35, hard ≤45, expert >45
+  // Difficulty scoring. Calculates "wall size" (elim) and WED - combination of clue entangelment and clue complexity. Lower score = easier puzzle.
 
-
-  function scorePuzzle(clues, sol) {
-    // Virtual grid: grid[varIdx 0..5][val 1..10] = true if candidate still alive
-    const grid = Array.from({ length: 6 }, () => {
-      const row = new Array(11).fill(false);
-      for (let v = 1; v <= 10; v++) row[v] = true;
-      return row;
-    });
-
+  // Standalone (not nested in scorePuzzle) so it can run against any grid —
+  // a fresh one (scorePuzzle) or a live DOM-derived snapshot (hint system).
+  // getMin/getMax/clear are scoped to the passed-in grid, no shared state.
+  function applyClueToGrid(grid, c) {
     function getMin(r) { for (let v=1;v<=10;v++) if (grid[r][v]) return v; return 0; }
     function getMax(r) { for (let v=10;v>=1;v--) if (grid[r][v]) return v; return 0; }
     function clear(r, v) { grid[r][v] = false; }
 
-    function applyClue(c) {
-      const r1 = c.Var1Index - 1, r2 = c.Var2Index - 1, r3 = c.Var3Index - 1;
-      const op = c.Operator;
+    const r1 = c.Var1Index - 1, r2 = c.Var2Index - 1, r3 = c.Var3Index - 1;
+    const op = c.Operator;
 
-      switch(op) {
+    switch(op) {
         case '+': {
           const n = c.Value;
           // remove values >= n from both; remove n/2 if n even; propagate
@@ -1252,8 +1445,16 @@ case 'no product': {
             }
           } break;
         }
-      }
-    }
+      } // end switch
+    } // end applyClueToGrid
+
+  function scorePuzzle(clues, sol) {
+    // Virtual grid: grid[varIdx 0..5][val 1..10] = true if candidate still alive
+    const grid = Array.from({ length: 6 }, () => {
+      const row = new Array(11).fill(false);
+      for (let v = 1; v <= 10; v++) row[v] = true;
+      return row;
+    });
 
     // UniqueEliminator: naked singles + naked pairs/triples/quads
     function uniqueElim() {
@@ -1298,7 +1499,7 @@ case 'no product': {
       for (let ri=0;ri<6;ri++) for(let v=1;v<=10;v++) if(grid[ri][v]) count++;
       if (count === prevCount) break;
       prevCount = count;
-      for (const c of clues) applyClue(c);
+      for (const c of clues) applyClueToGrid(grid, c);
       uniqueElim();
     }
 
@@ -1343,7 +1544,7 @@ case 'no product': {
       case 'closer':       return 85;
       case 'not between':  return 82;
       case 'not largest':
-      case 'not smallest': return 90;
+      case 'not smallest': return 75;
       case 'no sum': {
         const v = Math.round(n);
         if (v===9||v===10||v===12||v===13) return 25;
@@ -1364,175 +1565,263 @@ case 'no product': {
   // clues that uniquely pins it across ALL distinct 1-10 assignments.
   // EC = sum of complexity scores of that subset.
   // WED_raw = average EC across all 6 variables (equal weights, no cascade).
-  // Returns { wed_norm, ecDetails, WED_raw }
 
   const GLOBAL_OPS_WED = new Set(['no sum','no product','largest','smallest','not largest','not smallest']);
 
   function computeWED(rawClues, sol) {
-    const clueCount = rawClues.length;
-    const varNames6 = ['A','B','C','D','E','F'];
-    const solArr = [
-      sol.a !== undefined ? sol.a : sol.A,
-      sol.b !== undefined ? sol.b : sol.B,
-      sol.c !== undefined ? sol.c : sol.C,
-      sol.d !== undefined ? sol.d : sol.D,
-      sol.e !== undefined ? sol.e : sol.E,
-      sol.f !== undefined ? sol.f : sol.F
-    ];
+  rawClues = [...rawClues].sort((a, b) => clueComplexityScore(a) - clueComplexityScore(b));
+  const clueCount = rawClues.length;
 
-    // Backtracker: can a valid distinct-value assignment exist with varIdx=testVal
-    // satisfying subsetIdxs? No fixedMap — full free search.
-    function btAssign(toAssign, pos, assignment, usedMask, subsetIdxs) {
-      if (pos === toAssign.length) {
-        // Leaf: check ALL clues including globals
-        const s = { a:assignment[0], b:assignment[1], c:assignment[2],
-                    d:assignment[3], e:assignment[4], f:assignment[5] };
-        for (const idx of subsetIdxs) {
-          if (!checkClue(s, rawClues[idx])) return false;
+  const STEP_WEIGHTS = [2.5, 2.0, 1.5, 1.0, 0.4, 0.1];
+
+  const solArr = [
+    sol.a !== undefined ? sol.a : sol.A,
+    sol.b !== undefined ? sol.b : sol.B,
+    sol.c !== undefined ? sol.c : sol.C,
+    sol.d !== undefined ? sol.d : sol.D,
+    sol.e !== undefined ? sol.e : sol.E,
+    sol.f !== undefined ? sol.f : sol.F
+  ];
+
+  const varNames6 = ['A','B','C','D','E','F'];
+
+  // fixedVals[i] = true solution value once that variable is solved, else 0
+  const fixedVals = new Array(6).fill(0);
+
+  function btAssign(toAssign, pos, assignment, usedMask, subsetIdxs) {
+    if (pos === toAssign.length) {
+      const s = { a:assignment[0], b:assignment[1], c:assignment[2],
+                  d:assignment[3], e:assignment[4], f:assignment[5] };
+      for (const idx of subsetIdxs) {
+        if (!checkClue(s, rawClues[idx])) return false;
+      }
+      return true;
+    }
+    const varI = toAssign[pos];
+    for (let n = 1; n <= 10; n++) {
+      const bit = 1 << (n - 1);
+      if (usedMask & bit) continue;
+      assignment[varI] = n;
+      let ok = true;
+      for (const idx of subsetIdxs) {
+        const c = rawClues[idx];
+        if (GLOBAL_OPS_WED.has(c.Operator)) continue;
+        const allAssigned =
+          (!c.Var1Index || assignment[c.Var1Index-1]) &&
+          (!c.Var2Index || assignment[c.Var2Index-1]) &&
+          (!c.Var3Index || assignment[c.Var3Index-1]);
+        if (allAssigned) {
+          const s2 = { a:assignment[0], b:assignment[1], c:assignment[2],
+                       d:assignment[3], e:assignment[4], f:assignment[5] };
+          if (!checkClue(s2, c)) { ok = false; break; }
         }
+      }
+      if (ok && btAssign(toAssign, pos + 1, assignment, usedMask | bit, subsetIdxs)) {
+        assignment[varI] = 0;
         return true;
       }
-      const varI = toAssign[pos];
-      for (let n = 1; n <= 10; n++) {
-        const bit = 1 << (n - 1);
-        if (usedMask & bit) continue;
-        assignment[varI] = n;
-        // Partial pruning: only non-global clues whose vars are all assigned
-        let ok = true;
-        for (const idx of subsetIdxs) {
-          const c = rawClues[idx];
-          if (GLOBAL_OPS_WED.has(c.Operator)) continue; // globals checked at leaf only
-          const allAssigned =
-            (!c.Var1Index || assignment[c.Var1Index-1]) &&
-            (!c.Var2Index || assignment[c.Var2Index-1]) &&
-            (!c.Var3Index || assignment[c.Var3Index-1]);
-          if (allAssigned) {
-            const s2 = { a:assignment[0], b:assignment[1], c:assignment[2],
-                         d:assignment[3], e:assignment[4], f:assignment[5] };
-            if (!checkClue(s2, c)) { ok = false; break; }
-          }
-        }
-        if (ok && btAssign(toAssign, pos + 1, assignment, usedMask | bit, subsetIdxs)) {
-          assignment[varI] = 0;
-          return true;
-        }
-        assignment[varI] = 0;
-      }
-      return false;
+      assignment[varI] = 0;
     }
-
-    function isValuePossible(varIdx, testVal, subsetIdxs) {
-      const assignment = new Array(6).fill(0);
-      assignment[varIdx] = testVal;
-      const usedMask = 1 << (testVal - 1);
-      const toAssign = [];
-      for (let i = 0; i < 6; i++) { if (i !== varIdx) toAssign.push(i); }
-      return btAssign(toAssign, 0, assignment, usedMask, subsetIdxs);
-    }
-
-    // Returns true if subsetIdxs uniquely pins varIdx (exactly one testVal possible)
-    function subsetPinsVar(subsetIdxs, varIdx) {
-      let possibleCount = 0;
-      for (let testVal = 1; testVal <= 10; testVal++) {
-        if (isValuePossible(varIdx, testVal, subsetIdxs)) {
-          possibleCount++;
-          if (possibleCount > 1) return false;
-        }
-      }
-      return possibleCount === 1;
-    }
-
-    // Generate combinations of size k from 0..n-1
-    function* combos(n, k) {
-      const idx = Array.from({length: k}, (_, i) => i);
-      while (true) {
-        yield idx.slice();
-        let i = k - 1;
-        while (i >= 0 && idx[i] === n - k + i) i--;
-        if (i < 0) break;
-        idx[i]++;
-        for (let j = i + 1; j < k; j++) idx[j] = idx[j-1] + 1;
-      }
-    }
-
-    // Find minimum-EC subset for varIdx
-    function findMinSubset(varIdx) {
-      for (let size = 1; size <= clueCount; size++) {
-        for (const combo of combos(clueCount, size)) {
-          if (subsetPinsVar(combo, varIdx)) return combo;
-        }
-      }
-      return Array.from({length: clueCount}, (_, i) => i);
-    }
-
-    // Compute EC for each variable independently
-    const ecDetails = [];
-    for (let vi = 0; vi < 6; vi++) {
-      const subset = findMinSubset(vi);
-      const ec = subset.reduce((sum, idx) => sum + clueComplexityScore(rawClues[idx]), 0);
-      ecDetails.push({
-        varName: varNames6[vi],
-        ec,
-        clueIndices: subset.map(i => i + 1)
-      });
-    }
-
-    // Equal weights — no cascade justification for differential weighting
-    const WED_raw = ecDetails.reduce((sum, d) => sum + d.ec, 0) / 6;
-
-    // Normalize: min ~1 (A-B=9), max ~480 (super-six all hard clues)
-   const WED_norm = Math.min(100, Math.max(0, (WED_raw - 1) / 223 * 100));
-
-    return { wed_norm: WED_norm, ecDetails, WED_raw };
+    return false;
   }
 
+  function isValuePossible(varIdx, testVal, subsetIdxs) {
+    // Fixed variables are locked to their true values
+    const assignment = new Array(6).fill(0);
+    let usedMask = 0;
+
+    // Lock all already-fixed variables
+    for (let i = 0; i < 6; i++) {
+      if (fixedVals[i]) {
+        assignment[i] = fixedVals[i];
+        usedMask |= 1 << (fixedVals[i] - 1);
+      }
+    }
+
+    // Lock the variable we're testing
+    assignment[varIdx] = testVal;
+    usedMask |= 1 << (testVal - 1);
+
+    const toAssign = [];
+    for (let i = 0; i < 6; i++) {
+      if (i !== varIdx && !fixedVals[i]) toAssign.push(i);
+    }
+    return btAssign(toAssign, 0, assignment, usedMask, subsetIdxs);
+  }
+
+  function subsetPinsVar(subsetIdxs, varIdx) {
+    let possibleCount = 0;
+    for (let testVal = 1; testVal <= 10; testVal++) {
+      // Skip values already used by fixed variables
+      let alreadyUsed = false;
+      for (let i = 0; i < 6; i++) {
+        if (fixedVals[i] === testVal) { alreadyUsed = true; break; }
+      }
+      if (alreadyUsed) continue;
+      if (isValuePossible(varIdx, testVal, subsetIdxs)) {
+        possibleCount++;
+        if (possibleCount > 1) return false;
+      }
+    }
+    return possibleCount === 1;
+  }
+
+  function* combos(n, k) {
+    const idx = Array.from({length: k}, (_, i) => i);
+    while (true) {
+      yield idx.slice();
+      let i = k - 1;
+      while (i >= 0 && idx[i] === n - k + i) i--;
+      if (i < 0) break;
+      idx[i]++;
+      for (let j = i + 1; j < k; j++) idx[j] = idx[j-1] + 1;
+    }
+  }
+
+  function findMinSubset(varIdx) {
+    for (let size = 1; size <= clueCount; size++) {
+      for (const combo of combos(clueCount, size)) {
+        if (subsetPinsVar(combo, varIdx)) return combo;
+      }
+    }
+    return Array.from({length: clueCount}, (_, i) => i);
+  }
+
+  // Cascade: greedily solve cheapest variable first, fix it, repeat
+  const ecDetails = [];
+  const solvedOrder = [];
+  const unsolvedVars = new Set([0,1,2,3,4,5]);
+
+  let step = 0;
+  while (unsolvedVars.size > 0) {
+    // Find min EC across all unsolved variables
+    let minEC = Infinity;
+    const candidates = new Map(); // vi -> { subset, ec }
+
+    for (const vi of unsolvedVars) {
+      const subset = findMinSubset(vi);
+      const ec = subset.reduce((sum, idx) => sum + clueComplexityScore(rawClues[idx]), 0);
+      candidates.set(vi, { subset, ec });
+      if (ec < minEC) minEC = ec;
+    }
+
+    // Collect all variables that tie at minEC
+    const tied = [];
+    for (const [vi, data] of candidates) {
+      if (data.ec === minEC) tied.push(vi);
+    }
+
+    // All tied variables share the weight of the first step they occupy
+    const sharedWeight = STEP_WEIGHTS[step];
+
+    // Record and fix all tied variables together
+    for (const vi of tied) {
+      const { subset, ec } = candidates.get(vi);
+      ecDetails.push({
+        step: step + 1,
+        varName: varNames6[vi],
+        ec,
+        weight: sharedWeight,
+        weightedEC: ec * sharedWeight,
+        clueIndices: subset.map(i => i + 1)
+      });
+      solvedOrder.push(varNames6[vi]);
+      fixedVals[vi] = solArr[vi];
+      unsolvedVars.delete(vi);
+    }
+
+    step += tied.length;
+  }
+
+  const WED_raw = ecDetails.reduce((sum, d) => sum + d.weightedEC, 0);
+
+// Normalization bounds calibrated for weighted cascade:
+  // min ~ 2.5 (trivial first step, e.g. A-B=9 type clue)
+  // max ~ 5000 (calibrated against observed puzzle data; theoretical hard
+  // ceiling for 6 clues, all "closer"-type, no cascade benefit, is 7650)
+  const WED_norm = Math.min(100, Math.max(0, (WED_raw - 2.5) / 5000 * 100));
+
+  return { wed_norm: WED_norm, ecDetails, WED_raw };
+}
+
   // ── Puzzle rating ─────────────────────────────────────────────────────────
-  // Three components:
-  //   E_norm  (elim score)           weight 0.30
-  //   WED_norm (entry depth, avg EC) weight 0.55
-  //   C_norm  (avg clue complexity)  weight 0.15
-  //
-  //   Rating = round(800 + (E*0.30 + WED*0.55 + C*0.15) * 15.5)
-  //   Bands: Easy 800-1000 | Medium 1001-1400 | Hard 1401-1800 | Expert 1701+
-  //
-  //   NOTE: computePuzzleRating takes optional sol argument for WED.
-  //   During generation screening (sol unknown) WED is skipped; only
-  //   E_norm + C_norm used for fast pre-screening via difficultyFromElim.
+  // Max/min interaction terms (NOT independent additive terms):
+  //   E_norm   (elim score)          capped 0-100
+  //   WED_norm (entry depth, avg EC) capped 0-100
+  //   limiter = min(E_norm, WED_norm), secondary = max(E_norm, WED_norm)
+  //   Rating = round(800 + limiter*15 + secondary*7)
+  //   A puzzle is only rated hard when BOTH axes agree...
+  //   Max = 800 + 100*15 + 100*7 = 3000
+  //   This prevents a puzzle maxing one axis (e.g. full-entanglement "super 6"
+  //   puzzles with high WED_norm) from being capped by a low score on the
+  //   other axis (e.g. low elim from tight arithmetic clues pruning fast).
+  //   Bands below are STALE under this formula — recalibrate before relying on them:
+  //   Bands: Easy 800-1000 | Medium 1001-1400 | Hard 1401-1800 | Expert 1801+
 
 function computePuzzleRating(rawClues, elim, sol) {
-  // E_norm
+  // E_norm (capped at 100 — was previously uncapped and could reach ~109)
   let E_norm;
   if (elim <= 6) {
     E_norm = 0;
   } else if (elim <= 45) {
     E_norm = Math.pow((elim - 6) / 39, 0.85) * 75;
   } else {
-    E_norm = 75 + Math.pow((elim - 45) / 9, 0.60) * 25;
+    E_norm = Math.min(100, 75 + Math.pow((elim - 45) / 9, 0.60) * 25);
   }
 
   // WED_norm
   const wedResult = computeWED(rawClues, sol);
   const WED_norm = wedResult.wed_norm;
 
-  // Rating
-  const rating = Math.round(800 + (E_norm * 0.50 + WED_norm * 0.50) * 18);
+  // Rating — max/min interaction terms; the dominant axis (whichever of
+  // E_norm/WED_norm is higher) gets weight 7, the secondary axis gets
+  // weight 15, so maxing either axis alone still pulls the rating toward
+  // the top instead of being capped by a low score on the other axis.
+  const limiter = Math.min(E_norm, WED_norm);
+  const secondary = Math.max(E_norm, WED_norm);
+  const rating = Math.round(800 + limiter * 15 + secondary * 7);
 
-  computePuzzleRating._lastDebug = { wedResult, E_norm, WED_norm, elim, rating };
   return rating;
 }
+
+  // Fast upper-bound rating estimate using only the (already-computed) elim
+  // score, assuming best-case WED_norm = 100.
+
+  // ─────────────────────────────────────────────────────────────────
+  // ⚠ KEEP IN SYNC with computePuzzleRating's E_norm/rating formula.
+  // Any change there (weights, curve, constants) must be mirrored here
+  // or the WED-skip optimization below will reject valid puzzles.
+  // ─────────────────────────────────────────────────────────────────
+  function maxPossibleRating(elim) {
+    let E_norm;
+    if (elim <= 6) {
+      E_norm = 0;
+    } else if (elim <= 45) {
+      E_norm = Math.pow((elim - 6) / 39, 0.85) * 75;
+    } else {
+      E_norm = Math.min(100, 75 + Math.pow((elim - 45) / 9, 0.60) * 25);
+    }
+    // Best case WED_norm=100 is always >= E_norm, so it's the dominant
+    // term (weight 15) and E_norm is the secondary term (weight 7).
+    return Math.round(800 + E_norm * 15 + 100 * 7);
+  }
 
   function ratingToDifficulty(rating) {
     if (rating <= 1000) return 'easy';
     if (rating <= 1400) return 'medium';
     if (rating <= 1800) return 'hard';
-    return 'expert';
+    if (rating <= 2400) return 'expert';
+    return 'extreme';
   }
 
  
   // Expose
-  window._scorePuzzle         = scorePuzzle;
+ window._scorePuzzle         = scorePuzzle;
   window._computePuzzleRating = computePuzzleRating;
+  window._maxPossibleRating   = maxPossibleRating;
   window._ratingToDifficulty  = ratingToDifficulty;
+  window._applyClueToGrid     = applyClueToGrid;
+  window._clueComplexityScore = clueComplexityScore;
 
   window.generatePuzzle    = generatePuzzleJS;
   window._checkCluePublic  = checkClue;
@@ -1541,6 +1830,8 @@ function computePuzzleRating(rawClues, elim, sol) {
 
 
 function applyNewPuzzle(sol) {
+  if (window._sflClearHintGlow) window._sflClearHintGlow();
+  attemptedWrongCombos = new Set();
   // Normalize uppercase keys {A..F} → lowercase {a..f} for scorePuzzle/checkClue
   if (sol && sol.A !== undefined && sol.a === undefined) {
     sol.a = sol.A; sol.b = sol.B; sol.c = sol.C;
@@ -1560,13 +1851,19 @@ function applyNewPuzzle(sol) {
   feedbackEl.textContent = '';
   feedbackEl.className = 'feedback';
 
-  // Compute rating synchronously — WED runs inside generator loop now
+  // Rating is normally pre-computed at generation time; only run WED here
+  // if this puzzle somehow reached us without one (e.g. legacy/imported).
   const ratingEl = document.getElementById('puzzleRating');
   if (ratingEl && sol._rawClues && sol._rawClues.length) {
-    const elim   = window._scorePuzzle(sol._rawClues, sol);
-    const rating = window._computePuzzleRating(sol._rawClues, elim, sol);
+    if (!sol._rating) {
+      const elim = window._scorePuzzle(sol._rawClues, sol);
+      sol._rating = window._computePuzzleRating(sol._rawClues, elim, sol);
+    }
+    const rating = sol._rating;
     document.getElementById('puzzleRatingValue').textContent = '  ★ ' + rating;
     ratingEl.className = 'puzzle-rating rating-' + window._ratingToDifficulty(rating);
+    const ratingLabelEl = ratingEl.querySelector('.puzzle-rating-label');
+    if (ratingLabelEl) ratingLabelEl.textContent = window._ratingToDifficulty(rating).toUpperCase();
     ratingEl.style.display = 'inline';
   } else if (ratingEl) {
     ratingEl.style.display = 'none';
@@ -1603,6 +1900,7 @@ function resetClueColors() {
 }
 
 function checkAnswers() {
+  if (window._sflClearHintGlow) window._sflClearHintGlow();
   if (!currentSolution) {
     feedbackEl.textContent = 'Generate a puzzle first.';
     feedbackEl.className = 'feedback incorrect';
@@ -1669,97 +1967,17 @@ function checkAnswers() {
     feedbackEl.className = 'feedback correct';
     stopTimer();
   } else {
-    feedbackEl.textContent = '✗ Some clues not satisfied.';
-    feedbackEl.className = 'feedback incorrect';
+    const comboKey = inputIds.map(id => user[id]).join(',');
+    if (attemptedWrongCombos.has(comboKey)) {
+      feedbackEl.innerHTML = 'This solution was already attempted <br>and is not correct';
+      feedbackEl.className = 'feedback incorrect';
+    } else {
+      attemptedWrongCombos.add(comboKey);
+      feedbackEl.textContent = '✗ Some clues not satisfied.';
+      feedbackEl.className = 'feedback incorrect';
+    }
   }
 }
-
-// Wire events
-newPuzzleBtn.addEventListener('click', () => {
-  // Generation is now handled by popup.js — this listener only handles
-  // the forfeit case (when gameActive), which _sfgame intercepts via capture phase.
-  // If we reach here with no game active, popup.js capture phase already handled it.
-  return;
-  const gen = window.generatePuzzle;
-  if (typeof gen !== 'function') { alert('generatePuzzle is not defined.'); return; }
-
-  // Clear existing clues and reset state immediately
-  const cluesList = document.getElementById('cluesList');
-  if (cluesList) {
-    cluesList.innerHTML = '<li class="clue-placeholder">Generating…</li>';
-  }
-  undoStack.length = 0;
-  redoStack.length = 0;
-  updateUndoRedoBtns();
-  resetClueColors();
-  feedbackEl.textContent = '';
-  feedbackEl.className = 'feedback';
-
-const originalText = newPuzzleBtn.innerHTML;
-  newPuzzleBtn.innerHTML = '<span class="btn-icon"></span> Generating';
-  newPuzzleBtn.disabled = true;
-  // Immediately start fading down to 0.3 over 0.5s
-  newPuzzleBtn.style.transition = 'opacity 0.5s ease';
-  newPuzzleBtn.style.opacity = '0.3';
- 
-  // Run the search in small chunks separated by setTimeout(0) so the browser
-  // can repaint between chunks — this is what actually makes the pulse visible.
-  const CHUNK = 50;
-  const MAX_TRIES = 5000;
-  let tried = 0;
-  let sol = null;
-
-  function runChunk() {
-    const end = Math.min(tried + CHUNK, MAX_TRIES);
-    while (tried < end) {
-      tried++;
-      try {
-        const candidate = gen();
-        if (!candidate || !candidate._rawClues) continue;
-        const elim   = window._scorePuzzle(candidate._rawClues, candidate);
-        const rating = window._computePuzzleRating(candidate._rawClues, elim, candidate);
-      } catch(err) {
-        alert('Error: ' + err.message);
-        finish();
-        return;
-      }
-    }
-
-    if (sol || tried >= MAX_TRIES) {
-      if (!sol) { try { sol = gen(); } catch(e) { sol = null; } }
-      if (sol) applyNewPuzzle(sol);
-      finish();
-    } else {
-      setTimeout(runChunk, 0);
-    }
-  }
-
-  function finish() {
-    if (!window._sfgame || !window._sfgame.gameActive) {
-      newPuzzleBtn.innerHTML = originalText;
-      newPuzzleBtn.disabled = false;
-      newPuzzleBtn.style.transition = '';
-      newPuzzleBtn.style.opacity = '1';
-    } else {
-      newPuzzleBtn.disabled = false;
-      // Swap text immediately
-      newPuzzleBtn.innerHTML = '<span class="btn-icon"></span>Forfeit?';
-      newPuzzleBtn.classList.remove('generating');
-      newPuzzleBtn.style.opacity = '0.3';
-      // Ensure we're at 0.3 before starting the slow fade-in
-      newPuzzleBtn.style.transition = 'opacity 0.5s ease';
-      newPuzzleBtn.style.opacity = '0.3';
-      setTimeout(() => {
-        // Now slowly fade back to full opacity over 10s
-        newPuzzleBtn.style.transition = 'opacity 10s ease';
-        newPuzzleBtn.style.opacity = '1';
-      }, 500);
-    }
-  }
-
-  // One rAF to let the browser paint the disabled+pulsing state before we start
-  requestAnimationFrame(() => setTimeout(runChunk, 0));
-});
 
 checkBtn.addEventListener('click', checkAnswers);
 resetGridBtn.addEventListener('click', resetGrid);
@@ -1768,18 +1986,18 @@ resetGridBtn.addEventListener('click', resetGrid);
 // MODAL
 // ══════════════════════════════════════════
 const modal        = document.getElementById('tutorialModal');
-const howToPlayBtn = document.getElementById('howToPlayBtn');
 const modalClose   = document.getElementById('modalClose');
-const modalTabs    = document.querySelectorAll('.modal-tab');
-const modalBodies  = document.querySelectorAll('.modal-body');
+const modalTabs    = modal.querySelectorAll('.modal-tab');
+const modalBodies  = modal.querySelectorAll('.modal-body');
 
 function openModal() { modal.classList.add('open'); }
 function closeModal() { modal.classList.remove('open'); }
 
-howToPlayBtn.addEventListener('click', openModal);
-modalClose.addEventListener('click', closeModal);
+if (modalClose) modalClose.addEventListener('click', closeModal);
 modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+});
 
 modalTabs.forEach(tab => {
   tab.addEventListener('click', () => {
@@ -1791,8 +2009,27 @@ modalTabs.forEach(tab => {
 });
 
 // ══════════════════════════════════════════
+// WHAT'S NEW MODAL
+// ══════════════════════════════════════════
+const whatsNewBtn   = document.getElementById('whatsNewBtn');
+const whatsNewModal = document.getElementById('whatsNewModal');
+const whatsNewClose = document.getElementById('whatsNewClose');
+
+if (whatsNewBtn && whatsNewModal) {
+  whatsNewBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    whatsNewModal.classList.add('open');
+  });
+  if (whatsNewClose) whatsNewClose.addEventListener('click', () => whatsNewModal.classList.remove('open'));
+  whatsNewModal.addEventListener('click', (e) => { if (e.target === whatsNewModal) whatsNewModal.classList.remove('open'); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && whatsNewModal.classList.contains('open')) whatsNewModal.classList.remove('open');
+  });
+}
+
+// ══════════════════════════════════════════
 // CLUE HOVER TOOLTIPS
-// Attached when clues are rendered. Skip for +, -, * clues.
+// Skip for +, -, * clues.
 // ══════════════════════════════════════════
 const NO_TIP_OPS = new Set(['+', '-', '*']);
 
@@ -1831,6 +2068,7 @@ function attachClueTooltip(li, rawClue) {
 
 // Init
 buildGridRows();
+buildColumnHeaderButtons();
 populateAnswerSelects();
 
 // ══════════════════════════════════════════
@@ -1849,21 +2087,32 @@ populateAnswerSelects();
   const MIN_RD        = 50;
   const MAX_RD        = 350;
   const RD_DECAY_PER_DAY = 3;        // RD added per 24h inactivity
+  const RD_DECAY_PER_GAME = 0.9143;  // exponential decay per rated game: 350→100 after 20, →~58 after 40
   const MS_PER_DAY    = 86400000;
 
   // ─── Storage helpers ─────────────────────────────────────────────────────
   function loadProfile() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch(e) {}
-    return {
+    const defaults = {
       rating:    INIT_RATING,
       rd:        INIT_RD,
       vol:       INIT_VOL,
       lastPlayed: null,
       gamesPlayed: 0
     };
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Backfill any missing/invalid fields to avoid NaN propagation in Glicko-2 math.
+        const merged = { ...defaults, ...parsed };
+        if (!Number.isFinite(merged.rating))      merged.rating      = defaults.rating;
+        if (!Number.isFinite(merged.rd))          merged.rd          = defaults.rd;
+        if (!Number.isFinite(merged.vol))         merged.vol         = defaults.vol;
+        if (!Number.isFinite(merged.gamesPlayed)) merged.gamesPlayed = defaults.gamesPlayed;
+        return merged;
+      }
+    } catch(e) {}
+    return { ...defaults };
   }
 
   function saveProfile(p) {
@@ -1880,64 +2129,88 @@ populateAnswerSelects();
     return p;
   }
 
-  // ─── Expected time formula ────────────────────────────────────────────────
-  // Equal-rating baseline (player = puzzle):
-  //   ≤2000: base = 180 + (puzzleRating - 800) × 0.15  seconds
-  //   >2000: base = 360 + (puzzleRating - 2000) × 1.8  seconds
-  // Then scaled by (puzzleRating / playerRating):
-  //   expectedTime = base × (puzzleRating / playerRating)
+  // ─── Expected Solve Time (EST) ────────────────────────────────────────────
+  // Purely puzzle-rating based — no player-rating scaling.
+  // ≤2000: EST = 120 + (puzzleRating - 800) × 0.30  (2min@800, 4min@1200, 6min@1600, 8min@2000)
+  // >2000: EST = 480 + (puzzleRating - 2000) × 1.80 (+3min per 100 pts: 11/14/17/20/23min @2100-2500)
   function expectedBase(puzzleRating) {
     if (puzzleRating <= 2000) {
-      return 180 + (puzzleRating - 800) * 0.15;
+      return 120 + (puzzleRating - 800) * 0.30;
     } else {
-      return 360 + (puzzleRating - 2000) * 1.8;
+      return 480 + (puzzleRating - 2000) * 1.8;
     }
   }
 
-  function expectedTime(puzzleRating, playerRating) {
-    const base = expectedBase(puzzleRating);
-    return base * (puzzleRating / playerRating);
+  // Alias kept so callers that pass playerRating still work (second arg ignored).
+  function expectedTime(puzzleRating /*, playerRating — ignored */) {
+    return expectedBase(puzzleRating);
   }
 
-  // Penalty seconds per mistake (20% of equal-rating base time)
+  // Penalty seconds per mistake: 25% of EST.
   function penaltyPerMistake(puzzleRating) {
-    return Math.round(expectedBase(puzzleRating) * 0.20);
+    return Math.round(expectedBase(puzzleRating) * 0.25);
+  }
+
+  // ─── Effective Puzzle Rating ──────────────────────────────────────────────
+  // effectiveTime = solveSeconds + mistakes × penaltyPerMistake
+  // ratio = effectiveTime / EST
+  //   ratio ≤ 1.0 : multiplier = 1.33 - ratio × 0.99   (caps at 1.33 when ratio→0)
+  //   ratio > 1.0 : multiplier = 1.00 - (ratio - 1.0) × 0.17
+  //   Clamped to [0.66, 1.33]
+  // If S = 0 (gave up / 3 mistakes) pass the base rating directly — call site handles this.
+  // ratio ≤ 0.333 (3× faster than EST): multiplier = 1.33 (flat cap)
+  // 0.333 < ratio ≤ 1.0 (on time): linear from 1.33 down to 1.00
+  // 1.0 < ratio ≤ 3.0 (3× slower): linear from 1.00 down to 0.66
+  // ratio > 3.0: multiplier = 0.66 (flat floor)
+  function computeEffectivePuzzleRating(puzzleBaseRating, solveSeconds, mistakes) {
+    const est       = expectedBase(puzzleBaseRating);
+    const penalty   = penaltyPerMistake(puzzleBaseRating);
+    const effective = solveSeconds + mistakes * penalty;
+    const ratio     = effective / est;
+
+    let multiplier;
+    if (ratio <= 0.333) {
+      multiplier = 1.33;
+    } else if (ratio <= 1.0) {
+      // slope from (0.333, 1.33) to (1.0, 1.00)
+      const slope = (1.00 - 1.33) / (1.0 - 0.333);
+      multiplier = 1.33 + (ratio - 0.333) * slope;
+    } else {
+      // slope from (1.0, 1.00) to (3.0, 0.66)
+      const slope = (0.66 - 1.00) / (3.0 - 1.0);
+      multiplier = 1.00 + (ratio - 1.0) * slope;
+    }
+    multiplier = Math.max(0.66, Math.min(1.33, multiplier));
+
+    return Math.round(
+      Math.max(puzzleBaseRating * 0.66,
+        Math.min(puzzleBaseRating * 1.33,
+          puzzleBaseRating * multiplier))
+    );
   }
 
   // ─── S (performance score) calculation ───────────────────────────────────
-  // S = clamp(0.5 - 0.35 × ln(effectiveTime / expectedTime), 0.05, 1.25)
-  // Give up / 3 mistakes before solve → S = 0 (hard loss)
-function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
-    const penalty    = penaltyPerMistake(puzzleRating);
-    const effective  = solveSeconds + mistakes * penalty;
-    const expected   = expectedTime(puzzleRating, playerRating);
-    const ratio      = effective / expected;
-    const time_score = Math.max(0.05, Math.min(1.25, 0.5 - 0.491 * Math.log(ratio)));
-
-    // Remap so "solved in expected time" is always neutral (zero rating change),
-    // regardless of the rating gap between player and puzzle.
-    const mu    = (playerRating - 1500) / 173.7178;
-    const mu_j  = (puzzleRating - 1500) / 173.7178;
-    const phi_j = 350 / 173.7178;
-    function g(p) { return 1 / Math.sqrt(1 + 3 * p * p / (Math.PI * Math.PI)); }
-    const E_j = 1 / (1 + Math.exp(-g(phi_j) * (mu - mu_j)));
-
-    return Math.max(0.0, Math.min(1.25, E_j + (time_score - 0.5)));
+// S is determined solely by mistakes. Time affects effective puzzle rating, not S.
+  // mistakes=0 → 1.00, mistakes=1 → 0.66, mistakes=2 → 0.33, gave up/3 mistakes → 0.00
+  function computeS(mistakes, gaveUp) {
+    if (gaveUp || mistakes >= 3) return 0.00;
+    if (mistakes === 2) return 0.33;
+    if (mistakes === 1) return 0.66;
+    return 1.00;
   }
 
   // ─── Glicko-2 update ─────────────────────────────────────────────────────
   // Uses continuous S in place of binary outcome.
   // puzzle is treated as the "opponent" with its own rating.
-  // PUZZLE_RD raised to 200 so upsets against much-harder puzzles
-  // yield appropriately large rating swings.
+
   const PUZZLE_RD = 200;
 
   function glicko2Update(profile, puzzleRating, S) {
-    const mu    = (profile.rating - 1500) / 173.7178;
+    const mu    = (profile.rating - INIT_RATING) / 173.7178;
     const phi   = profile.rd / 173.7178;
     const sigma = profile.vol;
 
-    const mu_j  = (puzzleRating - 1500) / 173.7178;
+    const mu_j  = (puzzleRating - INIT_RATING) / 173.7178;
     const phi_j = PUZZLE_RD / 173.7178;
 
     function g(phi) {
@@ -1991,7 +2264,7 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
     const newPhi = 1 / Math.sqrt(1 / (phiStar * phiStar) + 1 / v);
     const newMu  = mu + newPhi * newPhi * g_j * (S - E_j);
 
-    const newRating = Math.round(173.7178 * newMu + 1500);
+    const newRating = Math.round(173.7178 * newMu + INIT_RATING);
     const newRd     = Math.max(MIN_RD, Math.min(MAX_RD, Math.round(173.7178 * newPhi)));
 
     return { newRating, newRd, newVol: newSigma, expectedS: E_j, v, delta };
@@ -2021,14 +2294,18 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
       let p = loadProfile();
       applyRdDrift(p);
 
-      const S = gaveUp ? 0 : computeS(solveSeconds, mistakes, puzzleRating, p.rating);
-      const result = glicko2Update(p, puzzleRating, S);
+      const S = computeS(mistakes, gaveUp);
+      // When S=0, time is irrelevant — use base rating so forfeit is a clean loss.
+      const effectiveRating = (S === 0)
+        ? puzzleRating
+        : computeEffectivePuzzleRating(puzzleRating, solveSeconds, mistakes);
+      const result = glicko2Update(p, effectiveRating, S);
 
       const oldRating = Math.round(p.rating);
       const oldRd     = Math.round(p.rd);
 
       p.rating     = result.newRating;
-      p.rd         = result.newRd;
+      p.rd         = Math.max(MIN_RD, Math.round(MIN_RD + (result.newRd - MIN_RD) * RD_DECAY_PER_GAME));
       p.vol        = result.newVol;
       p.lastPlayed = Date.now();
       p.gamesPlayed++;
@@ -2068,10 +2345,8 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
 
   // ─── DOM refs ─────────────────────────────────────────────────────────────
   const newPuzzleBtn   = document.getElementById('newPuzzleBtn');
-  // Mode pill is now inside the popup (popupModeCasual / popupModeRated)
-  // We reference them safely; if absent they're null and we guard all access.
   const penaltyEl      = document.getElementById('penaltyTime');
-  const mistakeEl      = document.getElementById('mistakeCounter'); // kept for compat but hidden
+  const mistakeEl      = document.getElementById('mistakeCounter');
   const ratingDisplayEl = document.getElementById('playerRatingValue');
   const ratingRdEl     = document.getElementById('playerRatingRd');
   const resultOverlay  = document.getElementById('resultOverlay');
@@ -2086,8 +2361,6 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
   refreshRatingDisplay();
 
   // ─── Mode pill ────────────────────────────────────────────────────────────
-  // Mode pill now lives in the popup; popup.js owns its visual state.
-  // _setMode() is called by popup.js before launching a puzzle.
   function setMode(mode) {
     gameMode = mode;
     // Sync popup pill if present
@@ -2095,6 +2368,9 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
     const r = document.getElementById('popupModeRated');
     if (c) c.classList.toggle('active', mode === 'casual');
     if (r) r.classList.toggle('active', mode === 'rated');
+    // Hint only available in casual — rated play shouldn't get free eliminations
+    const hintBtn = document.getElementById('hintBtn');
+    if (hintBtn) hintBtn.style.display = (mode === 'rated') ? 'none' : '';
   }
   setMode('casual');
 
@@ -2105,7 +2381,7 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
     return m + ':' + String(s).padStart(2, '0');
   }
 
-  // ─── Mistake boxes (change 4) ─────────────────────────────────────────────
+  // ─── Mistake boxes ─────────────────────────────────────────────────────────
   function updateMistakeBoxes(count) {
     for (let i = 1; i <= 3; i++) {
       const box = document.getElementById('mistakeBox' + i);
@@ -2134,6 +2410,7 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
 
     // Update mistake boxes
     updateMistakeBoxes(mistakeCount);
+    if (window.SFLSession && window.SFLSession.triggerSave) window.SFLSession.triggerSave();
 
     if (mistakeCount >= 3) {
       // Auto-forfeit — show result popup as failed
@@ -2161,6 +2438,8 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
     mistakeCount = 0;
     penaltySecs  = 0;
     puzzlePenaltyPerMistake = window.SFLRating.penaltyPerMistake(puzzleRating);
+    const badge = document.getElementById('modeDisplayBadge');
+    if (badge) badge.style.visibility = 'visible';
 
     // Lock popup mode pill buttons while game is active
     const _pc = document.getElementById('popupModeCasual');
@@ -2182,18 +2461,21 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
 
   function unlockGame() {
     gameActive = false;
-    // Re-enable popup mode pill buttons
     const _pc2 = document.getElementById('popupModeCasual');
     const _pr2 = document.getElementById('popupModeRated');
     if (_pc2) _pc2.disabled = false;
     if (_pr2) _pr2.disabled = false;
 
-    // Restore button text to "Play"
-    newPuzzleBtn.innerHTML = '<span class="btn-icon">&#x25B6;</span> Play';
+    newPuzzleBtn.innerHTML = '< BACK';
+    newPuzzleBtn.dataset.backMode = '1';
     newPuzzleBtn.classList.remove('give-up-active');
     penaltyEl.classList.remove('visible');
-
-    // Mistake boxes persist until next puzzle starts (reset in lockGame)
+    const solBtn = document.getElementById('showSolutionBtn');
+    if (solBtn) solBtn.style.display = '';
+    // Once a puzzle ends (solved, failed, or given up) it's in free-review —
+    // hint should be available for analysis even if the game was rated.
+    const hintBtn = document.getElementById('hintBtn');
+    if (hintBtn) hintBtn.style.display = '';
   }
 
   // ─── Give up logic ────────────────────────────────────────────────────────
@@ -2211,7 +2493,7 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
       refreshRatingDisplay();
     }
 
-    // Change 3: Casual give up → no popup at all; rated give up → show popup
+    // Casual give up → no popup at all; rated give up → show popup
     if (gameMode === 'rated') {
       showResultPopup(solveTime, true);
     }
@@ -2237,13 +2519,13 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
 
   // ─── Intercept New Puzzle button ──────────────────────────────────────────
   newPuzzleBtn.addEventListener('click', function (e) {
-    if (!gameActive) return; // let app.js generate normally
+    if (!gameActive) return;
 
     // Puzzle is active — this is "Give Up?"
     e.stopImmediatePropagation();
 
     showGiveUpConfirm();
-  }, true); // capture phase
+  }, true);
 
   // ─── Hook applyNewPuzzle to lock the game ────────────────────────────────
   const _originalApply = window.applyNewPuzzle;
@@ -2256,10 +2538,9 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
     }
     _originalApply(sol);
     window.currentSolution = sol;
-    if (sol && sol._rawClues && sol._rawClues.length) {
-      const elim   = window._scorePuzzle(sol._rawClues, sol);
-      const rating = window._computePuzzleRating(sol._rawClues, elim, sol);
-      sol._rating = rating;
+    if (sol && sol._rawClues && sol._rawClues.length && !sol._rating) {
+      const elim = window._scorePuzzle(sol._rawClues, sol);
+      sol._rating = window._computePuzzleRating(sol._rawClues, elim, sol);
     }
     lockGame(sol._rating || 1000);
   };
@@ -2300,27 +2581,44 @@ function computeS(solveSeconds, mistakes, puzzleRating, playerRating) {
   });
 
   // ─── Letter grade from performance ───────────────────────────────────────
-function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, gaveUp) {
-    if (gaveUp) return 'F';
-    // Grade is based purely on time performance, independent of rating gap.
-    // E_j remapping is only for Glicko rating changes, not for grading.
-    const penalty   = window.SFLRating.penaltyPerMistake(puzzleRating);
-    const effective = solveSeconds + mistakes * penalty;
-    const expected  = window.SFLRating.expectedTime(puzzleRating, playerRating);
-    const ratio     = effective / expected;
-    const time_score = Math.max(0.05, Math.min(1.25, 0.5 - 0.491 * Math.log(ratio)));
-    if (time_score >= 0.95) return 'A+';
-    if (time_score >= 0.87) return 'A';
-    if (time_score >= 0.80) return 'A−';
-    if (time_score >= 0.72) return 'B+';
-    if (time_score >= 0.64) return 'B';
-    if (time_score >= 0.49) return 'B−';
-    if (time_score >= 0.42) return 'C+';
-    if (time_score >= 0.35) return 'C';
-    if (time_score >= 0.28) return 'C−';
-    if (time_score >= 0.21) return 'D+';
-    if (time_score >= 0.14) return 'D';
-    return 'D−';
+window._computeLetterGrade = function(solveSeconds, mistakes, puzzleRating, playerRating, gaveUp) {
+    return computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, gaveUp);
+  };
+  function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, gaveUp) {
+    if (gaveUp || mistakes >= 3) return 'F';
+
+    const est   = window.SFLRating.expectedTime(puzzleRating);
+    const ratio = solveSeconds / est;   // raw time only — no penalty added for grading
+
+    if (mistakes === 0) {
+      // A+ to B-  (ratio: lower = faster = better)
+      if (ratio <= 0.40) return 'A+';
+      if (ratio <= 0.50) return 'A';
+      if (ratio <= 0.75) return 'A−';
+      if (ratio <= 1.00) return 'B+';
+      if (ratio <= 1.25) return 'B';
+      return 'B−';
+    }
+
+    if (mistakes === 1) {
+      // B to C-
+      if (ratio <= 0.66) return 'B';
+      if (ratio <= 1.00) return 'B−';
+      if (ratio <= 1.25) return 'C+';
+      if (ratio <= 1.50) return 'C';
+      return 'C−';
+    }
+
+    if (mistakes === 2) {
+      // C to D-
+      if (ratio <= 0.75) return 'C';
+      if (ratio <= 1.00) return 'C−';
+      if (ratio <= 1.50) return 'D+';
+      if (ratio <= 2.00) return 'D';
+      return 'D−';
+    }
+
+    return 'F';
   }
 
   function gradeColor(grade) {
@@ -2335,14 +2633,8 @@ function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, 
     if (rating <= 1000) return '#00e5a0';
     if (rating <= 1400) return 'var(--accent)';
     if (rating <= 1800) return '#ffa032';
-    return 'var(--danger)';
-  }
-
-  function difficultyLabel(rating) {
-    if (rating <= 1000) return 'EASY';
-    if (rating <= 1400) return 'MEDIUM';
-    if (rating <= 1800) return 'HARD';
-    return 'EXPERT';
+    if (rating <= 2400) return 'var(--danger)';
+    return '#a855f7';
   }
 
   // ─── Result popup ─────────────────────────────────────────────────────────
@@ -2355,23 +2647,25 @@ function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, 
     const ratingRowEl = document.getElementById('resultRatingRow');
     const casualNoteEl = document.getElementById('resultCasualNote');
 
+    const dc = difficultyColor(puzzleRating);
+    const diffLabel = (window._ratingToDifficulty ? window._ratingToDifficulty(puzzleRating) : 'medium').toUpperCase();
+
     if (gaveUp) {
-      title.textContent = '✗  PUZZLE FAILED';
+      title.innerHTML = `<span style="color:${dc}">${diffLabel}</span><br>✗  PUZZLE FAILED`;
       title.className   = 'result-title failed-title';
     } else {
-      title.textContent = '✓  PUZZLE SOLVED';
+      title.innerHTML = `<span style="color:${dc}">${diffLabel}</span><br>✓  PUZZLE SOLVED`;
       title.className   = 'result-title' + (isRated ? '' : ' casual-title');
     }
 
     const p = window.SFLRating.getProfile();
     const grade = computeLetterGrade(solveTime, mistakeCount, puzzleRating, p.rating, gaveUp);
     const gc = gradeColor(grade);
-    const dc = difficultyColor(puzzleRating);
 
-    const mistakesDisplay = mistakeCount > 0 ? '\u2009'.repeat(6) + mistakeCount : '\u2009'.repeat(6) + '—';
+    const mistakesDisplay = mistakeCount > 0 ? mistakeCount : '—';
     const mistakesColor = mistakeCount > 0 ? 'var(--danger)' : 'var(--success)';
     const autoForfeit = gaveUp && mistakeCount >= 3;
-    const penaltyDisplay = autoForfeit ? 'LOSS' : (penaltySecs > 0 ? '+' + formatMMSS(penaltySecs) : '—'+'\u2009'.repeat(6));
+    const penaltyDisplay = autoForfeit ? 'LOSS' : (penaltySecs > 0 ? '+' + formatMMSS(penaltySecs) : '');
     const penaltyColor = autoForfeit ? 'var(--danger)' : (penaltySecs > 0 ? 'var(--danger)' : 'var(--success)');
 
     // Change 2: show "N/A" for solve time when gave up
@@ -2385,15 +2679,11 @@ function computeLetterGrade(solveSeconds, mistakes, puzzleRating, playerRating, 
       <div class="result-stat result-stat-grade">
         <span class="result-stat-label">SOLVE TIME</span>
         <span class="result-stat-value">${solveTimeDisplay}</span>
+        <span class="result-stat-value" style="font-size:12pt; color:${penaltyColor}">${penaltyDisplay}</span>
       </div>
-      <div class="result-stat result-stat-combined">
-        <div class="result-stat-row">
+      <div class="result-stat result-stat-grade">
           <span class="result-stat-label">MISTAKES</span>
-          <span class="result-stat-label">PENALTY</span>
-        </div>
-        <div class="result-stat-row">
-          <span class="result-stat-value" style="font-size:12pt; color:${mistakesColor}">${mistakesDisplay}</span>
-          <span class="result-stat-value" style="font-size:12pt; color:${penaltyColor}">${penaltyDisplay}</span>
+          <span class="result-stat-value" style="color:${mistakesColor}">${mistakesDisplay}</span>
         </div>
       </div>
       
@@ -2475,23 +2765,25 @@ window._sfgame = {
     },
     _setMode(m) { setMode(m); },
     _getMode()  { return gameMode; },
+    // Silently abandon the in-progress puzzle WITHOUT recording any rating result
+    // and without showing any popup. Used when the player navigates away into a
+    // daily review or a fresh random puzzle while a different puzzle is still live.
+    _forceEndGame() {
+      if (!gameActive) return;
+      gameActive = false;
+      puzzleWasGivenUp = true; // prevents stopTimer's hook from firing a result later
+      stopTimer();
+      unlockGame();
+    },
   };
 
 })();
 
 
-
-
-
-/*═══════════════════════ TUTORIAL WALKTHROUGH ════════════════════ -->*/
+/*═══════════════════════ TUTORIAL WALKTHROUGH ════════════════════ */
 
 (function () {
   'use strict';
-
-  
-  /* ══════════════════════════════════════════
-     Worked Example Sub-Modal
-  ══════════════════════════════════════════ */
 
   const WE_ROWS = ['A','B','C','D','E','F'];
   
@@ -2666,7 +2958,7 @@ window._sfgame = {
       nxt.disabled = false; // "Done" closes the sub-modal
       nxt.dataset.done = '1';
     } else {
-      nxt.innerHTML = 'Next Step &#x2192;';
+      nxt.innerHTML = 'Next <span class="we-next-full">Step </span>&#x2192;';
       nxt.dataset.done = '';
     }
   }
@@ -2678,13 +2970,12 @@ window._sfgame = {
     weRenderStep(weStep);
   }
 
-function openWorkedExample() {
+window.openWorkedExample = function() {
   const overlay = document.getElementById('workedExampleModal');
   if (!overlay) return;
-
   overlay.classList.add('open');
   weGoTo(0);
-}
+};
 
   function closeWorkedExample() {
     const overlay = document.getElementById('workedExampleModal');
@@ -2727,10 +3018,10 @@ if (openBtn) openBtn.addEventListener('click', (e) => {
     });
   });
 
-  /*═══════════════════════ END OF TUTORIAL WALKTHROUGH ════════════════════ -->*/
+  /*═══════════════════════ END OF TUTORIAL WALKTHROUGH ════════════════════ */
 
   /* ══════════════════════════════════════════
-     FEATURE B — Share Popover
+      Share Popover
   ══════════════════════════════════════════ */
 
   let _shareGaveUp = false;
@@ -2744,36 +3035,55 @@ if (openBtn) openBtn.addEventListener('click', (e) => {
   };
 
 function diffEmoji(r) {
-  if (r <= 1000) return '\uD83D\uDFE2';   // 🟢
-  if (r <= 1300) return '\uD83D\uDFE1';   // 🟡
-  if (r <= 1800) return '\uD83D\uDFE0';   // 🟠
-  return '\uD83D\uDD34';                   // 🔴
+  if (r <= 1000) return '🟢';
+  if (r <= 1400) return '🟡';
+  if (r <= 1800) return '🟠';
+  if (r <= 2400) return '🔴';
+  return '🟣';
 }
-function gradeEmoji(g) {
-  if (!g || g === 'F') return '\uD83D\uDC80';           // 💀
-  if (g.startsWith('A')) return '\uD83C\uDFC6';         // 🏆
-  if (g.startsWith('B')) return '\u26A1';               // ⚡
-  return '\u2705';                                       // ✅
+
+function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakes, isDaily) {
+const site = 'sixfigurelogic.com';
+const diff = (window._ratingToDifficulty ? window._ratingToDifficulty(puzzleRating) : 'puzzle').toUpperCase();
+const m = Math.floor(solveTime / 60), s = String(solveTime % 60).padStart(2,'0');
+const timeStr = gaveUp ? '--:--' : `${m}:${s}`;
+const de = diffEmoji(puzzleRating); 
+
+const mistakeLine =
+mistakes === 0
+? '🎯 Perfect run'
+: mistakes === 1
+? '⚠️ 1 mistake'
+: `⚠️ ${mistakes} mistakes`;
+
+if (gaveUp) {
+return `🔢 Six-Figure Logic
+
+This ${diff} puzzle destroyed me 💀
+
+📈 Puzzle Rating: ${puzzleRating}
+
+Think you can crack it? 🧠
+
+👉 ${site}`;
 }
-  function mistakeBar(n) {
-    let s = ''; for (let i = 0; i < 3; i++) s += (i < n ? '✗' : '○'); return s;
-  }
 
-function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakes) {
-  const site = 'sixfigurelogic.com';
-  const diff = (window._ratingToDifficulty ? window._ratingToDifficulty(puzzleRating) : 'puzzle').toUpperCase();
-  const m = Math.floor(solveTime / 60), s = String(solveTime % 60).padStart(2,'0');
-  const timeStr = gaveUp ? '--:--' : `${m}:${s}`;
-  const de = diffEmoji(puzzleRating), ge = gradeEmoji(grade);
+const article = isDaily ? "today's" : (/^[AEIOU]/.test(diff) ? 'an' : 'a');
 
-  const mistakeWord = mistakes === 0 ? 'zero mistakes' : mistakes === 1 ? '1 mistake' : `${mistakes} mistakes`;
+return `🔢 Six-Figure Logic
 
-  if (gaveUp) {
-    return `🧩 Six-Figure Logic\n\nThis ${diff} puzzle beat me today (rating ${puzzleRating}) — can you crack it?\n\n👉 ${site}`;
-  }
-  const article = /^[AEIOU]/.test(diff) ? 'an' : 'a';
-  return `🧩 Six-Figure Logic\n\nJust solved ${article} ${diff} puzzle! ${de}\n\n• ⏱ ${timeStr}  \n• ${mistakeWord}  \n• Grade ${grade} ${ge}\n• Puzzle rating: ${puzzleRating}\n\n👉 ${site}`;
+Just cracked ${article} ${isDaily ? diff + ' daily' : diff} puzzle ${de}
+
+⚡ Time: ${timeStr}
+${mistakeLine}
+🏆 Performance: ${grade} 
+📈 Puzzle Rating: ${puzzleRating}
+
+Think you can beat my time? ⏱️
+
+👉 ${site}`;
 }
+
 
   function getRenderedGrade() {
     const el = document.querySelector('.result-grade-value');
@@ -2805,13 +3115,43 @@ function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakes) {
     const facebookA = document.getElementById('shareFacebook');
     if (!shareBtn || !popover) return;
 
-    function getShareData() {
-      const puzzleRating = (window.currentSolution && window.currentSolution._rating) || 1000;
-      const grade = getRenderedGrade();
-      const solveTime = getRenderedSolveTime();
-      const text = buildShareText(solveTime, _shareGaveUp, puzzleRating, grade, _shareMistakes);
-      const url = 'https://sixfigurelogic.com';
-      return { text, url, puzzleRating };
+function getShareData() {
+  const puzzleRating = (window.currentSolution && window.currentSolution._rating) || 1000;
+  const grade = getRenderedGrade();
+  const solveTime = getRenderedSolveTime();
+  const isDaily = !!(window._sflPuzzleContext && window._sflPuzzleContext.isDaily);  // ADD THIS
+  const text = buildShareText(solveTime, _shareGaveUp, puzzleRating, grade, _shareMistakes, isDaily);  // ADD isDaily
+  const url = 'https://sixfigurelogic.com';
+  return { text, url, puzzleRating };
+}
+
+    if (facebookA) {
+      facebookA.addEventListener('click', async function (e) {
+        e.preventDefault();
+        e.stopPropagation();  // ← prevent outside-click handler closing popover
+        const { text } = getShareData();
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch(err) {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+          document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); document.body.removeChild(ta);
+        }
+        // Flash green
+        const label = facebookA.querySelector('span');
+        facebookA.classList.add('copied');
+        if (label) label.textContent = '\u2713 Copied! Opening Facebook\u2026';
+        // Wait 1s then open Facebook
+        setTimeout(() => {
+          window.open('https://www.facebook.com/', '_blank', 'noopener');
+        }, 1000);
+        // Reset label after 1.5s
+        setTimeout(() => {
+          facebookA.classList.remove('copied');
+          if (label) label.textContent = 'Facebook (copy + open)';
+        }, 1500);
+      });
     }
 
     shareBtn.addEventListener('click', async function (e) {
@@ -2837,32 +3177,6 @@ function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakes) {
        if (facebookA) {
   facebookA.removeAttribute('href');
   facebookA.style.cursor = 'pointer';
-  facebookA.addEventListener('click', async function(e) {
-    e.preventDefault();
-    e.stopPropagation();  // ← prevent outside-click handler closing popover
-    const { text } = getShareData();
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch(err) {
-      const ta = document.createElement('textarea');
-      ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
-      document.body.appendChild(ta); ta.select();
-      document.execCommand('copy'); document.body.removeChild(ta);
-    }
-    // Flash green
-    const label = facebookA.querySelector('span');
-    facebookA.classList.add('copied');
-    if (label) label.textContent = '\u2713 Copied! Opening Facebook\u2026';
-    // Wait 1s then open Facebook
-    setTimeout(() => {
-      window.open('https://www.facebook.com/', '_blank', 'noopener');
-    }, 1000);
-    // Reset label after 3s
-    setTimeout(() => {
-      facebookA.classList.remove('copied');
-      if (label) label.textContent = 'Facebook (copy + open)';
-    }, 3000);
-  });
 }
         // Reset copy btn
         const copyLabel = document.getElementById('copyBtnLabel');
@@ -2874,7 +3188,7 @@ function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakes) {
     // Copy button
     if (copyBtn) {
   copyBtn.addEventListener('click', async function (e) {
-    e.stopPropagation();  // ← ADD THIS LINE
+    e.stopPropagation();  
     const { text } = getShareData();
     try {
       await navigator.clipboard.writeText(text);
@@ -2890,7 +3204,7 @@ function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakes) {
     setTimeout(() => {
       if (copyLabel) copyLabel.textContent = 'Copy Text';
       copyBtn.classList.remove('copied');
-    }, 2500);
+    }, 1500);
   });
 }
 
@@ -2908,4 +3222,484 @@ function buildShareText(solveTime, gaveUp, puzzleRating, grade, mistakes) {
     if (resultOverlay) resultOverlay.addEventListener('click', () => popover.classList.remove('open'));
   });
 
+})();
+
+// ── Modal page navigation ──────────────────────────────────────────────────
+(function () {
+  const TABS = [
+    { id: 'howto', pages: 4 },
+    { id: 'rating', pages: 4 },
+  ];
+
+  TABS.forEach(({ id, pages }) => {
+    let current = 0;
+
+    const prevBtn   = document.getElementById(`${id}-prev`);
+    const nextBtn   = document.getElementById(`${id}-next`);
+    const indicator = document.getElementById(`${id}-indicator`);
+
+    function update() {
+      for (let i = 0; i < pages; i++) {
+        const p = document.getElementById(`${id}-page-${i}`);
+        if (p) p.style.display = i === current ? '' : 'none';
+      }
+      if (prevBtn)   prevBtn.disabled   = current === 0;
+      if (nextBtn)   nextBtn.disabled   = current === pages - 1;
+      if (indicator) indicator.textContent = `${current + 1} / ${pages}`;
+    }
+
+    if (prevBtn) prevBtn.addEventListener('click', () => { if (current > 0) { current--; update(); } });
+    if (nextBtn) nextBtn.addEventListener('click', () => { if (current < pages - 1) { current++; update(); } });
+
+    // Reset to page 0 when tab is clicked
+    const tabBtn = document.querySelector(`.modal-tab[data-tab="${id}"]`);
+    if (tabBtn) tabBtn.addEventListener('click', () => { current = 0; update(); });
+
+    update();
+  });
+})();
+
+// ══════════════════════════════════════════
+// HINT SYSTEM (casual mode only)
+// Ported from the Excel "Wall Analysis" VBA (TestSubset/SearchAssignments):
+// for a candidate cell (row, val) still alive on the LIVE grid, a clue subset
+// "eliminates" it if there is NO valid assignment of the other five rows —
+// using only their CURRENT live candidates, all pairwise distinct — that
+// satisfies every clue in the subset while row=val. If no such assignment
+// exists anywhere in the search, that subset logically rules the cell out,
+// even though no single propagation rule may have caught it directly.
+//
+// This is a proper backtracking search (like findSolutionsForClues), not
+// constraint-propagation narrowing — which is what makes it able to find
+// multi-clue eliminations that pure per-clue rules miss.
+//
+// Staged fallback: 1 clue -> 2 clues -> 3 clues -> ... up to the puzzle's
+// full clue count. Within each size, combos are tried in ascending order of
+// combined complexity score, so the easiest clue/clue-combo is always the
+// one offered first.
+// ══════════════════════════════════════════
+(function () {
+  'use strict';
+
+  // Ops that only make sense once every variable is assigned (mirrors
+  // GLOBAL_OPS in findSolutionsForClues / computeWED) — can't be pruned
+  // incrementally mid-search, only checked at the leaf.
+  const GLOBAL_HINT_OPS = new Set(['largest','smallest','not largest','not smallest','no sum','no product']);
+
+  function snapshotGridFromDOM() {
+    const grid = Array.from({ length: 6 }, () => new Array(11).fill(false));
+    gridEl.querySelectorAll('.cell').forEach(cell => {
+      const r = inputIds.indexOf(cell.dataset.row);
+      const v = parseInt(cell.dataset.value, 10);
+      if (r >= 0) grid[r][v] = !cell.classList.contains('crossed'); // true = still alive
+    });
+    return grid;
+  }
+
+  function isFullyAssigned(c, fixed) {
+    return (!c.Var1Index || fixed[c.Var1Index - 1]) &&
+           (!c.Var2Index || fixed[c.Var2Index - 1]) &&
+           (!c.Var3Index || fixed[c.Var3Index - 1]);
+  }
+
+  // Backtracking search (VBA's SearchAssignments): does any valid assignment
+  // exist — using only `grid`'s current live candidates, all distinct —
+  // that satisfies every clue in comboIdxs while fixed[targetRow]=targetVal?
+  function existsValidAssignment(grid, rawClues, comboIdxs, targetRow, targetVal) {
+    const fixed = new Array(6).fill(0);
+    fixed[targetRow] = targetVal;
+    let found = false;
+
+    const globalIdxs = [], partialIdxs = [];
+    for (const idx of comboIdxs) {
+      const c = rawClues[idx];
+      (GLOBAL_HINT_OPS.has(c.Operator) ? globalIdxs : partialIdxs).push(idx);
+    }
+
+    function backtrack(rowIdx) {
+      if (found) return;
+      if (rowIdx === 6) {
+        const s = { a: fixed[0], b: fixed[1], c: fixed[2], d: fixed[3], e: fixed[4], f: fixed[5] };
+        for (const idx of globalIdxs) {
+          if (!window._checkCluePublic(s, rawClues[idx])) return;
+        }
+        found = true;
+        return;
+      }
+      if (fixed[rowIdx] !== 0) { backtrack(rowIdx + 1); return; }
+
+      for (let v = 1; v <= 10; v++) {
+        if (!grid[rowIdx][v]) continue; // must still be a live candidate
+        let used = false;
+        for (let r = 0; r < 6; r++) if (r !== rowIdx && fixed[r] === v) { used = true; break; }
+        if (used) continue;
+
+        fixed[rowIdx] = v;
+        const s = { a: fixed[0], b: fixed[1], c: fixed[2], d: fixed[3], e: fixed[4], f: fixed[5] };
+        let ok = true;
+        for (const idx of partialIdxs) {
+          const c = rawClues[idx];
+          if (isFullyAssigned(c, fixed) && !window._checkCluePublic(s, c)) { ok = false; break; }
+        }
+        if (ok) backtrack(rowIdx + 1);
+        fixed[rowIdx] = 0;
+        if (found) return;
+      }
+    }
+
+    backtrack(0);
+    return found;
+  }
+
+  function* combinationsIdx(n, k) {
+    if (k > n) return;
+    const idx = Array.from({ length: k }, (_, i) => i);
+    while (true) {
+      yield idx.slice();
+      let i = k - 1;
+      while (i >= 0 && idx[i] === n - k + i) i--;
+      if (i < 0) return;
+      idx[i]++;
+      for (let j = i + 1; j < k; j++) idx[j] = idx[j - 1] + 1;
+    }
+  }
+
+  function comboCost(combo, scores) {
+    return combo.reduce((p, idx) => p * scores[idx], 1);
+  }
+
+  // Cells eliminable from pure distinctness/pigeonhole alone — no clues
+  // involved. (E.g. two other rows locked to a naked pair {2,3} already
+  // forces every other row away from 2 and 3, regardless of what any clue
+  // says.) existsValidAssignment enforces "all six values distinct" as a
+  // hard constraint no matter which clues are passed in, so testing with
+  // comboIdxs=[] isolates exactly that baseline effect.
+  function computeBaselineImpossible(grid, rawClues) {
+    const impossible = new Map(); // key -> 'surface' | 'cascade'
+
+    const found = [];
+    for (let row = 0; row < 6; row++) {
+      let aliveCount = 0;
+      for (let v = 1; v <= 10; v++) if (grid[row][v]) aliveCount++;
+      if (aliveCount <= 1) continue;
+      for (let v = 1; v <= 10; v++) {
+        if (!grid[row][v]) continue;
+        if (!existsValidAssignment(grid, rawClues, [], row, v)) {
+          found.push({ row, v });
+        }
+      }
+    }
+    if (found.length === 0) return impossible;
+
+    // Classify depth: "surface" if a naked SINGLE (some other row already
+    // down to exactly this value) or naked PAIR (two other rows jointly
+    // confined to exactly 2 shared values including this one) directly
+    // explains it — the simplest, most immediately spottable pigeonhole
+    // patterns. Anything that only falls out of a bigger group (naked
+    // triple+) or a longer chain is "cascade".
+    function liveVals(r) {
+      const vals = [];
+      for (let v = 1; v <= 10; v++) if (grid[r][v]) vals.push(v);
+      return vals;
+    }
+    const rowVals = [0, 1, 2, 3, 4, 5].map(liveVals);
+
+    function explainedByNakedSingleOrPair(row, v) {
+      for (let r1 = 0; r1 < 6; r1++) {
+        if (r1 === row) continue;
+        if (rowVals[r1].length === 1 && rowVals[r1][0] === v) return true;
+      }
+      for (let r1 = 0; r1 < 6; r1++) {
+        if (r1 === row) continue;
+        for (let r2 = r1 + 1; r2 < 6; r2++) {
+          if (r2 === row) continue;
+          const union = new Set([...rowVals[r1], ...rowVals[r2]]);
+          if (union.size === 2 && union.has(v)) return true;
+        }
+      }
+      return false;
+    }
+
+    for (const { row, v } of found) {
+      impossible.set(row + ',' + v, explainedByNakedSingleOrPair(row, v) ? 'surface' : 'cascade');
+    }
+    return impossible;
+  }
+
+  // Classifies eliminated cells by whether their ROW is directly referenced
+  // by the combo's own clues (surface/primary) or not (cascade — that row's
+  // elimination is only a knock-on effect of the combo's own rows getting
+  // resolved first, propagating into rows the combo never mentions).
+  function getComboRowScope(rawClues, comboIdxs) {
+    const referencedRows = new Set();
+    let hasGlobalOp = false;
+    comboIdxs.forEach(idx => {
+      const c = rawClues[idx];
+      if (GLOBAL_HINT_OPS.has(c.Operator)) { hasGlobalOp = true; return; }
+      [c.Var1Index, c.Var2Index, c.Var3Index].filter(Boolean).forEach(i => referencedRows.add(i - 1));
+    });
+    return { referencedRows, hasGlobalOp };
+  }
+
+  // For global ops (no sum/no product/largest/smallest/not largest/not
+  // smallest), a candidate is only genuinely DIRECTLY forbidden if the
+  // clue's own arithmetic clashes using values we already know for certain
+  // (solved rows + the candidate itself) — not merely because the op's
+  // check happens to scan all six variables. If the violation only shows up
+  // once other still-open rows get pinned down too, that's pigeonhole
+  // reasoning riding on the clue, i.e. a cascade, not a surface hit.
+  function isDirectGlobalHit(grid, rawClues, comboIdxs, targetRow, targetVal) {
+    const known = new Array(6).fill(0);
+    for (let r = 0; r < 6; r++) {
+      let only = 0, count = 0;
+      for (let v = 1; v <= 10; v++) if (grid[r][v]) { only = v; count++; }
+      if (count === 1) known[r] = only;
+    }
+    known[targetRow] = targetVal;
+
+    for (const idx of comboIdxs) {
+      const c = rawClues[idx];
+if (c.Operator === 'no sum' || c.Operator === 'no product') {
+        // Direct hit if the complement of targetVal is GUARANTEED to be
+        // used somewhere among the OTHER rows — either a single other row
+        // is already forced to exactly that value, or a naked PAIR of
+        // other rows is jointly confined to exactly 2 values that include
+        // it. Either way the complement must land on one of those rows,
+        // banning targetVal everywhere else via the clue — no full solve
+        // needed. (E.g. two rows confined to {3,10} guarantees 10 is used
+        // by one of them, banning its sum/product partner elsewhere, even
+        // though neither row alone is confined to {targetVal,comp}.)
+        const comp = c.Operator === 'no sum'
+          ? (c.Value - targetVal)
+          : (Number.isInteger(c.Value / targetVal) ? c.Value / targetVal : null);
+        if (comp !== null && comp >= 1 && comp <= 10 && comp !== targetVal) {
+          const rowVals = (r) => known[r] ? [known[r]]
+            : Array.from({length: 10}, (_, i) => i + 1).filter(n => grid[r][n]);
+          let directHit = false;
+          for (let r1 = 0; r1 < 6; r1++) {
+            if (r1 === targetRow) continue;
+            const v1 = rowVals(r1);
+            if (v1.length === 1 && v1[0] === comp) { directHit = true; break; }
+          }
+          if (!directHit) {
+            for (let r1 = 0; r1 < 6 && !directHit; r1++) {
+              if (r1 === targetRow) continue;
+              for (let r2 = r1 + 1; r2 < 6; r2++) {
+                if (r2 === targetRow) continue;
+                const union = new Set([...rowVals(r1), ...rowVals(r2)]);
+                if (union.size === 2 && union.has(comp)) { directHit = true; break; }
+              }
+            }
+          }
+          if (directHit) return true;
+        }
+      } else if (c.Operator === 'not largest' || c.Operator === 'not smallest') {
+        // Unlike largest/smallest, "not largest"/"not smallest" can be
+        // evaluated directly from live candidate ranges alone — e.g. "E is
+        // not smallest" directly forbids v for E the moment every other
+        // row's remaining candidates are already all >= v. No need to wait
+        // for the whole grid to be solved.
+        const R = c.Var1Index - 1;
+        if (R === targetRow) {
+          const v = targetVal;
+          const rowExtreme = (r) => {
+            if (known[r]) return known[r];
+            const vals = [];
+            for (let n = 1; n <= 10; n++) if (grid[r][n]) vals.push(n);
+            return c.Operator === 'not largest' ? Math.max(...vals) : Math.min(...vals);
+          };
+          let direct = true;
+          for (let r = 0; r < 6; r++) {
+            if (r === R) continue;
+            const extreme = rowExtreme(r);
+            if (c.Operator === 'not largest' ? extreme > v : extreme < v) { direct = false; break; }
+          }
+          if (direct) return true;
+        }
+      } else if (GLOBAL_HINT_OPS.has(c.Operator)) {
+        // largest/smallest still need every value known to evaluate at all
+        // — can't be a direct hit until the rest of the grid is solved too.
+        if (known.every(v => v)) {
+          const s = { a: known[0], b: known[1], c: known[2], d: known[3], e: known[4], f: known[5] };
+          if (!window._checkCluePublic(s, c)) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Returns { clueIdxs: [...], cells: [{row,value,depth}, ...] } or null if no
+  // clue subset of any size eliminates anything beyond the current grid.
+  // depth is 'surface' (direct from the clue combo) or 'cascade' (only
+  // falls out after further propagation rounds).
+  function computeHint() {
+    const sol = window.currentSolution;
+    if (!sol || !sol._rawClues || !sol._rawClues.length) return null;
+    const rawClues = sol._rawClues;
+    const grid = snapshotGridFromDOM();
+    const n = rawClues.length;
+    const scores = rawClues.map(c => window._clueComplexityScore(c));
+
+    // Anything already forced by pure uniqueness (naked pairs/triples etc.)
+    // doesn't belong to any specific clue — exclude it so no combo gets
+    // wrongly credited for a deduction it had no part in.
+    const baseline = computeBaselineImpossible(grid, rawClues);
+
+    // Pure pigeonhole/uniqueness reasoning (no clue needed at all) is
+    // strictly cheaper than any clue-based hint — offer it first, as its
+    // own distinct hint type, so it isn't silently swallowed by the
+    // per-combo baseline exclusion below.
+    if (baseline.size > 0) {
+      const uniquenessCells = [];
+      baseline.forEach((depth, key) => {
+        const [r, v] = key.split(',').map(Number);
+        uniquenessCells.push({ row: r, value: v, depth });
+      });
+      return { clueIdxs: [], cells: uniquenessCells, isUniqueness: true };
+    }
+
+    for (let size = 1; size <= n; size++) {
+      // Easiest clue/combo first — sorted ascending by combined complexity.
+      const combos = [...combinationsIdx(n, size)];
+      combos.sort((a, b) => comboCost(a, scores) - comboCost(b, scores));
+
+      // Scan combos in ascending-cost order. Once we find the cheapest cost
+      // tier that eliminates anything, evaluate every combo tied at that
+      // same cost (ties are contiguous since combos are sorted) and pick
+      // among them by SURFACE-level elimination count only — cascaded
+      // eliminations (see classifyEliminationDepth) don't count toward this
+      // tiebreak, so a combo doesn't win just because it happens to trigger
+      // a long chain reaction.
+      let bestCombo = null, bestCells = null, bestSurface = -1, tieCost = null;
+
+      for (const combo of combos) {
+        const cost = comboCost(combo, scores);
+        if (tieCost !== null && cost > tieCost) break; // past the tied tier — done
+
+        const cells = [];
+        for (let row = 0; row < 6; row++) {
+          let aliveCount = 0;
+          for (let v = 1; v <= 10; v++) if (grid[row][v]) aliveCount++;
+          if (aliveCount <= 1) continue; // already solved — nothing to hint here
+
+          for (let v = 1; v <= 10; v++) {
+            if (!grid[row][v]) continue;
+            if (baseline.has(row + ',' + v)) continue; // not this combo's doing
+            if (!existsValidAssignment(grid, rawClues, combo, row, v)) {
+              cells.push({ row, value: v });
+            }
+          }
+        }
+        if (!cells.length) continue;
+
+        const { referencedRows, hasGlobalOp } = getComboRowScope(rawClues, combo);
+        const isSurface = (row, val) => {
+          if (referencedRows.has(row)) return true;
+          if (hasGlobalOp) return isDirectGlobalHit(grid, rawClues, combo, row, val);
+          return false;
+        };
+        const surfaceCount = cells.filter(c => isSurface(c.row, c.value)).length;
+
+        if (tieCost === null) tieCost = cost;
+        if (surfaceCount > bestSurface) {
+          bestCombo = combo;
+          bestCells = cells.map(c => ({ ...c, depth: isSurface(c.row, c.value) ? 'surface' : 'cascade' }));
+          bestSurface = surfaceCount;
+        }
+      }
+
+      if (bestCombo) return { clueIdxs: bestCombo, cells: bestCells };
+    }
+    return null;
+  }
+
+  // If applying this hint would cross out EVERY remaining live candidate for
+  // some row, that row can no longer possibly be solved — which only happens
+  // if the player already crossed out the true solution value for that
+  // letter earlier (a mistake). Detects that case so we can warn instead of
+  // handing back a hint that "solves" a letter into having zero candidates.
+  function wouldHintWipeARow(hint, grid) {
+    const byRow = {};
+    hint.cells.forEach(({ row, value }) => {
+      if (!byRow[row]) byRow[row] = new Set();
+      byRow[row].add(value);
+    });
+    for (const rowStr in byRow) {
+      const row = Number(rowStr);
+      let aliveCount = 0;
+      for (let v = 1; v <= 10; v++) if (grid[row][v]) aliveCount++;
+      if (byRow[row].size >= aliveCount) return true;
+    }
+    return false;
+  }
+
+  let hintActive = false;
+
+  function clearHintGlow() {
+    hintActive = false;
+    gridEl.querySelectorAll('.cell.hint-glow, .cell.hint-glow-cascade, .cell.hint-glow-uniqueness, .cell.hint-glow-uniqueness-cascade')
+      .forEach(c => c.classList.remove('hint-glow', 'hint-glow-cascade', 'hint-glow-uniqueness', 'hint-glow-uniqueness-cascade'));
+    const cluesList = document.getElementById('cluesList');
+    if (cluesList) cluesList.querySelectorAll('li.clue-hint, li.clue-hint-uniqueness').forEach(li => li.classList.remove('clue-hint', 'clue-hint-uniqueness'));
+  }
+  window._sflClearHintGlow = clearHintGlow;
+
+  // Grammar-correct singular/plural for however many clues/cells this hint involves.
+  function buildHintMessage(hint) {
+    const nCells = hint.cells.length;
+    const valuePhrase = nCells === 1 ? 'this value' : 'these values';
+    if (hint.isUniqueness) {
+      return `Given the grid state, the uniqueness <br />rule eliminates ${valuePhrase}`;
+    }
+    const nClues = hint.clueIdxs.length;
+    if (hint.cells.length && hint.cells.every(c => c.depth === 'cascade')) {
+      const cluePhrase = nClues === 1 ? 'this clue' : 'these clues';
+      return `Given the grid state, ${cluePhrase} and<br />the uniqueness rule eliminate ${valuePhrase}`;
+    }
+    const hintPhrase = nClues === 1 ? 'this clue eliminates' : 'these clues eliminate';
+    return `Given the grid state, <br />${hintPhrase} ${valuePhrase}`;
+  }
+
+  const hintBtn = document.getElementById('hintBtn');
+  if (hintBtn) {
+    hintBtn.addEventListener('click', () => {
+      if (hintActive) {
+        clearHintGlow();
+        feedbackEl.textContent = '';
+        feedbackEl.className = 'feedback';
+        return;
+      }
+      clearHintGlow();
+      const hint = computeHint();
+      if (!hint) {
+        feedbackEl.innerHTML = 'Think you have the answer? Click CHECK<br />Stuck? Click UNDO [↶] or RESET GRID';
+        feedbackEl.className = 'feedback hint';
+        return;
+      }
+      if (wouldHintWipeARow(hint, snapshotGridFromDOM())) {
+        feedbackEl.innerHTML = `The grid state contradicts the clues.<br />Backtrack with UNDO [↶] or RESET GRID`;
+        feedbackEl.className = 'feedback hint hint-conflict';
+        return;
+      }
+      const allCascade = hint.cells.length > 0 && hint.cells.every(c => c.depth === 'cascade');
+      const treatAsUniqueness = hint.isUniqueness || allCascade;
+      hint.cells.forEach(({ row, value, depth }) => {
+        const cell = gridEl.querySelector(`.cell[data-row="${inputIds[row]}"][data-value="${value}"]`);
+        if (!cell) return;
+        const cls = treatAsUniqueness
+                  ? (depth === 'cascade' ? 'hint-glow-uniqueness-cascade' : 'hint-glow-uniqueness')
+                  : depth === 'cascade' ? 'hint-glow-cascade'
+                  : 'hint-glow';
+        cell.classList.add(cls);
+      });
+      const cluesList = document.getElementById('cluesList');
+      if (cluesList) {
+        const items = cluesList.querySelectorAll('li:not(.clue-placeholder)');
+        hint.clueIdxs.forEach(idx => { if (items[idx]) items[idx].classList.add(treatAsUniqueness ? 'clue-hint-uniqueness' : 'clue-hint'); });
+      }
+      feedbackEl.innerHTML = buildHintMessage(hint);
+      feedbackEl.className = 'feedback hint' + (treatAsUniqueness ? ' hint-uniqueness' : '');
+      hintActive = true;
+    });
+  }
 })();
