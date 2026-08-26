@@ -1944,14 +1944,15 @@ function checkAnswers() {
   let allCluesOk = true;
 
   items.forEach((li, idx) => {
-    li.classList.remove('clue-ok', 'clue-fail');
+    li.classList.remove('clue-ok', 'clue-fail', 'clue-flash');
     const raw = rawClues[idx];
     if (!raw) return; // safety
     const passes = window._checkCluePublic(candidate, raw);
     if (passes) {
       li.classList.add('clue-ok');
     } else {
-      li.classList.add('clue-fail');
+      li.classList.add('clue-fail', 'clue-flash');
+      li.addEventListener('animationend', () => li.classList.remove('clue-flash'), { once: true });
       allCluesOk = false;
     }
   });
@@ -3261,22 +3262,6 @@ function getShareData() {
 
 // ══════════════════════════════════════════
 // HINT SYSTEM (casual mode only)
-// Ported from the Excel "Wall Analysis" VBA (TestSubset/SearchAssignments):
-// for a candidate cell (row, val) still alive on the LIVE grid, a clue subset
-// "eliminates" it if there is NO valid assignment of the other five rows —
-// using only their CURRENT live candidates, all pairwise distinct — that
-// satisfies every clue in the subset while row=val. If no such assignment
-// exists anywhere in the search, that subset logically rules the cell out,
-// even though no single propagation rule may have caught it directly.
-//
-// This is a proper backtracking search (like findSolutionsForClues), not
-// constraint-propagation narrowing — which is what makes it able to find
-// multi-clue eliminations that pure per-clue rules miss.
-//
-// Staged fallback: 1 clue -> 2 clues -> 3 clues -> ... up to the puzzle's
-// full clue count. Within each size, combos are tried in ascending order of
-// combined complexity score, so the easiest clue/clue-combo is always the
-// one offered first.
 // ══════════════════════════════════════════
 (function () {
   'use strict';
@@ -3305,7 +3290,7 @@ function getShareData() {
   // Backtracking search (VBA's SearchAssignments): does any valid assignment
   // exist — using only `grid`'s current live candidates, all distinct —
   // that satisfies every clue in comboIdxs while fixed[targetRow]=targetVal?
-  function existsValidAssignment(grid, rawClues, comboIdxs, targetRow, targetVal) {
+  function existsValidAssignment(grid, rawClues, comboIdxs, targetRow, targetVal, enforceDistinct = true) {
     const fixed = new Array(6).fill(0);
     fixed[targetRow] = targetVal;
     let found = false;
@@ -3330,9 +3315,11 @@ function getShareData() {
 
       for (let v = 1; v <= 10; v++) {
         if (!grid[rowIdx][v]) continue; // must still be a live candidate
-        let used = false;
-        for (let r = 0; r < 6; r++) if (r !== rowIdx && fixed[r] === v) { used = true; break; }
-        if (used) continue;
+        if (enforceDistinct) {
+          let used = false;
+          for (let r = 0; r < 6; r++) if (r !== rowIdx && fixed[r] === v) { used = true; break; }
+          if (used) continue;
+        }
 
         fixed[rowIdx] = v;
         const s = { a: fixed[0], b: fixed[1], c: fixed[2], d: fixed[3], e: fixed[4], f: fixed[5] };
@@ -3349,6 +3336,42 @@ function getShareData() {
 
     backtrack(0);
     return found;
+  }
+
+  function isClueSatisfiable(grid, rawClues, idx) {
+    for (let v = 1; v <= 10; v++) {
+      if (!grid[0][v]) continue;
+      if (existsValidAssignment(grid, rawClues, [idx], 0, v, true)) return true;
+    }
+    return false;
+  }
+
+  function computeContradictedClues(grid, rawClues) {
+    const deadRows = [];
+    for (let row = 0; row < 6; row++) {
+      let alive = false;
+      for (let v = 1; v <= 10; v++) if (grid[row][v]) { alive = true; break; }
+      if (!alive) deadRows.push(row);
+    }
+
+    const bad = new Set();
+    if (deadRows.length) {
+      rawClues.forEach((c, i) => {
+        const refsRow = r => (c.Var1Index === r + 1) || (c.Var2Index === r + 1) || (c.Var3Index === r + 1);
+        if (deadRows.some(refsRow)) bad.add(i);
+      });
+    }
+
+    // Check every other clue too, treating any dead row as fully open — its
+    // own impossibility is already reported above and shouldn't mask an
+    // independent contradiction elsewhere in the grid.
+    const relaxedGrid = grid.map((row, r) => deadRows.includes(r) ? new Array(11).fill(true) : row.slice());
+    rawClues.forEach((c, i) => {
+      if (bad.has(i)) return;
+      if (!isClueSatisfiable(relaxedGrid, rawClues, i)) bad.add(i);
+    });
+
+    return Array.from(bad);
   }
 
   function* combinationsIdx(n, k) {
@@ -3368,12 +3391,6 @@ function getShareData() {
     return combo.reduce((p, idx) => p * scores[idx], 1);
   }
 
-  // Cells eliminable from pure distinctness/pigeonhole alone — no clues
-  // involved. (E.g. two other rows locked to a naked pair {2,3} already
-  // forces every other row away from 2 and 3, regardless of what any clue
-  // says.) existsValidAssignment enforces "all six values distinct" as a
-  // hard constraint no matter which clues are passed in, so testing with
-  // comboIdxs=[] isolates exactly that baseline effect.
   function computeBaselineImpossible(grid, rawClues) {
     const impossible = new Map(); // key -> 'surface' | 'cascade'
 
@@ -3391,12 +3408,6 @@ function getShareData() {
     }
     if (found.length === 0) return impossible;
 
-    // Classify depth: "surface" if a naked SINGLE (some other row already
-    // down to exactly this value) or naked PAIR (two other rows jointly
-    // confined to exactly 2 shared values including this one) directly
-    // explains it — the simplest, most immediately spottable pigeonhole
-    // patterns. Anything that only falls out of a bigger group (naked
-    // triple+) or a longer chain is "cascade".
     function liveVals(r) {
       const vals = [];
       for (let v = 1; v <= 10; v++) if (grid[r][v]) vals.push(v);
@@ -3426,106 +3437,38 @@ function getShareData() {
     return impossible;
   }
 
-  // Classifies eliminated cells by whether their ROW is directly referenced
-  // by the combo's own clues (surface/primary) or not (cascade — that row's
-  // elimination is only a knock-on effect of the combo's own rows getting
-  // resolved first, propagating into rows the combo never mentions).
-  function getComboRowScope(rawClues, comboIdxs) {
-    const referencedRows = new Set();
-    let hasGlobalOp = false;
-    comboIdxs.forEach(idx => {
-      const c = rawClues[idx];
-      if (GLOBAL_HINT_OPS.has(c.Operator)) { hasGlobalOp = true; return; }
-      [c.Var1Index, c.Var2Index, c.Var3Index].filter(Boolean).forEach(i => referencedRows.add(i - 1));
-    });
-    return { referencedRows, hasGlobalOp };
-  }
+  function classifyEliminationDepths(originalGrid, rawClues, comboIdxs, cells) {
+    const remaining = new Set(cells.map(c => c.row + ',' + c.value));
+    const depths = new Map();
+    const workingGrid = originalGrid.map(row => row.slice());
 
-  // For global ops (no sum/no product/largest/smallest/not largest/not
-  // smallest), a candidate is only genuinely DIRECTLY forbidden if the
-  // clue's own arithmetic clashes using values we already know for certain
-  // (solved rows + the candidate itself) — not merely because the op's
-  // check happens to scan all six variables. If the violation only shows up
-  // once other still-open rows get pinned down too, that's pigeonhole
-  // reasoning riding on the clue, i.e. a cascade, not a surface hit.
-  function isDirectGlobalHit(grid, rawClues, comboIdxs, targetRow, targetVal) {
-    const known = new Array(6).fill(0);
-    for (let r = 0; r < 6; r++) {
-      let only = 0, count = 0;
-      for (let v = 1; v <= 10; v++) if (grid[r][v]) { only = v; count++; }
-      if (count === 1) known[r] = only;
-    }
-    known[targetRow] = targetVal;
-
-    for (const idx of comboIdxs) {
-      const c = rawClues[idx];
-if (c.Operator === 'no sum' || c.Operator === 'no product') {
-        // Direct hit if the complement of targetVal is GUARANTEED to be
-        // used somewhere among the OTHER rows — either a single other row
-        // is already forced to exactly that value, or a naked PAIR of
-        // other rows is jointly confined to exactly 2 values that include
-        // it. Either way the complement must land on one of those rows,
-        // banning targetVal everywhere else via the clue — no full solve
-        // needed. (E.g. two rows confined to {3,10} guarantees 10 is used
-        // by one of them, banning its sum/product partner elsewhere, even
-        // though neither row alone is confined to {targetVal,comp}.)
-        const comp = c.Operator === 'no sum'
-          ? (c.Value - targetVal)
-          : (Number.isInteger(c.Value / targetVal) ? c.Value / targetVal : null);
-        if (comp !== null && comp >= 1 && comp <= 10 && comp !== targetVal) {
-          const rowVals = (r) => known[r] ? [known[r]]
-            : Array.from({length: 10}, (_, i) => i + 1).filter(n => grid[r][n]);
-          let directHit = false;
-          for (let r1 = 0; r1 < 6; r1++) {
-            if (r1 === targetRow) continue;
-            const v1 = rowVals(r1);
-            if (v1.length === 1 && v1[0] === comp) { directHit = true; break; }
-          }
-          if (!directHit) {
-            for (let r1 = 0; r1 < 6 && !directHit; r1++) {
-              if (r1 === targetRow) continue;
-              for (let r2 = r1 + 1; r2 < 6; r2++) {
-                if (r2 === targetRow) continue;
-                const union = new Set([...rowVals(r1), ...rowVals(r2)]);
-                if (union.size === 2 && union.has(comp)) { directHit = true; break; }
-              }
-            }
-          }
-          if (directHit) return true;
-        }
-      } else if (c.Operator === 'not largest' || c.Operator === 'not smallest') {
-        // Unlike largest/smallest, "not largest"/"not smallest" can be
-        // evaluated directly from live candidate ranges alone — e.g. "E is
-        // not smallest" directly forbids v for E the moment every other
-        // row's remaining candidates are already all >= v. No need to wait
-        // for the whole grid to be solved.
-        const R = c.Var1Index - 1;
-        if (R === targetRow) {
-          const v = targetVal;
-          const rowExtreme = (r) => {
-            if (known[r]) return known[r];
-            const vals = [];
-            for (let n = 1; n <= 10; n++) if (grid[r][n]) vals.push(n);
-            return c.Operator === 'not largest' ? Math.max(...vals) : Math.min(...vals);
-          };
-          let direct = true;
-          for (let r = 0; r < 6; r++) {
-            if (r === R) continue;
-            const extreme = rowExtreme(r);
-            if (c.Operator === 'not largest' ? extreme > v : extreme < v) { direct = false; break; }
-          }
-          if (direct) return true;
-        }
-      } else if (GLOBAL_HINT_OPS.has(c.Operator)) {
-        // largest/smallest still need every value known to evaluate at all
-        // — can't be a direct hit until the rest of the grid is solved too.
-        if (known.every(v => v)) {
-          const s = { a: known[0], b: known[1], c: known[2], d: known[3], e: known[4], f: known[5] };
-          if (!window._checkCluePublic(s, c)) return true;
+    let round = 0;
+    while (remaining.size > 0) {
+      round++;
+      const foundThisRound = [];
+      for (const key of remaining) {
+        const [rowStr, valStr] = key.split(',');
+        const row = Number(rowStr), val = Number(valStr);
+        if (!existsValidAssignment(workingGrid, rawClues, comboIdxs, row, val, true)) {
+          foundThisRound.push(key);
         }
       }
+      if (foundThisRound.length === 0) {
+        // Shouldn't happen since every cell here was already confirmed dead
+        // against the full original grid — guard against an infinite loop.
+        for (const key of remaining) depths.set(key, 'cascade');
+        break;
+      }
+      const label = round === 1 ? 'surface' : 'cascade';
+      foundThisRound.forEach(key => {
+        depths.set(key, label);
+        remaining.delete(key);
+        const [r, v] = key.split(',').map(Number);
+        workingGrid[r][v] = false; 
+      });
     }
-    return false;
+
+    return depths;
   }
 
   // Returns { clueIdxs: [...], cells: [{row,value,depth}, ...] } or null if no
@@ -3540,15 +3483,8 @@ if (c.Operator === 'no sum' || c.Operator === 'no product') {
     const n = rawClues.length;
     const scores = rawClues.map(c => window._clueComplexityScore(c));
 
-    // Anything already forced by pure uniqueness (naked pairs/triples etc.)
-    // doesn't belong to any specific clue — exclude it so no combo gets
-    // wrongly credited for a deduction it had no part in.
     const baseline = computeBaselineImpossible(grid, rawClues);
 
-    // Pure pigeonhole/uniqueness reasoning (no clue needed at all) is
-    // strictly cheaper than any clue-based hint — offer it first, as its
-    // own distinct hint type, so it isn't silently swallowed by the
-    // per-combo baseline exclusion below.
     if (baseline.size > 0) {
       const uniquenessCells = [];
       baseline.forEach((depth, key) => {
@@ -3563,13 +3499,6 @@ if (c.Operator === 'no sum' || c.Operator === 'no product') {
       const combos = [...combinationsIdx(n, size)];
       combos.sort((a, b) => comboCost(a, scores) - comboCost(b, scores));
 
-      // Scan combos in ascending-cost order. Once we find the cheapest cost
-      // tier that eliminates anything, evaluate every combo tied at that
-      // same cost (ties are contiguous since combos are sorted) and pick
-      // among them by SURFACE-level elimination count only — cascaded
-      // eliminations (see classifyEliminationDepth) don't count toward this
-      // tiebreak, so a combo doesn't win just because it happens to trigger
-      // a long chain reaction.
       let bestCombo = null, bestCells = null, bestSurface = -1, tieCost = null;
 
       for (const combo of combos) {
@@ -3592,45 +3521,27 @@ if (c.Operator === 'no sum' || c.Operator === 'no product') {
         }
         if (!cells.length) continue;
 
-        const { referencedRows, hasGlobalOp } = getComboRowScope(rawClues, combo);
-        const isSurface = (row, val) => {
-          if (referencedRows.has(row)) return true;
-          if (hasGlobalOp) return isDirectGlobalHit(grid, rawClues, combo, row, val);
-          return false;
-        };
-        const surfaceCount = cells.filter(c => isSurface(c.row, c.value)).length;
+        const depthMap = classifyEliminationDepths(grid, rawClues, combo, cells);
+        const surfaceCount = cells.filter(c => depthMap.get(c.row + ',' + c.value) === 'surface').length;
 
         if (tieCost === null) tieCost = cost;
         if (surfaceCount > bestSurface) {
           bestCombo = combo;
-          bestCells = cells.map(c => ({ ...c, depth: isSurface(c.row, c.value) ? 'surface' : 'cascade' }));
+          bestCells = cells.map(c => ({ ...c, depth: depthMap.get(c.row + ',' + c.value) }));
           bestSurface = surfaceCount;
         }
       }
 
-      if (bestCombo) return { clueIdxs: bestCombo, cells: bestCells };
+      if (bestCombo) {
+        const coloredCells = bestCells.map(c => {
+          const possibleWithoutDistinctness =
+            existsValidAssignment(grid, rawClues, bestCombo, c.row, c.value, false);
+          return { ...c, color: possibleWithoutDistinctness ? 'orange' : 'yellow' };
+        });
+        return { clueIdxs: bestCombo, cells: coloredCells };
+      }
     }
     return null;
-  }
-
-  // If applying this hint would cross out EVERY remaining live candidate for
-  // some row, that row can no longer possibly be solved — which only happens
-  // if the player already crossed out the true solution value for that
-  // letter earlier (a mistake). Detects that case so we can warn instead of
-  // handing back a hint that "solves" a letter into having zero candidates.
-  function wouldHintWipeARow(hint, grid) {
-    const byRow = {};
-    hint.cells.forEach(({ row, value }) => {
-      if (!byRow[row]) byRow[row] = new Set();
-      byRow[row].add(value);
-    });
-    for (const rowStr in byRow) {
-      const row = Number(rowStr);
-      let aliveCount = 0;
-      for (let v = 1; v <= 10; v++) if (grid[row][v]) aliveCount++;
-      if (byRow[row].size >= aliveCount) return true;
-    }
-    return false;
   }
 
   let hintActive = false;
@@ -3640,23 +3551,28 @@ if (c.Operator === 'no sum' || c.Operator === 'no product') {
     gridEl.querySelectorAll('.cell.hint-glow, .cell.hint-glow-cascade, .cell.hint-glow-uniqueness, .cell.hint-glow-uniqueness-cascade')
       .forEach(c => c.classList.remove('hint-glow', 'hint-glow-cascade', 'hint-glow-uniqueness', 'hint-glow-uniqueness-cascade'));
     const cluesList = document.getElementById('cluesList');
-    if (cluesList) cluesList.querySelectorAll('li.clue-hint, li.clue-hint-uniqueness').forEach(li => li.classList.remove('clue-hint', 'clue-hint-uniqueness'));
+    if (cluesList) cluesList.querySelectorAll('li.clue-hint, li.clue-hint-uniqueness, li.clue-flash-red').forEach(li => li.classList.remove('clue-hint', 'clue-hint-uniqueness', 'clue-flash-red'));
   }
   window._sflClearHintGlow = clearHintGlow;
 
   // Grammar-correct singular/plural for however many clues/cells this hint involves.
   function buildHintMessage(hint) {
     const nCells = hint.cells.length;
-    const valuePhrase = nCells === 1 ? 'this value' : 'these values';
+    const valuePhrase = nCells === 1 ? 'this value.' : 'these values.';
     if (hint.isUniqueness) {
-      return `Given the grid state, the uniqueness <br />rule eliminates ${valuePhrase}`;
+      return `Given the grid state, the uniqueness rule <br /> eliminates ${valuePhrase}`;
     }
     const nClues = hint.clueIdxs.length;
-    if (hint.cells.length && hint.cells.every(c => c.depth === 'cascade')) {
-      const cluePhrase = nClues === 1 ? 'this clue' : 'these clues';
-      return `Given the grid state, ${cluePhrase} and<br />the uniqueness rule eliminate ${valuePhrase}`;
-    }
+    const cluePhrase = nClues === 1 ? 'this clue' : 'these clues';
     const hintPhrase = nClues === 1 ? 'this clue eliminates' : 'these clues eliminate';
+    const allNeedUniqueness  = hint.cells.length > 0 && hint.cells.every(c => c.color === 'orange');
+    const someNeedUniqueness = hint.cells.some(c => c.color === 'orange');
+    if (allNeedUniqueness) {
+      return `Given the grid state, the uniqueness rule and <br /> ${cluePhrase} eliminate ${valuePhrase}`;
+    }
+    if (someNeedUniqueness) {
+      return `Given the grid state, ${hintPhrase} <br />${valuePhrase} <span style="color:#ffa032">(uniqueness rule needed for some)</span>`;
+    }
     return `Given the grid state, <br />${hintPhrase} ${valuePhrase}`;
   }
 
@@ -3670,23 +3586,43 @@ if (c.Operator === 'no sum' || c.Operator === 'no product') {
         return;
       }
       clearHintGlow();
+
+      const allFilled = inputIds.every(id => document.getElementById(id).value.trim() !== '');
+      if (allFilled) {
+        feedbackEl.innerHTML = 'Think you have the answer? Click CHECK<br />Stuck? Click UNDO [↶] or RESET GRID';
+        feedbackEl.className = 'feedback hint';
+        return;
+      }
+
+      const sflSol = window.currentSolution;
+      if (sflSol && sflSol._rawClues && sflSol._rawClues.length) {
+        const contradicted = computeContradictedClues(snapshotGridFromDOM(), sflSol._rawClues);
+        if (contradicted.length) {
+          feedbackEl.innerHTML = `The grid state contradicts the clues.<br />Backtrack with UNDO [↶] or RESET GRID`;
+          feedbackEl.className = 'feedback hint hint-conflict';
+          const cluesListConflict = document.getElementById('cluesList');
+          if (cluesListConflict) {
+            const conflictItems = cluesListConflict.querySelectorAll('li:not(.clue-placeholder)');
+            contradicted.forEach(idx => { if (conflictItems[idx]) conflictItems[idx].classList.add('clue-flash-red'); });
+          }
+          hintActive = true;
+          return;
+        }
+      }
+
       const hint = computeHint();
       if (!hint) {
         feedbackEl.innerHTML = 'Think you have the answer? Click CHECK<br />Stuck? Click UNDO [↶] or RESET GRID';
         feedbackEl.className = 'feedback hint';
         return;
       }
-      if (wouldHintWipeARow(hint, snapshotGridFromDOM())) {
-        feedbackEl.innerHTML = `The grid state contradicts the clues.<br />Backtrack with UNDO [↶] or RESET GRID`;
-        feedbackEl.className = 'feedback hint hint-conflict';
-        return;
-      }
-      const allCascade = hint.cells.length > 0 && hint.cells.every(c => c.depth === 'cascade');
-      const treatAsUniqueness = hint.isUniqueness || allCascade;
-      hint.cells.forEach(({ row, value, depth }) => {
+      const allUniqueness = hint.isUniqueness || (hint.cells.length > 0 && hint.cells.every(c => c.color === 'orange'));
+
+      hint.cells.forEach(({ row, value, depth, color }) => {
         const cell = gridEl.querySelector(`.cell[data-row="${inputIds[row]}"][data-value="${value}"]`);
         if (!cell) return;
-        const cls = treatAsUniqueness
+        const isOrange = hint.isUniqueness || color === 'orange';
+        const cls = isOrange
                   ? (depth === 'cascade' ? 'hint-glow-uniqueness-cascade' : 'hint-glow-uniqueness')
                   : depth === 'cascade' ? 'hint-glow-cascade'
                   : 'hint-glow';
@@ -3695,10 +3631,10 @@ if (c.Operator === 'no sum' || c.Operator === 'no product') {
       const cluesList = document.getElementById('cluesList');
       if (cluesList) {
         const items = cluesList.querySelectorAll('li:not(.clue-placeholder)');
-        hint.clueIdxs.forEach(idx => { if (items[idx]) items[idx].classList.add(treatAsUniqueness ? 'clue-hint-uniqueness' : 'clue-hint'); });
+        hint.clueIdxs.forEach(idx => { if (items[idx]) items[idx].classList.add(allUniqueness ? 'clue-hint-uniqueness' : 'clue-hint'); });
       }
       feedbackEl.innerHTML = buildHintMessage(hint);
-      feedbackEl.className = 'feedback hint' + (treatAsUniqueness ? ' hint-uniqueness' : '');
+      feedbackEl.className = 'feedback hint' + (allUniqueness ? ' hint-uniqueness' : '');
       hintActive = true;
     });
   }
