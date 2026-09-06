@@ -2439,8 +2439,7 @@ populateAnswerSelects();
     mistakeCount = 0;
     penaltySecs  = 0;
     puzzlePenaltyPerMistake = window.SFLRating.penaltyPerMistake(puzzleRating);
-    const badge = document.getElementById('modeDisplayBadge');
-    if (badge) badge.style.visibility = 'visible';
+    document.querySelectorAll('.mode-display-badge').forEach(badge => { badge.style.visibility = 'visible'; });
 
     // Lock popup mode pill buttons while game is active
     const _pc = document.getElementById('popupModeCasual');

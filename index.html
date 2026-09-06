@@ -41,7 +41,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=3.4" />
+  <link rel="stylesheet" href="style.css?v=3.5" />
   <link rel="icon" type="image/png" href="favicon.png">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -62,6 +62,7 @@
       <span class="player-rating-label-inline">YOUR RATING:</span>
       <span class="player-rating-value" id="playerRatingValue">1000</span>
       <span class="player-rating-rd" id="playerRatingRd">± 350</span>
+      <span class="mode-display-badge mode-display-badge-header" id="modeDisplayBadgeHeader">CASUAL</span>
     </div>
 
     <!-- ── MAIN MENU ─────────────────────────────────────────────── -->
@@ -461,18 +462,15 @@
 
       <!-- [1,3] grid topbar -->
       <div class="topbar topbar-grid hidden">
-        <div class="mode-controls">
-          <span class="mode-display-badge" id="modeDisplayBadge">CASUAL</span>
-          <button id="resetGridBtn" class="btn ghost">
-            <span class="btn-icon">&#x21BA;</span> Reset Grid
-          </button>
-
-        </div>
-        <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
         <div class="timer-wrap">
           <div id="timer" class="timer">00:00</div>
           <span id="penaltyTime" class="penalty-time"></span>
         </div>
+        <span class="mode-display-badge mode-display-badge-topbar" id="modeDisplayBadge">CASUAL</span>
+        <button id="resetGridBtn" class="btn ghost">
+          <span class="btn-icon">&#x21BA;</span> Reset Grid
+        </button>
+        <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
       </div>
 
       <!-- [2,1] clues card -->
@@ -534,6 +532,14 @@
   <div class="modal-box" style="max-width:760px;">
     <button class="modal-close" id="whatsNewClose" aria-label="Close">&times;</button>
     <div class="modal-body" style="padding-top:28px;">
+
+      <div class="modal-section">
+  <div class="modal-section-title">September 6, 2026</div>
+  <ul>
+    <li>Minor UI updates to puzzle layout (for desktop).</li>
+    <li>Daily puzzle cards now show your mistake count after completion.</li>
+  </ul>
+</div>
 
       <div class="modal-section">
   <div class="modal-section-title">August 26, 2026</div>
@@ -611,24 +617,28 @@
           <span class="daily-card-diff">EASY</span>
           <span class="daily-card-status"></span>
           <span class="daily-card-time"></span>
+          <span class="daily-card-mistakes"></span>
           <span class="daily-card-action">PLAY</span>
         </div>
         <div class="daily-card diff-tier-medium" id="daily-card-medium" role="button" tabindex="0" aria-label="Medium daily puzzle">
           <span class="daily-card-diff">MEDIUM</span>
           <span class="daily-card-status"></span>
           <span class="daily-card-time"></span>
+          <span class="daily-card-mistakes"></span>
           <span class="daily-card-action">PLAY</span>
         </div>
         <div class="daily-card diff-tier-hard" id="daily-card-hard" role="button" tabindex="0" aria-label="Hard daily puzzle">
           <span class="daily-card-diff">HARD</span>
           <span class="daily-card-status"></span>
           <span class="daily-card-time"></span>
+          <span class="daily-card-mistakes"></span>
           <span class="daily-card-action">PLAY</span>
         </div>
         <div class="daily-card diff-tier-expert" id="daily-card-expert" role="button" tabindex="0" aria-label="Expert daily puzzle">
           <span class="daily-card-diff">EXPERT</span>
           <span class="daily-card-status"></span>
           <span class="daily-card-time"></span>
+          <span class="daily-card-mistakes"></span>
           <span class="daily-card-action">PLAY</span>
         </div>
       </div>
@@ -701,9 +711,9 @@
   </div>
   <!-- ── END HISTORY OVERLAY ──────────────────────────────────────── -->
 
-  <script src="app.js?v=4.0"></script>
-  <script src="session.js"></script>
+  <script src="app.js?v=4.1"></script>
+  <script src="session.js?v=2.0"></script>
   <script src="daily.js?v=2.0"></script>
-  <script src="popup.js?v=2.2"></script>
+  <script src="popup.js?v=2.3"></script>
 </body>
 </html>

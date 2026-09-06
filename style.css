@@ -315,7 +315,22 @@ header h1 {
 
 .topbar-clues   { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 10px; }
 .topbar-answers { grid-column: 2; grid-row: 1; display: flex; align-items: center; justify-content: center; }
-.topbar-grid    { grid-column: 3; grid-row: 1; display: flex; align-items: flex-start; gap: 10px; }
+@media (min-width: 901px) {
+  .topbar-grid {
+    grid-column: 3;
+    grid-row: 1;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 10px;
+    row-gap: 8px;
+    align-items: center;
+  }
+  .topbar-grid .timer-wrap         { grid-column: 1; grid-row: 1; justify-self: start; margin-left: 0; }
+  .topbar-grid .mode-display-badge { grid-column: 2; grid-row: 1; justify-self: start; }
+  .topbar-grid #resetGridBtn       { grid-column: 1; grid-row: 2; justify-self: start; }
+  .topbar-grid #feedback           { grid-column: 2; grid-row: 2; width: 100%; margin-top: 0; }
+}
 
 .clues-card   { grid-column: 1; grid-row: 2; align-self: stretch; display: flex; flex-direction: column; }
 .answers-card { grid-column: 2; grid-row: 2; align-self: stretch; width: 120px; }
@@ -333,7 +348,7 @@ header h1 {
   -webkit-touch-callout: none;
 }
 
-.answers-grid { display: flex; flex-direction: column; gap: 16px; }
+.answers-grid { display: flex; flex-direction: column; gap: 13px; }
 
 .answer-item { display: flex; align-items: center; gap: 6px; height: 34px; }
 
@@ -539,7 +554,7 @@ header h1 {
 .grid-rows {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
@@ -582,12 +597,12 @@ header h1 {
 .row-cells {
   display: grid;
   grid-template-columns: repeat(10, 1fr);
-  gap: 5px;
+  gap: 2px;
   flex: 1;
 }
 
 .cell {
-  aspect-ratio: 1;
+  width: 100%;
   height: 34px;
   display: flex;
   align-items: center;
@@ -691,11 +706,11 @@ header h1 {
   border-color: var(--danger) !important;
 }
 
-.column-header-btns { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; flex: 1; }
+.column-header-btns { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; flex: 1; }
 .col-elim-btn {
-  aspect-ratio: 1; height: 34px; min-width: 0; border-radius: 6px;
+  width: 100%; height: 34px; min-width: 0; border-radius: 6px;
   border: 1px solid var(--border-bright); background: var(--surface2);
-  color: var(--text-dim); font-family: var(--mono); font-weight: 700; font-size: 0.75rem;
+  color: var(--text-dim); font-family: var(--mono); font-weight: 700; font-size: 1rem;
   cursor: pointer; transition: all 0.12s ease;
   display: flex;
   align-items: center;
@@ -1975,6 +1990,20 @@ header h1 {
   letter-spacing: 0.04em;
 }
 
+.daily-card-mistakes {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  letter-spacing: 0.06em;
+  min-height: 11px;
+}
+.daily-card-mistakes.has-mistakes {
+  color: var(--danger);
+}
+
 .daily-card-action {
   font-family: 'BankGothic', 'Oswald', sans-serif;
   font-size: 10px;
@@ -2129,6 +2158,19 @@ header h1 {
 }
 .mode-display-casual { color: #00e5a0; background: rgba(0,229,160,0.10); border-color: rgba(0,229,160,0.35); }
 .mode-display-rated  { color: var(--accent); background: rgba(232,255,71,0.10); border-color: rgba(232,255,71,0.35); }
+
+/* Desktop shows the mode badge next to the rating deviation instead of above Reset Grid */
+.mode-display-badge-header {
+  display: none;
+  width: auto;
+  height: auto;
+  padding: 2px 10px;
+  margin-left: 2px;
+}
+@media (min-width: 901px) {
+  .mode-display-badge-header { display: inline-flex; align-items: center; justify-content: center; }
+  .mode-display-badge-topbar { display: none; }
+}
 
 .popup-daily-date {
   font-family: var(--mono);

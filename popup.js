@@ -103,8 +103,7 @@
     if (layout) layout.classList.add('hidden');
     topbars.forEach(t => t.classList.add('hidden'));
     if (newPuzzleBtn) newPuzzleBtn.style.display = 'none';
-    const badge = document.getElementById('modeDisplayBadge');
-    if (badge) badge.style.visibility = 'hidden';
+    document.querySelectorAll('.mode-display-badge').forEach(badge => { badge.style.visibility = 'hidden'; });
   }
 
   function showGameLayout() {
@@ -147,11 +146,11 @@
     popupMode = mode;
     if (modeCasualBtn) modeCasualBtn.classList.toggle('active', mode === 'casual');
     if (modeRatedBtn)  modeRatedBtn.classList.toggle('active', mode === 'rated');
-    const badge = document.getElementById('modeDisplayBadge');
-    if (badge) {
+    document.querySelectorAll('.mode-display-badge').forEach(badge => {
       badge.textContent = mode === 'rated' ? 'RATED' : 'CASUAL';
-      badge.className = 'mode-display-badge mode-display-' + mode;
-    }
+      badge.classList.remove('mode-display-casual', 'mode-display-rated');
+      badge.classList.add('mode-display-' + mode);
+    });
     if (window._sfgame && typeof window._sfgame._setMode === 'function') {
       window._sfgame._setMode(mode);
     }
@@ -202,15 +201,17 @@
       const rec = todayRec[diff] || null;
 
       card.className = `daily-card diff-tier-${diff}`;
-      const statusEl = card.querySelector('.daily-card-status');
-      const timeEl   = card.querySelector('.daily-card-time');
-      const actionEl = card.querySelector('.daily-card-action');
+      const statusEl    = card.querySelector('.daily-card-status');
+      const timeEl      = card.querySelector('.daily-card-time');
+      const mistakesEl  = card.querySelector('.daily-card-mistakes');
+      const actionEl    = card.querySelector('.daily-card-action');
       if (!statusEl || !timeEl || !actionEl) return;
 
       if (!rec || (!rec.solved && !rec.gaveUp)) {
         statusEl.textContent = '';
         statusEl.className = 'daily-card-status';
         timeEl.textContent = '';
+        if (mistakesEl) { mistakesEl.textContent = ''; mistakesEl.className = 'daily-card-mistakes'; }
         actionEl.textContent = 'PLAY';
         actionEl.className = 'daily-card-action';
         card.classList.add('playable');
@@ -219,6 +220,11 @@
         statusEl.className = 'daily-card-status solved';
         timeEl.textContent = formatTime(rec.time);
         if (rec.grade) timeEl.textContent += `  ${rec.grade}`;
+        if (mistakesEl) {
+          const m = rec.mistakes || 0;
+          mistakesEl.textContent = m === 0 ? 'NO MISTAKES' : (m + ' MISTAKE' + (m === 1 ? '' : 'S'));
+          mistakesEl.className = 'daily-card-mistakes' + (m > 0 ? ' has-mistakes' : '');
+        }
         actionEl.textContent = 'REVIEW';
         actionEl.className = 'daily-card-action review';
         card.classList.add('completed-solved');
@@ -226,6 +232,11 @@
         statusEl.textContent = '✗ FAILED';
         statusEl.className = 'daily-card-status failed';
         timeEl.textContent = '';
+        if (mistakesEl) {
+          const m = rec.mistakes || 0;
+          mistakesEl.textContent = m >= 3 ? (m + ' MISTAKES') : 'FORFEIT';
+          mistakesEl.className = 'daily-card-mistakes has-mistakes';
+        }
         actionEl.textContent = 'REVIEW';
         actionEl.className = 'daily-card-action review';
         card.classList.add('completed-failed');

@@ -145,13 +145,13 @@
       casualBtn.classList.toggle('active', restoredMode === 'casual');
       ratedBtn.classList.toggle('active',  restoredMode === 'rated');
     }
-    // Sync mode badge above reset button
-    const badge = document.getElementById('modeDisplayBadge');
-    if (badge) {
+    // Sync mode badge (topbar copy on mobile, header copy on desktop)
+    document.querySelectorAll('.mode-display-badge').forEach(badge => {
       badge.textContent = restoredMode === 'rated' ? 'RATED' : 'CASUAL';
-      badge.className   = 'mode-display-badge ' + (restoredMode === 'rated' ? 'mode-display-rated' : 'mode-display-casual');
+      badge.classList.remove('mode-display-casual', 'mode-display-rated');
+      badge.classList.add(restoredMode === 'rated' ? 'mode-display-rated' : 'mode-display-casual');
       badge.style.visibility = 'visible';
-    }
+    });
 
     // 2. Render puzzle (resets grid, starts timer, locks UI)
     window.applyNewPuzzle(state.solution);
