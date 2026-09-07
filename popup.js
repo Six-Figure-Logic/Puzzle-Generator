@@ -793,7 +793,6 @@ function nextMinClueScore() {
     if (randomOverlay) randomOverlay.addEventListener('click', e => { if (e.target === randomOverlay) closeRandomPopup(); });
 
     // ── Bonus unlocked popup ────────────────────────────────────────────
-    const bonusOverlay  = document.getElementById('bonusUnlockedOverlay');
     const bonusLaterBtn = document.getElementById('bonusUnlockedLaterBtn');
     const bonusPlayBtn  = document.getElementById('bonusUnlockedPlayBtn');
     if (bonusLaterBtn) bonusLaterBtn.addEventListener('click', () => {
@@ -1007,14 +1006,6 @@ function nextMinClueScore() {
     let _sortCol    = 'puzzleRating';
     let _sortDir    = 'desc';
 
-    function gradeColor(g) {
-      if (!g || g === 'F')       return 'var(--danger)';
-      if (g.startsWith('A'))     return 'var(--success)';
-      if (g.startsWith('B'))     return '#7ecfff';
-      if (g.startsWith('C'))     return 'var(--accent)';
-      return '#ffa032';
-    }
-
     function ratingColor(r) {
       if (r <= 1000) return { color: '#00e5a0', bg: 'rgba(0,229,160,0.12)', border: 'rgba(0,229,160,0.4)' };
       if (r <= 1400) return { color: 'var(--accent)', bg: 'rgba(232,255,71,0.10)', border: 'rgba(232,255,71,0.4)' };
@@ -1081,7 +1072,7 @@ function nextMinClueScore() {
 
       sorted.forEach((entry) => {
         const rc = ratingColor(entry.puzzleRating || 0);
-        const gc = gradeColor(entry.grade);
+        const gc = window._sflGradeColor(entry.grade);
         const timeDisplay = entry.gaveUp ? '<span style="color:var(--danger)">FAILED</span>' : fmtTime(entry.solveTime);
         const mistakesDisplay = entry.mistakes > 0
           ? `<span style="color:var(--danger)">${entry.mistakes}</span>`

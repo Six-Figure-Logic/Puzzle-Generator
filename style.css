@@ -24,7 +24,6 @@
   --text-dim: #8892aa;
   --mono: 'JetBrains Mono', monospace;
   --sans: 'BankGothic', 'Oswald', system-ui, sans-serif;
-  --body: 'JetBrains Mono', monospace;
   --radius: 12px;
   --radius-sm: 8px;
 }
@@ -784,8 +783,6 @@ header h1 {
 .mode-pill-btn:hover[data-mode="rated"]  { border-color: var(--accent);  color: var(--accent); }
 .mode-pill-btn:hover[data-mode="casual"] { border-color: var(--success); color: var(--success); }
 
-.mode-controls { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-
 .timer-wrap { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 
 .penalty-time {
@@ -799,8 +796,6 @@ header h1 {
 .penalty-time.visible { display: inline; }
 
 .topbar-clues { display: flex; flex-direction: row; align-items: center; gap: 4px; flex-wrap: wrap;}
-.topbar-clues-row1 { display: flex; align-items: center; gap: 10px; }
-.topbar-clues-row2 { display: flex; align-items: center; gap: 10px; width: 100%; }
 
 .topbar-answers {
   display: flex !important;
@@ -1180,9 +1175,7 @@ header h1 {
   flex-direction: column;
   gap: 4px;
 }
-.result-stat-combined { gap: 6px; }
 
-.result-stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 
 .result-stat-label {
   font-family: var(--mono);
@@ -1445,41 +1438,10 @@ header h1 {
 .result-share-btn.copied .share-copied-flash { opacity: 1; }
 .result-share-btn.copied::before { background: var(--success); opacity: 0.04; }
 
-.result-box.is-failed .result-share-btn { border-color: rgba(255,77,106,0.3); color: var(--danger); }
-.result-box.is-failed .result-share-btn:hover {
-  border-color: rgba(255,77,106,0.6);
-  box-shadow: 0 0 24px rgba(255,77,106,0.12);
-}
-.result-box.is-failed .result-share-btn:hover::before { background: var(--danger); opacity: 0.05; }
 
 /* ══════════════════════════════════════════
    TUTORIAL / WORKED EXAMPLE
 ══════════════════════════════════════════ */
-.btn-worked-example {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 22px;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(232,255,71,0.35);
-  background: rgba(232,255,71,0.05);
-  color: var(--accent);
-  font-family: 'BankGothic','Oswald',sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  width: 100%;
-  justify-content: center;
-}
-.btn-worked-example:hover {
-  background: rgba(232,255,71,0.12);
-  border-color: var(--accent);
-  box-shadow: 0 0 22px rgba(232,255,71,0.14);
-}
-.btn-we-icon  { font-size: 16px; }
-.btn-we-arrow { margin-left: auto; opacity: 0.6; }
 
 .we-overlay {
   position: fixed;
@@ -1941,15 +1903,6 @@ header h1 {
 
 .popup-mode-row { display: flex; align-items: center; gap: 10px; }
 
-.popup-mode-label {
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  color: var(--text-muted);
-  white-space: nowrap;
-  text-align: center;
-}
 
 .popup-section-label {
   font-family: 'BankGothic', 'Oswald', sans-serif;
@@ -2106,7 +2059,6 @@ header h1 {
 }
 .daily-card-action.review { color: var(--text-muted); }
 
-.popup-divider { border: none; border-top: 1px solid var(--border); margin: 0; }
 
 .random-range-row { display: flex; align-items: center; gap: 10px; }
 
@@ -2209,18 +2161,6 @@ header h1 {
 
 .puzzle-loading-text { font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 0.12em; color: var(--text-muted); }
 
-.review-banner {
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--text-muted);
-  background: var(--surface2);
-  border: 1px solid var(--border-bright);
-  border-radius: 5px;
-  padding: 4px 10px;
-  display: inline-block;
-}
 
 /* "Play" button — PLAY / FORFEIT / BACK states, driven by data-back-mode */
 #newPuzzleBtn[data-back-mode="1"] {
@@ -2473,8 +2413,7 @@ header h1 {
 
   /* Lift each topbar's children into the grid individually */
   .topbar-answers,
-  .topbar-grid,
-  .mode-controls { display: contents !important; }
+  .topbar-grid { display: contents !important; }
 
   .mode-display-badge { grid-column: 1; grid-row: 3; justify-self: start; }
   .timer-wrap          { grid-column: 2; grid-row: 3; margin-left: 0; justify-content: flex-start; }

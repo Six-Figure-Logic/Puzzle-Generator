@@ -1991,7 +1991,6 @@ const modalClose   = document.getElementById('modalClose');
 const modalTabs    = modal.querySelectorAll('.modal-tab');
 const modalBodies  = modal.querySelectorAll('.modal-body');
 
-function openModal() { modal.classList.add('open'); }
 function closeModal() { modal.classList.remove('open'); }
 
 if (modalClose) modalClose.addEventListener('click', closeModal);
@@ -2347,7 +2346,6 @@ populateAnswerSelects();
   // ─── DOM refs ─────────────────────────────────────────────────────────────
   const newPuzzleBtn   = document.getElementById('newPuzzleBtn');
   const penaltyEl      = document.getElementById('penaltyTime');
-  const mistakeEl      = document.getElementById('mistakeCounter');
   const ratingDisplayEl = document.getElementById('playerRatingValue');
   const ratingRdEl     = document.getElementById('playerRatingRd');
   const resultOverlay  = document.getElementById('resultOverlay');
@@ -2622,12 +2620,13 @@ window._computeLetterGrade = function(solveSeconds, mistakes, puzzleRating, play
   }
 
   function gradeColor(grade) {
-    if (grade === 'F')  return 'var(--danger)';
+    if (!grade || grade === 'F') return 'var(--danger)';
     if (grade.startsWith('A')) return 'var(--success)';
     if (grade.startsWith('B')) return '#7ecfff';
     if (grade.startsWith('C')) return 'var(--accent)';
     return '#ffa032';
   }
+  window._sflGradeColor = gradeColor;
 
   function difficultyColor(rating) {
     if (rating <= 1000) return '#00e5a0';
@@ -2981,18 +2980,12 @@ window.openWorkedExample = function() {
 
 
   document.addEventListener('DOMContentLoaded', function () {
-    const openBtn    = document.getElementById('openWorkedExampleBtn');
     const backBtn    = document.getElementById('weBackBtn');
     const closeBtn   = document.getElementById('weCloseBtn');
     const nextBtn    = document.getElementById('weNextBtn');
     const prevBtn    = document.getElementById('wePrevBtn');
     const restartBtn = document.getElementById('weRestartBtn');
     const overlay    = document.getElementById('workedExampleModal');
-
-if (openBtn) openBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  openWorkedExample();
-});
 
     if (backBtn)  backBtn.addEventListener('click',  closeWorkedExample);
     if (closeBtn) closeBtn.addEventListener('click', closeWorkedExample);
