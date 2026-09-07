@@ -130,6 +130,15 @@
     if (dailyOverlay) dailyOverlay.classList.remove('open');
   }
 
+  function openBonusUnlockedPopup() {
+    const overlay = document.getElementById('bonusUnlockedOverlay');
+    if (overlay) overlay.classList.add('open');
+  }
+  function closeBonusUnlockedPopup() {
+    const overlay = document.getElementById('bonusUnlockedOverlay');
+    if (overlay) overlay.classList.remove('open');
+  }
+
   function openRandomPopup() {
     updateRangeDisplay();
     if (randomOverlay) randomOverlay.classList.add('open');
@@ -199,13 +208,26 @@
       const card = document.getElementById(`daily-card-${diff}`);
       if (!card) return;
       const rec = todayRec[diff] || null;
+      const locked = diff === 'extreme' && !window.SFLDaily.isExtremeUnlocked();
 
-      card.className = `daily-card diff-tier-${diff}`;
+      card.className = `daily-card diff-tier-${diff}` + (locked ? ' locked' : '');
       const statusEl    = card.querySelector('.daily-card-status');
       const timeEl      = card.querySelector('.daily-card-time');
       const mistakesEl  = card.querySelector('.daily-card-mistakes');
       const actionEl    = card.querySelector('.daily-card-action');
       if (!statusEl || !timeEl || !actionEl) return;
+
+      if (locked) {
+        statusEl.textContent = '';
+        statusEl.className = 'daily-card-status';
+        timeEl.textContent = '';
+        if (mistakesEl) { mistakesEl.textContent = ''; mistakesEl.className = 'daily-card-mistakes'; }
+        actionEl.textContent = '🔒 LOCKED';
+        actionEl.className = 'daily-card-action locked-label';
+        card.setAttribute('data-tip', 'Solve all 4 daily puzzles to unlock this EXTREME bonus puzzle.');
+        return;
+      }
+      card.removeAttribute('data-tip');
 
       if (!rec || (!rec.solved && !rec.gaveUp)) {
         statusEl.textContent = '';
@@ -639,6 +661,10 @@ function nextMinClueScore() {
     const ctx = window._sflPuzzleContext;
     if (!ctx.isDaily || !ctx.dailyDifficulty) return;
 
+    // Snapshot unlock state BEFORE this completion is saved, so we can tell
+    // whether solving this one is what just unlocked the EXTREME bonus.
+    const wasExtremeUnlockedBefore = window.SFLDaily.isExtremeUnlocked();
+
     const gridEl = document.getElementById('grid');
     const gridState = {};
     if (gridEl) {
@@ -674,6 +700,14 @@ function nextMinClueScore() {
       solved: !gaveUp, gaveUp, time: solveTime, mistakes, grade,
       puzzleRating, gridState, answerState, clueStates, mistakeBoxes, penaltyText,
     }, ctx.dailyDate);
+
+    // Flag a fresh unlock — checked when the result popup's Continue button
+    // is clicked, so the congrats popup fires only for the exact completion
+    // that tipped the set from 3/4 to 4/4 (not on later reviews of a daily).
+    window._sflJustUnlockedExtreme = !gaveUp &&
+      ctx.dailyDifficulty !== 'extreme' &&
+      !wasExtremeUnlockedBefore &&
+      window.SFLDaily.isExtremeUnlocked();
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -726,7 +760,27 @@ function nextMinClueScore() {
     // ── Daily cards ─────────────────────────────────────────────────────
     window.SFLDaily.KEYS.forEach(diff => {
       const card = document.getElementById(`daily-card-${diff}`);
-      if (card) card.addEventListener('click', () => launchDaily(diff));
+      if (!card) return;
+      card.addEventListener('click', () => {
+        if (diff === 'extreme' && !window.SFLDaily.isExtremeUnlocked()) {
+          // Locked — CSS :hover doesn't fire reliably on touch, so a tap
+          // toggles the tooltip open directly instead of doing nothing.
+          const wasOpen = card.classList.contains('tip-open');
+          document.querySelectorAll('.daily-card.tip-open').forEach(c => c.classList.remove('tip-open'));
+          if (!wasOpen) {
+            card.classList.add('tip-open');
+            clearTimeout(card._tipTimer);
+            card._tipTimer = setTimeout(() => card.classList.remove('tip-open'), 3000);
+          }
+          return;
+        }
+        launchDaily(diff);
+      });
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.daily-card.locked')) {
+        document.querySelectorAll('.daily-card.tip-open').forEach(c => c.classList.remove('tip-open'));
+      }
     });
 
     // ── Popup close buttons ────────────────────────────────────────────
@@ -737,6 +791,19 @@ function nextMinClueScore() {
 
     if (dailyOverlay)  dailyOverlay.addEventListener('click',  e => { if (e.target === dailyOverlay)  closeDailyPopup(); });
     if (randomOverlay) randomOverlay.addEventListener('click', e => { if (e.target === randomOverlay) closeRandomPopup(); });
+
+    // ── Bonus unlocked popup ────────────────────────────────────────────
+    const bonusOverlay  = document.getElementById('bonusUnlockedOverlay');
+    const bonusLaterBtn = document.getElementById('bonusUnlockedLaterBtn');
+    const bonusPlayBtn  = document.getElementById('bonusUnlockedPlayBtn');
+    if (bonusLaterBtn) bonusLaterBtn.addEventListener('click', () => {
+      closeBonusUnlockedPopup();
+      setTimeout(openDailyPopup, 50);
+    });
+    if (bonusPlayBtn) bonusPlayBtn.addEventListener('click', () => {
+      closeBonusUnlockedPopup();
+      launchDaily('extreme');
+    });
 
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
@@ -910,11 +977,17 @@ function nextMinClueScore() {
     if (resultCloseBtn) {
       resultCloseBtn.addEventListener('click', () => {
         const ctx = window._sflPuzzleContext;
+        const justUnlockedExtreme = !!window._sflJustUnlockedExtreme;
+        window._sflJustUnlockedExtreme = false;
         if (ctx && ctx.isDaily && !ctx.isReview) {
           setBackMode(false);
           ctx.isReview = false;
           showMainMenu();
-          setTimeout(openDailyPopup, 50);
+          if (justUnlockedExtreme) {
+            setTimeout(openBonusUnlockedPopup, 50);
+          } else {
+            setTimeout(openDailyPopup, 50);
+          }
         }
       });
     }

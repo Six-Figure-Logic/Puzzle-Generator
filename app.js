@@ -2750,9 +2750,6 @@ window._computeLetterGrade = function(solveSeconds, mistakes, puzzleRating, play
   document.getElementById('resultCloseBtn').addEventListener('click', () => {
     resultOverlay.classList.remove('open');
   });
-  resultOverlay.addEventListener('click', (e) => {
-    if (e.target === resultOverlay) resultOverlay.classList.remove('open');
-  });
 
   // Expose for external access if needed
 window._sfgame = {
@@ -3074,10 +3071,10 @@ return `🔢 Six-Figure Logic
 
 Just cracked ${article} ${isDaily ? diff + ' daily' : diff} puzzle ${de}
 
+📈 Puzzle Rating: ${puzzleRating}
 ⚡ Time: ${timeStr}
 ${mistakeLine}
 🏆 Performance: ${grade} 
-📈 Puzzle Rating: ${puzzleRating}
 
 Think you can beat my time? ⏱️
 

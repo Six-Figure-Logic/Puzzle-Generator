@@ -50,12 +50,13 @@
   // ═══════════════════════════════════════════════════════════════════════
 
   const DAILY_BANDS = {
-    easy:   { min: 800,  max: 1000, label: 'EASY',   color: 'easy' },
-    medium: { min: 1001, max: 1400, label: 'MEDIUM',  color: 'medium' },
-    hard:   { min: 1401, max: 1800, label: 'HARD',    color: 'hard' },
-    expert: { min: 1801, max: 2400, label: 'EXPERT',  color: 'expert' },
+    easy:    { min: 800,  max: 1000, label: 'EASY',    color: 'easy' },
+    medium:  { min: 1001, max: 1400, label: 'MEDIUM',  color: 'medium' },
+    hard:    { min: 1401, max: 1800, label: 'HARD',    color: 'hard' },
+    expert:  { min: 1801, max: 2400, label: 'EXPERT',  color: 'expert' },
+    extreme: { min: 2401, max: 9999, label: 'EXTREME', color: 'extreme' },
   };
-  const DAILY_KEYS = ['easy', 'medium', 'hard', 'expert'];
+  const DAILY_KEYS = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 
   // ═══════════════════════════════════════════════════════════════════════
   // PUZZLE GENERATION — seeded so every player gets the same puzzle per day
@@ -80,14 +81,23 @@
     const rate = window._computePuzzleRating;
 
     // Pool size per attempt. Expert redraws with a random pool size between
-    // 10–25 each time to vary difficulty and reduce generation speed.
+    // 10–25 each time to vary difficulty and reduce generation speed. Extreme
+    // uses a smaller pool (12–16) to keep generation time reasonable.
     function nextPoolSize() {
-      return difficulty === 'expert' ? 10 + Math.floor(Math.random() * 16) : 10;
+      if (difficulty === 'expert') return 10 + Math.floor(Math.random() * 16);
+      if (difficulty === 'extreme') return 12 + Math.floor(Math.random() * 5);
+      return 10;
+    }
+
+    // Extreme-tier only: exclude clues too easy to be worth including —
+    // mirrors the prefilter used for extreme-tier random puzzles.
+    function nextMinClueScore() {
+      return difficulty === 'extreme' ? 8 : 0;
     }
 
     try {
       for (let attempt = 0; attempt < 5000; attempt++) {
-        const candidate = gen(nextPoolSize(), difficulty === 'hard' || difficulty === 'expert');
+        const candidate = gen(nextPoolSize(), difficulty === 'hard' || difficulty === 'expert' || difficulty === 'extreme', nextMinClueScore());
         if (!candidate || !candidate._rawClues) continue;
         if (!fallbackCandidate) fallbackCandidate = candidate;
         const elim = score(candidate._rawClues, candidate);
@@ -167,6 +177,14 @@
     return rec[difficulty] || null;
   }
 
+  // The EXTREME daily is a bonus puzzle — unlocked only once the other four
+  // dailies (easy/medium/hard/expert) have been solved for today. Grade and
+  // time don't matter, only that each was actually solved (not given up).
+  function isExtremeUnlocked() {
+    const rec = getTodayRecord();
+    return DAILY_KEYS.filter(k => k !== 'extreme').every(k => rec[k] && rec[k].solved);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   // PUBLIC API
   // ═══════════════════════════════════════════════════════════════════════
@@ -203,6 +221,7 @@
     getTodayRecord,
     getDifficultyRecord,
     saveDifficultyRecord,
+    isExtremeUnlocked,
 
     // Mark a daily as in-progress (called when puzzle starts). Never overwrites a completed record.
     markStarted(difficulty, puzzleRating) {

@@ -114,6 +114,21 @@ header h1 {
   align-items: center;
   gap: 8px;
   white-space: nowrap;
+  margin-bottom: 4px;
+}
+
+/* On desktop, mirrors .main-layout's column widths (300px / 120px-equivalent
+   / 1fr) exactly, so the mode badge — placed in the 3rd column — lines up
+   with the timer below it (also 3rd column) without any manual offset math. */
+@media (min-width: 901px) {
+  .header-rating-row {
+    display: grid;
+    grid-template-columns: 300px 120px 1fr;
+    column-gap: 12px;
+    align-items: center;
+  }
+  .header-rating-row .player-rating-inline { grid-column: 1 / 3; margin-bottom: 0; }
+  .header-rating-row .mode-display-badge-header { grid-column: 3; justify-self: start; }
 }
 
 .player-rating-label-inline {
@@ -1350,6 +1365,15 @@ header h1 {
   color: var(--accent);
 }
 
+/* ── Bonus (EXTREME daily) unlocked popup — reuses giveup-box structure ── */
+.bonus-unlocked-title { color: #a855f7 !important; }
+.bonus-unlocked-play {
+  background: rgba(168,85,247,0.14) !important;
+  border-color: rgba(168,85,247,0.45) !important;
+  color: #a855f7 !important;
+}
+.bonus-unlocked-play:hover { background: rgba(168,85,247,0.24) !important; }
+
 /* ══════════════════════════════════════════
    SHARE BUTTON + FAILED PUZZLE STYLES
 ══════════════════════════════════════════ */
@@ -1877,6 +1901,10 @@ header h1 {
   text-align: center;
 }
 
+/* Daily popup needs extra width to fit 5 cards (4 dailies + EXTREME bonus)
+   on one row instead of wrapping the 5th onto its own line. */
+#dailySelectBox { max-width: 620px; }
+
 .popup-mode-row { justify-content: center; margin-top: -18px; margin-bottom: 24px; }
 .daily-cards-grid { width: 100%; }
 .random-range-row { width: 100%; }
@@ -1934,7 +1962,7 @@ header h1 {
   justify-content: space-between;
 }
 
-.daily-cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.daily-cards-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 
 .daily-card {
   display: flex;
@@ -1954,18 +1982,60 @@ header h1 {
 .daily-card:hover { border-color: currentColor; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
 .daily-card:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.daily-card.diff-tier-easy   { color: #00e5a0; border-color: rgba(0,229,160,0.25); }
-.daily-card.diff-tier-medium { color: var(--accent); border-color: rgba(232,255,71,0.25); }
-.daily-card.diff-tier-hard   { color: #ffa032; border-color: rgba(255,160,50,0.25); }
-.daily-card.diff-tier-expert { color: var(--danger); border-color: rgba(255,77,106,0.25); }
+.daily-card.diff-tier-easy    { color: #00e5a0; border-color: rgba(0,229,160,0.25); }
+.daily-card.diff-tier-medium  { color: var(--accent); border-color: rgba(232,255,71,0.25); }
+.daily-card.diff-tier-hard    { color: #ffa032; border-color: rgba(255,160,50,0.25); }
+.daily-card.diff-tier-expert  { color: var(--danger); border-color: rgba(255,77,106,0.25); }
+.daily-card.diff-tier-extreme { color: #a855f7; border-color: rgba(168,85,247,0.25); }
 
-.daily-card.diff-tier-easy:hover   { background: rgba(0,229,160,0.10); }
-.daily-card.diff-tier-medium:hover { background: rgba(232,255,71,0.08); }
-.daily-card.diff-tier-hard:hover   { background: rgba(255,160,50,0.10); }
-.daily-card.diff-tier-expert:hover { background: rgba(255,77,106,0.10); }
+.daily-card.diff-tier-easy:hover    { background: rgba(0,229,160,0.10); }
+.daily-card.diff-tier-medium:hover  { background: rgba(232,255,71,0.08); }
+.daily-card.diff-tier-hard:hover    { background: rgba(255,160,50,0.10); }
+.daily-card.diff-tier-expert:hover  { background: rgba(255,77,106,0.10); }
+.daily-card.diff-tier-extreme:hover { background: rgba(168,85,247,0.10); }
 
 .daily-card.completed-solved { border-color: rgba(0,229,160,0.5) !important; background: rgba(0,229,160,0.07) !important; }
 .daily-card.completed-failed { border-color: rgba(255,77,106,0.35) !important; background: rgba(255,77,106,0.06) !important; }
+
+.daily-card[data-tip] { position: relative; }
+.daily-card[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  transform: translateX(-50%);
+  background: #1e2333;
+  border: 1px solid var(--border-bright);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: #c8d0e8;
+  line-height: 1.5;
+  white-space: normal;
+  width: 200px;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+/* Desktop: real hover reveals the tip. Mobile has no true :hover, so it
+   relies on the .tip-open class instead, toggled by JS on tap. */
+@media (hover: hover) and (pointer: fine) {
+  .daily-card[data-tip]:hover::after { opacity: 1; }
+}
+.daily-card[data-tip].tip-open::after { opacity: 1; }
+
+.daily-card.locked {
+  cursor: not-allowed;
+  opacity: 0.55;
+  filter: grayscale(0.4);
+}
+@media (hover: hover) and (pointer: fine) {
+  .daily-card.locked:hover { transform: none; box-shadow: none; background: var(--surface2); }
+}
+.daily-card-action.locked-label { opacity: 1; letter-spacing: 0.08em; }
 
 .daily-card-diff {
   font-family: 'BankGothic', 'Oswald', sans-serif;
@@ -2168,7 +2238,7 @@ header h1 {
   margin-left: 2px;
 }
 @media (min-width: 901px) {
-  .mode-display-badge-header { display: inline-flex; align-items: center; justify-content: center; }
+  .mode-display-badge-header { display: inline-flex; }
   .mode-display-badge-topbar { display: none; }
 }
 
@@ -2430,8 +2500,10 @@ header h1 {
   .cell { height: 30px; font-size: 0.8rem; }
   .col-elim-btn { height: 30px; }
 
-  /* Daily */
-  .daily-cards-grid { grid-template-columns: repeat(2, 1fr); }
+  /* Daily — mobile stays at the puzzle-select-box's normal width, so 5
+     columns would be too cramped; keep the 2-column wrap on small screens. */
+  #dailySelectBox { max-width: 480px; }
+  .daily-cards-grid { grid-template-columns: 1fr; }
 
   /* Clue table */
   .clue-row { display: flex; flex-direction: column; gap: 2px; }

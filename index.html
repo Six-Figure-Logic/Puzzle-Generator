@@ -41,7 +41,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=3.5" />
+  <link rel="stylesheet" href="style.css?v=4.0" />
   <link rel="icon" type="image/png" href="favicon.png">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -58,10 +58,12 @@
     </header>
 
 
-    <div class="player-rating-inline" style="margin-bottom:4px;">
-      <span class="player-rating-label-inline">YOUR RATING:</span>
-      <span class="player-rating-value" id="playerRatingValue">1000</span>
-      <span class="player-rating-rd" id="playerRatingRd">± 350</span>
+    <div class="header-rating-row">
+      <div class="player-rating-inline">
+        <span class="player-rating-label-inline">YOUR RATING:</span>
+        <span class="player-rating-value" id="playerRatingValue">1000</span>
+        <span class="player-rating-rd" id="playerRatingRd">± 350</span>
+      </div>
       <span class="mode-display-badge mode-display-badge-header" id="modeDisplayBadgeHeader">CASUAL</span>
     </div>
 
@@ -228,6 +230,8 @@
     <ul>
       <li>DAILY PUZZLES are always casual — no rating pressure.</li>
       <li>Four new puzzles each day — refreshing at midnight Eastern Time.</li>
+      <li>Solve all four daily puzzles (don't forfeit) to unlock the BONUS <span style="color: #a855f7;">EXTREME</span> DAILY PUZZLE.</li>
+      <li>The bonus puzzle resets along with the other four at midnight Eastern Time.</li>
     </ul>
   </div>
     <br><br>
@@ -432,6 +436,22 @@
     </div>
 
 
+    <!-- BONUS PUZZLE UNLOCKED POPUP -->
+    <div id="bonusUnlockedOverlay" class="giveup-overlay bonus-unlocked-overlay" role="dialog" aria-modal="true">
+      <div class="giveup-box bonus-unlocked-box">
+        <div class="giveup-title bonus-unlocked-title">🔓 BONUS PUZZLE UNLOCKED</div>
+        <div class="giveup-msg">
+          You've solved all of today's daily puzzles! — Nice work.<br><br>
+          The <span class="diff-chip extreme">EXTREME</span> bonus puzzle is now available for the rest of the day.
+        </div>
+        <div class="giveup-btns">
+          <button id="bonusUnlockedPlayBtn" class="giveup-btn-yes bonus-unlocked-play">Play Now</button>
+          <button id="bonusUnlockedLaterBtn" class="giveup-btn-no">Later</button>
+        </div>
+      </div>
+    </div>
+
+
     <!-- MAIN LAYOUT (hidden until game starts) -->
     <div class="main-layout hidden">
 
@@ -534,6 +554,13 @@
     <div class="modal-body" style="padding-top:28px;">
 
       <div class="modal-section">
+  <div class="modal-section-title">September 7, 2026</div>
+  <ul>
+    <li>Added a BONUS <span style="color: #a855f7;">EXTREME</span> DAILY PUZZLE — unlocked by solving all four regular dailies.</li>
+  </ul>
+</div>
+
+      <div class="modal-section">
   <div class="modal-section-title">September 6, 2026</div>
   <ul>
     <li>Minor UI updates to puzzle layout (for desktop).</li>
@@ -567,7 +594,7 @@
 <div class="modal-section">
   <div class="modal-section-title">July 22, 2026</div>
   <ul>
-    <li>Reduced generation time for <span class="diff-chip expert">EXPERT</span> and <span class="diff-chip extreme">EXTREME</span> puzzles.</li>
+    <li>Reduced generation time for <span style="color: #ff4d6a;">EXPERT</span> and <span style="color: #a855f7;">EXTREME</span> puzzles.</li>
   </ul>
 </div>
 
@@ -575,7 +602,7 @@
   <div class="modal-section-title">July 20, 2026</div>
   <ul>
     <li><strong>Select Difficulty</strong> now includes rating ranges up to <strong>2600+</strong> for RANDOM puzzles.</li>
-    <li>Puzzles rated <strong>2401+</strong> are now grouped into a new <span class="diff-chip extreme">EXTREME</span> difficulty tier.</li>
+    <li>Puzzles rated <strong>2401+</strong> are now grouped into a new <span style="color: #a855f7;">EXTREME</span> difficulty tier.</li>
     <li>Hard, Expert, and Extreme puzzles (in <em>RATED</em> mode) must now be unlocked by reaching the required player rating.</li>
     <li>Improved the puzzle difficulty rating algorithm.</li>
     <li>Updated the hint system.</li>
@@ -636,6 +663,13 @@
         </div>
         <div class="daily-card diff-tier-expert" id="daily-card-expert" role="button" tabindex="0" aria-label="Expert daily puzzle">
           <span class="daily-card-diff">EXPERT</span>
+          <span class="daily-card-status"></span>
+          <span class="daily-card-time"></span>
+          <span class="daily-card-mistakes"></span>
+          <span class="daily-card-action">PLAY</span>
+        </div>
+        <div class="daily-card diff-tier-extreme" id="daily-card-extreme" role="button" tabindex="0" aria-label="Extreme daily puzzle">
+          <span class="daily-card-diff">EXTREME</span>
           <span class="daily-card-status"></span>
           <span class="daily-card-time"></span>
           <span class="daily-card-mistakes"></span>
@@ -711,9 +745,9 @@
   </div>
   <!-- ── END HISTORY OVERLAY ──────────────────────────────────────── -->
 
-  <script src="app.js?v=4.1"></script>
+  <script src="app.js?v=4.2"></script>
   <script src="session.js?v=2.0"></script>
-  <script src="daily.js?v=2.0"></script>
-  <script src="popup.js?v=2.3"></script>
+  <script src="daily.js?v=3.0"></script>
+  <script src="popup.js?v=3.0"></script>
 </body>
 </html>
