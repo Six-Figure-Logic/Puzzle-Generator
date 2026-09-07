@@ -2020,12 +2020,32 @@ header h1 {
   transition: opacity 0.15s ease;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
-/* Desktop: real hover reveals the tip. Mobile has no true :hover, so it
-   relies on the .tip-open class instead, toggled by JS on tap. */
+/* Desktop: real hover reveals the tip below the card. */
 @media (hover: hover) and (pointer: fine) {
   .daily-card[data-tip]:hover::after { opacity: 1; }
 }
-.daily-card[data-tip].tip-open::after { opacity: 1; }
+/* Mobile tap (.tip-open, toggled by JS): the card can be anywhere in a
+   single-column stack — including the very last item — so anchoring the
+   tip "below" risks pushing it off the bottom of the viewport. Instead,
+   overlay it directly on top of the card itself; position is then always
+   within the card's own bounds regardless of scroll position. */
+@media (hover: none), (pointer: coarse) {
+  .daily-card[data-tip].tip-open::after {
+    top: 0;
+    left: 0;
+    transform: none;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 12px;
+    border-radius: 10px;
+    opacity: 1;
+  }
+}
+</parameter>
 
 .daily-card.locked {
   cursor: not-allowed;
