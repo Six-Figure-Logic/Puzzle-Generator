@@ -1891,6 +1891,9 @@ header h1 {
   border-radius: 16px;
   width: 100%;
   max-width: 480px;
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 24px 24px 20px;
   display: flex;
   flex-direction: column;
