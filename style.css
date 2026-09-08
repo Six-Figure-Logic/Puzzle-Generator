@@ -1869,6 +1869,12 @@ header h1 {
   max-width: 620px;
   overflow: visible;
 }
+@media (max-width: 900px) {
+  #dailySelectBox {
+    overflow-y: auto;
+    max-height: calc(100dvh - 40px);
+  }
+}
 
 .popup-mode-row { justify-content: center; margin-top: -18px; margin-bottom: 24px; }
 .daily-cards-grid { width: 100%; }
