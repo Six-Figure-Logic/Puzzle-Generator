@@ -116,9 +116,6 @@ header h1 {
   margin-bottom: 4px;
 }
 
-/* On desktop, mirrors .main-layout's column widths (300px / 120px-equivalent
-   / 1fr) exactly, so the mode badge — placed in the 3rd column — lines up
-   with the timer below it (also 3rd column) without any manual offset math. */
 @media (min-width: 901px) {
   .header-rating-row {
     display: grid;
@@ -1868,7 +1865,10 @@ header h1 {
 
 /* Daily popup needs extra width to fit 5 cards (4 dailies + EXTREME bonus)
    on one row instead of wrapping the 5th onto its own line. */
-#dailySelectBox { max-width: 620px; }
+#dailySelectBox {
+  max-width: 620px;
+  overflow: visible;
+}
 
 .popup-mode-row { justify-content: center; margin-top: -18px; margin-bottom: 24px; }
 .daily-cards-grid { width: 100%; }
@@ -1973,12 +1973,13 @@ header h1 {
   z-index: 100;
   pointer-events: none;
   opacity: 0;
+  display: none; /* kept out of layout so it can't inflate #dailySelectBox's scrollHeight while hidden */
   transition: opacity 0.15s ease;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 /* Desktop: real hover reveals the tip below the card. */
 @media (hover: hover) and (pointer: fine) {
-  .daily-card[data-tip]:hover::after { opacity: 1; }
+  .daily-card[data-tip]:hover::after { display: block; opacity: 1; }
 }
 /* Mobile tap (.tip-open, toggled by JS): the card can be anywhere in a
    single-column stack — including the very last item — so anchoring the
@@ -1996,6 +1997,7 @@ header h1 {
     max-width: none;
     text-align: center;
     opacity: 1;
+    display: block;
     z-index: 2000;
   }
 }
@@ -2428,9 +2430,6 @@ header h1 {
      height evenly and can never exceed the card, no matter how tall or
      short the clues card ends up being */
   .answers-card { display: flex; flex-direction: column; }
-  /* This spacer only exists to align dropdowns with the grid header on
-     desktop. On mobile it was silently occupying one of the 6 grid rows,
-     pushing F into an extra unsized row and squishing it — hide it here. */
   .answers-grid-spacer { display: none; }
   .answers-grid {
     display: grid;
@@ -2460,8 +2459,6 @@ header h1 {
   .cell { height: 30px; font-size: 0.8rem; }
   .col-elim-btn { height: 30px; }
 
-  /* Daily — mobile stays at the puzzle-select-box's normal width, so 5
-     columns would be too cramped; keep the 2-column wrap on small screens. */
   #dailySelectBox { max-width: 480px; }
   .daily-cards-grid { grid-template-columns: 1fr; }
 
@@ -2469,8 +2466,6 @@ header h1 {
   .clue-row { display: flex; flex-direction: column; gap: 2px; }
   .clue-note { text-align: left; max-width: none; }
 
-  /* Puzzle rating chip — now holds the short difficulty word (EASY/HARD/etc),
-     so it no longer needs the old ::after "RATING" truncation hack */
   .puzzle-rating-label { font-size: 9px; letter-spacing: 0.15em; }
 
   /* Modals */
