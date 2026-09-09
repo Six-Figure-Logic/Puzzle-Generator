@@ -56,6 +56,36 @@ function stopTimer() {
 // generates from a mobile long-press (those are handled separately below).
 let lastTouchAt = 0;
 
+// ── LEFT-CLICK DRAG-TO-ELIMINATE (desktop) ──────────────────────────────
+// Holding left click and dragging across cells toggles every cell the
+// pointer passes over to match the direction of the first cell (open→cross
+// or cross→open), all as a single undo/redo step. Plain clicks (no
+// movement between mousedown/mouseup) fall through untouched to the
+// existing 'click' listener in buildGridRows.
+let dragState = null;
+let suppressNextClick = false;
+let touchDragState = null;
+
+function applyDragCell(cell, targetCrossed) {
+  const isCrossed = cell.classList.contains('crossed');
+  if (isCrossed !== targetCrossed) {
+    cell.classList.toggle('crossed', targetCrossed);
+    cell.setAttribute('aria-pressed', String(targetCrossed));
+  }
+}
+
+document.addEventListener('mouseup', () => {
+  if (dragState && dragState.moved) {
+    // Suppress a trailing 'click' event only if one actually follows (e.g.
+    // the drag looped back and released over its own origin cell) — clear
+    // the flag on the next tick regardless so it can never leak into an
+    // unrelated future click.
+    suppressNextClick = true;
+    setTimeout(() => { suppressNextClick = false; }, 0);
+  }
+  dragState = null;
+});
+
 // ── LETTER LOCK TRACKING (lets us precisely revert a lock later) ───────────
 const letterLocks = {}; // { A: { value: '7', delta: [{row,value}, ...] } }
 
@@ -242,9 +272,34 @@ function buildGridRows() {
       cell.dataset.value = String(n);
       cell.textContent = String(n);
 
+      // LEFT CLICK + DRAG (mouse): press and swipe across cells to toggle
+      // many candidates in one gesture, as a single undo/redo step.
+      cell.addEventListener('mousedown', (e) => {
+        if (e.button !== 0 || e.ctrlKey || e.metaKey) return;
+        dragState = {
+          originCell: cell,
+          targetCrossed: !cell.classList.contains('crossed'),
+          moved: false
+        };
+      });
+
+      cell.addEventListener('mouseenter', () => {
+        if (!dragState) return;
+        if (cell === dragState.originCell && !dragState.moved) return;
+        if (!dragState.moved) {
+          dragState.moved = true;
+          pushHistory(); // one undo step for the whole drag gesture
+          applyDragCell(dragState.originCell, dragState.targetCrossed);
+        }
+        applyDragCell(cell, dragState.targetCrossed);
+        updateUndoRedoBtns();
+        checkAutoAssignRows();
+      });
+
       // LEFT CLICK (mouse): toggle a single candidate.
       // RIGHT CLICK/ctrl-click now handles locking.
       cell.addEventListener('click', (e) => {
+        if (suppressNextClick) { suppressNextClick = false; e.preventDefault(); return; }
         if (e.ctrlKey || e.metaKey) { e.preventDefault(); lockOrUnlockCell(cell); return; }
         e.preventDefault();
         toggleCell(cell);
@@ -264,8 +319,10 @@ function buildGridRows() {
         lockOrUnlockCell(cell);
       });
 
-      // ── MOBILE TOUCH: tap = instant toggle, long-press = lock/select ──
-      // Desktop click/contextmenu above are untouched by this.
+      // ── MOBILE TOUCH: tap = instant toggle, long-press = lock/select,
+      // swipe = drag-eliminate across cells (same one-undo-step behavior
+      // as the desktop mouse drag). Desktop click/contextmenu above are
+      // untouched by this.
       let touchTimer = null;
       let touchStartX = 0, touchStartY = 0, touchMoved = false, longPressFired = false;
       const LONG_PRESS_MS = 450;
@@ -286,18 +343,46 @@ function buildGridRows() {
       }, { passive: true });
 
       cell.addEventListener('touchmove', (e) => {
-        if (!touchTimer || !e.touches.length) return;
+        if (!e.touches.length) return;
+
+        // Once a swipe-drag is underway, keep it going: find whatever cell
+        // is under the finger right now and toggle it, and block scrolling.
+        if (touchDragState) {
+          e.preventDefault();
+          const t = e.touches[0];
+          const el = document.elementFromPoint(t.clientX, t.clientY);
+          const targetCell = el && el.closest ? el.closest('.cell') : null;
+          if (targetCell && gridEl.contains(targetCell)) {
+            applyDragCell(targetCell, touchDragState.targetCrossed);
+            updateUndoRedoBtns();
+            checkAutoAssignRows();
+          }
+          return;
+        }
+
+        if (!touchTimer) return;
         const dx = e.touches[0].clientX - touchStartX;
         const dy = e.touches[0].clientY - touchStartY;
         if (Math.abs(dx) > MOVE_CANCEL_PX || Math.abs(dy) > MOVE_CANCEL_PX) {
           touchMoved = true;
           clearTimeout(touchTimer);
+          // Movement beat the long-press timer — this is a swipe, not a
+          // tap or a hold. Start the drag gesture from the origin cell.
+          e.preventDefault();
+          touchDragState = {
+            targetCrossed: !cell.classList.contains('crossed')
+          };
+          pushHistory(); // one undo step for the whole swipe gesture
+          applyDragCell(cell, touchDragState.targetCrossed);
+          updateUndoRedoBtns();
+          checkAutoAssignRows();
         }
-      }, { passive: true });
+      }, { passive: false });
 
       cell.addEventListener('touchend', (e) => {
         clearTimeout(touchTimer);
         lastTouchAt = Date.now();
+        if (touchDragState) { touchDragState = null; e.preventDefault(); return; }
         if (longPressFired) { e.preventDefault(); return; } 
         if (!touchMoved) {
           e.preventDefault();
@@ -307,6 +392,7 @@ function buildGridRows() {
 
       cell.addEventListener('touchcancel', () => {
         clearTimeout(touchTimer);
+        touchDragState = null;
       });
 
       cellsWrap.appendChild(cell);

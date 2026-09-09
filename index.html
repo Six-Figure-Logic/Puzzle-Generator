@@ -131,9 +131,12 @@
         <span class="tip-desc">Toggle a single cell — manually eliminate (or restore) a candidate.</span>
       </div>
       <div class="tip-row">
+        <span class="tip-key"><span class="tip-input-desktop">Click + drag</span><span class="tip-input-mobile">Swipe</span></span>
+        <span class="tip-desc">Eliminate (or restore) a whole run of cells in one motion.</span>
+      </div>
+      <div class="tip-row">
         <span class="tip-key"><span class="tip-input-desktop">Right click</span><span class="tip-input-mobile">Long press</span></span>
         <span class="tip-desc">Lock in a value — crosses out everything else in that row and column.</span>
-
       </div>
       <div class="tip-row tip-row-desktop-only">
         <span class="tip-key">Ctrl + Left click</span>
@@ -525,7 +528,7 @@
       <section class="card grid-card" aria-label="Candidates grid">
 <div class="panel-label">
   ELIMINATION GRID
-  <span class="grid-instructions">&ensp;LEFT CLICK: Toggle cell<br>&ensp;RIGHT CLICK / CTRL+LEFT CLICK: Set Value</span>
+  <span class="grid-instructions">&ensp;LEFT CLICK: Toggle cell.  <br>&ensp;CLICK + DRAG: Toggle many cells<br>&ensp;RIGHT CLICK / CTRL+LEFT CLICK: Set Value</span>
   <div class="undo-redo-btns">
     <button id="undoBtn" class="btn-undoredo" title="Undo" disabled>&#x21B6;</button>
     <button id="redoBtn" class="btn-undoredo" title="Redo" disabled>&#x21B7;</button>
@@ -552,6 +555,13 @@
   <div class="modal-box" style="max-width:760px;">
     <button class="modal-close" id="whatsNewClose" aria-label="Close">&times;</button>
     <div class="modal-body" style="padding-top:28px;">
+
+      <div class="modal-section">
+  <div class="modal-section-title">September 9, 2026</div>
+  <ul>
+    <li>Click-and-drag (or swipe, on mobile) across the elimination grid to cross out — or restore — a whole run of cells in one motion.</li>
+  </ul>
+</div>
 
       <div class="modal-section">
   <div class="modal-section-title">September 7, 2026</div>
@@ -745,7 +755,7 @@
   </div>
   <!-- ── END HISTORY OVERLAY ──────────────────────────────────────── -->
 
-  <script src="app.js?v=4.3"></script>
+  <script src="app.js?v=4.4"></script>
   <script src="session.js?v=2.0"></script>
   <script src="daily.js?v=3.0"></script>
   <script src="popup.js?v=3.1"></script>
