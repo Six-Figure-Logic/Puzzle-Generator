@@ -104,6 +104,7 @@
     topbars.forEach(t => t.classList.add('hidden'));
     if (newPuzzleBtn) newPuzzleBtn.style.display = 'none';
     document.querySelectorAll('.mode-display-badge').forEach(badge => { badge.style.visibility = 'hidden'; });
+    if (window._sflCloseNotepad) window._sflCloseNotepad();
   }
 
   function showGameLayout() {
@@ -598,6 +599,7 @@ function nextMinClueScore() {
     }
     window.currentSolution = sol;
     if (typeof window._sflSetCurrentSolution === 'function') window._sflSetCurrentSolution(sol);
+    if (window._sflLoadNotepadForPuzzle) window._sflLoadNotepadForPuzzle(sol);
 
     const undoStack = window._sflUndoStack;
     const redoStack = window._sflRedoStack;

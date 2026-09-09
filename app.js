@@ -1925,6 +1925,7 @@ function applyNewPuzzle(sol) {
   }
 
   currentSolution = sol;
+  if (window._sflLoadNotepadForPuzzle) window._sflLoadNotepadForPuzzle(sol);
   resetGrid();
   undoStack.length = 0;
   redoStack.length = 0;
@@ -3713,4 +3714,149 @@ function getShareData() {
       hintActive = true;
     });
   }
+})();
+
+// ══════════════════════════════════════════
+// NOTEPAD (desktop only) — per-puzzle scratch notes
+// ══════════════════════════════════════════
+(function () {
+  'use strict';
+
+  const NOTES_KEY = 'sfl_notes_v1';
+  const NOTES_CAP = 500;
+
+  function loadNotesStore() {
+    try {
+      const raw = localStorage.getItem(NOTES_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) { return {}; }
+  }
+
+  function saveNotesStore(store) {
+    try { localStorage.setItem(NOTES_KEY, JSON.stringify(store)); } catch (e) {}
+  }
+
+  // Puzzle identity: hash of the six solution values + the rendered clue
+  // text. Deterministic for daily puzzles (same seed → same hash every
+  // session) and for history/review entries (same stored values + clues →
+  // same hash whenever that specific entry is reopened).
+  function computeNoteKey(sol) {
+    if (!sol) return null;
+    try {
+      const vals = ['A','B','C','D','E','F'].map(k =>
+        sol[k] !== undefined ? sol[k] : sol[k.toLowerCase()]
+      );
+      const clueStr = Array.isArray(sol._clues) ? sol._clues.join('|') : '';
+      const raw = vals.join(',') + '::' + clueStr;
+      let h = 0;
+      for (let i = 0; i < raw.length; i++) h = (Math.imul(31, h) + raw.charCodeAt(i)) | 0;
+      return 'p_' + (h >>> 0);
+    } catch (e) { return null; }
+  }
+
+  function getNoteForKey(key) {
+    if (!key) return '';
+    const store = loadNotesStore();
+    return (store[key] && store[key].text) || '';
+  }
+
+  function saveNoteForKey(key, text) {
+    if (!key) return;
+    const store = loadNotesStore();
+    if (text && text.trim()) {
+      store[key] = { text, savedAt: Date.now() };
+    } else {
+      delete store[key]; // no point persisting an empty note
+    }
+    const keys = Object.keys(store);
+    if (keys.length > NOTES_CAP) {
+      keys.sort((a, b) => (store[a].savedAt || 0) - (store[b].savedAt || 0));
+      while (keys.length > NOTES_CAP) delete store[keys.shift()];
+    }
+    saveNotesStore(store);
+  }
+
+  let currentNoteKey    = null;
+  let notepadTextarea   = null;
+  let notepadToggleBtn  = null;
+
+  function refreshHasNotesIndicator() {
+    if (!notepadToggleBtn) return;
+    notepadToggleBtn.classList.toggle('has-notes', !!getNoteForKey(currentNoteKey));
+  }
+
+  // Called whenever a puzzle is loaded — fresh, daily, random, or a saved
+  // review — so the pad always shows that specific puzzle's own notes.
+  window._sflLoadNotepadForPuzzle = function (sol) {
+    currentNoteKey = computeNoteKey(sol);
+    if (notepadTextarea) notepadTextarea.value = getNoteForKey(currentNoteKey);
+    refreshHasNotesIndicator();
+  };
+
+  window._sflCloseNotepad = function () {
+    const panel = document.getElementById('notepadPanel');
+    if (panel) panel.classList.remove('open');
+  };
+
+  let noteSaveTimer = null;
+  function scheduleNoteSave() {
+    if (noteSaveTimer) return;
+    noteSaveTimer = setTimeout(() => {
+      noteSaveTimer = null;
+      saveNoteForKey(currentNoteKey, notepadTextarea.value);
+      refreshHasNotesIndicator();
+    }, 400);
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    notepadToggleBtn = document.getElementById('notepadToggleBtn');
+    const panel      = document.getElementById('notepadPanel');
+    const closeBtn   = document.getElementById('notepadCloseBtn');
+    const header     = document.getElementById('notepadHeader');
+    notepadTextarea  = document.getElementById('notepadTextarea');
+
+    if (notepadToggleBtn && panel) {
+      notepadToggleBtn.addEventListener('click', () => {
+        const opening = !panel.classList.contains('open');
+        panel.classList.toggle('open', opening);
+        if (opening && notepadTextarea) {
+          notepadTextarea.value = getNoteForKey(currentNoteKey);
+        }
+      });
+    }
+    if (closeBtn && panel) {
+      closeBtn.addEventListener('click', () => panel.classList.remove('open'));
+    }
+    if (notepadTextarea) {
+      notepadTextarea.addEventListener('input', scheduleNoteSave);
+    }
+
+    // Dragging — grab anywhere on the header, move with the mouse, drop
+    // wherever released. Clamped so it can't be dragged off-screen.
+    if (header && panel) {
+      let dragging = false, offsetX = 0, offsetY = 0;
+      header.addEventListener('mousedown', (e) => {
+        dragging = true;
+        const rect = panel.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        panel.style.left   = rect.left + 'px';
+        panel.style.top    = rect.top + 'px';
+        panel.style.right  = 'auto';
+        panel.style.bottom = 'auto';
+        e.preventDefault();
+      });
+      document.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        const maxX = window.innerWidth  - panel.offsetWidth;
+        const maxY = window.innerHeight - panel.offsetHeight;
+        const x = Math.max(0, Math.min(maxX, e.clientX - offsetX));
+        const y = Math.max(0, Math.min(maxY, e.clientY - offsetY));
+        panel.style.left = x + 'px';
+        panel.style.top  = y + 'px';
+      });
+      document.addEventListener('mouseup', () => { dragging = false; });
+    }
+  });
+
 })();

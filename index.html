@@ -41,7 +41,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=4.6" />
+  <link rel="stylesheet" href="style.css?v=5.0" />
   <link rel="icon" type="image/png" href="favicon.png">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -514,7 +514,9 @@
       <section class="card answers-card" aria-label="Answer inputs">
         <div class="panel-label">SOLUTION</div>
 <div class="answers-grid">
-  <div class="answers-grid-spacer" aria-hidden="true"></div>
+  <div class="answers-grid-spacer">
+    <button id="notepadToggleBtn" class="notepad-toggle-btn" type="button" title="Open notes" aria-label="Open notes">📝</button>
+  </div>
   <div class="answer-item"><span class="answer-label">A =</span><select id="A" class="answer-select" aria-label="A"></select></div>
   <div class="answer-item"><span class="answer-label">B =</span><select id="B" class="answer-select" aria-label="B"></select></div>
   <div class="answer-item"><span class="answer-label">C =</span><select id="C" class="answer-select" aria-label="C"></select></div>
@@ -560,6 +562,7 @@
   <div class="modal-section-title">September 9, 2026</div>
   <ul>
     <li>Click-and-drag (or swipe, on mobile) across the elimination grid to cross out — or restore — a whole run of cells in one motion.</li>
+    <li>Notepad feature added to puzzle window.</li>
   </ul>
 </div>
 
@@ -634,6 +637,16 @@
     </div>
   </div>
 </div>
+
+<!-- NOTEPAD (desktop only, per-puzzle scratch notes) -->
+<div id="notepadPanel" class="notepad-panel" role="dialog" aria-label="Notes">
+  <div class="notepad-header" id="notepadHeader">
+    <span>NOTES</span>
+    <button class="notepad-close" id="notepadCloseBtn" aria-label="Close notes">&times;</button>
+  </div>
+  <textarea id="notepadTextarea" class="notepad-textarea" placeholder="Jot down notes for this puzzle..." spellcheck="false"></textarea>
+</div>
+<!-- END NOTEPAD -->
 
   </main>
 
@@ -755,9 +768,9 @@
   </div>
   <!-- ── END HISTORY OVERLAY ──────────────────────────────────────── -->
 
-  <script src="app.js?v=4.4"></script>
+  <script src="app.js?v=5.0"></script>
   <script src="session.js?v=2.0"></script>
   <script src="daily.js?v=3.0"></script>
-  <script src="popup.js?v=3.1"></script>
+  <script src="popup.js?v=4.0"></script>
 </body>
 </html>
