@@ -321,8 +321,7 @@ function buildGridRows() {
 
       // ── MOBILE TOUCH: tap = instant toggle, long-press = lock/select,
       // swipe = drag-eliminate across cells (same one-undo-step behavior
-      // as the desktop mouse drag). Desktop click/contextmenu above are
-      // untouched by this.
+      // as the desktop mouse drag).
       let touchTimer = null;
       let touchStartX = 0, touchStartY = 0, touchMoved = false, longPressFired = false;
       const LONG_PRESS_MS = 450;
@@ -330,8 +329,6 @@ function buildGridRows() {
 
       cell.addEventListener('touchstart', (e) => {
         if (e.touches.length !== 1) return;
-        // Block scrolling for the entire duration of this touch, starting
-        // at first contact — not just once a drag/long-press is detected.
         e.preventDefault();
         lastTouchAt = Date.now();
         touchMoved = false;
@@ -347,13 +344,8 @@ function buildGridRows() {
 
       cell.addEventListener('touchmove', (e) => {
         if (!e.touches.length) return;
-        // Block scrolling for the entire duration of this touch — once a
-        // cell has been pressed, the page must not scroll until the finger
-        // lifts, regardless of whether a drag has actually started yet.
         e.preventDefault();
 
-        // Once a swipe-drag is underway, keep it going: find whatever cell
-        // is under the finger right now and toggle it.
         if (touchDragState) {
           const t = e.touches[0];
           const el = document.elementFromPoint(t.clientX, t.clientY);
@@ -3728,7 +3720,11 @@ function getShareData() {
   'use strict';
 
   const NOTES_KEY = 'sfl_notes_v1';
-  const NOTES_CAP = 500;
+  const NOTES_CAP_FALLBACK = 1000; // used only if SFLHistory hasn't loaded/set CAP yet
+
+  function getNotesCap() {
+    return (window.SFLHistory && window.SFLHistory.CAP) ? window.SFLHistory.CAP * 2 : NOTES_CAP_FALLBACK;
+  }
 
   function loadNotesStore() {
     try {
@@ -3773,13 +3769,24 @@ function getShareData() {
     } else {
       delete store[key]; // no point persisting an empty note
     }
+    const cap = getNotesCap();
     const keys = Object.keys(store);
-    if (keys.length > NOTES_CAP) {
+    if (keys.length > cap) {
       keys.sort((a, b) => (store[a].savedAt || 0) - (store[b].savedAt || 0));
-      while (keys.length > NOTES_CAP) delete store[keys.shift()];
+      while (keys.length > cap) delete store[keys.shift()];
     }
     saveNotesStore(store);
   }
+
+  window._sflDeleteNoteForKey = function (sol) {
+    const key = computeNoteKey(sol);
+    if (!key) return;
+    const store = loadNotesStore();
+    if (store[key]) {
+      delete store[key];
+      saveNotesStore(store);
+    }
+  };
 
   let currentNoteKey    = null;
   let notepadTextarea   = null;

@@ -24,6 +24,7 @@
   }
 
   window.SFLHistory = {
+    CAP: HISTORY_CAP,
     record(entry) {
       // entry: { puzzleRating, mode, solveTime, mistakes, grade, gaveUp, date,
       //          sol, gridState, answerState, clueStates, mistakeBoxes, penaltyText }
@@ -33,12 +34,18 @@
       // Cap is per-mode — drop the oldest entry of the same mode once over cap
       const modeCounts = {};
       const trimmed = [];
+      const evicted = [];
       for (const e of arr) {
         const m = e.mode || 'casual';
         modeCounts[m] = (modeCounts[m] || 0) + 1;
         if (modeCounts[m] <= HISTORY_CAP) trimmed.push(e);
+        else evicted.push(e);
       }
       saveHistory(trimmed);
+
+      if (evicted.length && window._sflDeleteNoteForKey) {
+        evicted.forEach(e => { if (e.sol) window._sflDeleteNoteForKey(e.sol); });
+      }
     },
     getAll() { return loadHistory(); },
   };
