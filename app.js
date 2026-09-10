@@ -3833,6 +3833,7 @@ function getShareData() {
         panel.classList.toggle('open', opening);
         if (opening && notepadTextarea) {
           notepadTextarea.value = getNoteForKey(currentNoteKey);
+          notepadTextarea.focus();
         }
       });
     }
