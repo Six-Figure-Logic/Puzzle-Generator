@@ -330,6 +330,9 @@ function buildGridRows() {
 
       cell.addEventListener('touchstart', (e) => {
         if (e.touches.length !== 1) return;
+        // Block scrolling for the entire duration of this touch, starting
+        // at first contact — not just once a drag/long-press is detected.
+        e.preventDefault();
         lastTouchAt = Date.now();
         touchMoved = false;
         longPressFired = false;
@@ -340,15 +343,18 @@ function buildGridRows() {
           lastTouchAt = Date.now();
           lockOrUnlockCell(cell);
         }, LONG_PRESS_MS);
-      }, { passive: true });
+      }, { passive: false });
 
       cell.addEventListener('touchmove', (e) => {
         if (!e.touches.length) return;
+        // Block scrolling for the entire duration of this touch — once a
+        // cell has been pressed, the page must not scroll until the finger
+        // lifts, regardless of whether a drag has actually started yet.
+        e.preventDefault();
 
         // Once a swipe-drag is underway, keep it going: find whatever cell
-        // is under the finger right now and toggle it, and block scrolling.
+        // is under the finger right now and toggle it.
         if (touchDragState) {
-          e.preventDefault();
           const t = e.touches[0];
           const el = document.elementFromPoint(t.clientX, t.clientY);
           const targetCell = el && el.closest ? el.closest('.cell') : null;
@@ -368,7 +374,6 @@ function buildGridRows() {
           clearTimeout(touchTimer);
           // Movement beat the long-press timer — this is a swipe, not a
           // tap or a hold. Start the drag gesture from the origin cell.
-          e.preventDefault();
           touchDragState = {
             targetCrossed: !cell.classList.contains('crossed')
           };
