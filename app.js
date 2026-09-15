@@ -57,11 +57,6 @@ function stopTimer() {
 let lastTouchAt = 0;
 
 // ── LEFT-CLICK DRAG-TO-ELIMINATE (desktop) ──────────────────────────────
-// Holding left click and dragging across cells toggles every cell the
-// pointer passes over to match the direction of the first cell (open→cross
-// or cross→open), all as a single undo/redo step. Plain clicks (no
-// movement between mousedown/mouseup) fall through untouched to the
-// existing 'click' listener in buildGridRows.
 let dragState = null;
 let suppressNextClick = false;
 let touchDragState = null;
@@ -76,10 +71,6 @@ function applyDragCell(cell, targetCrossed) {
 
 document.addEventListener('mouseup', () => {
   if (dragState && dragState.moved) {
-    // Suppress a trailing 'click' event only if one actually follows (e.g.
-    // the drag looped back and released over its own origin cell) — clear
-    // the flag on the next tick regardless so it can never leak into an
-    // unrelated future click.
     suppressNextClick = true;
     setTimeout(() => { suppressNextClick = false; }, 0);
   }
@@ -175,7 +166,8 @@ function lockOrUnlockCell(cell) {
   const rowCells = gridEl.querySelectorAll(`.cell[data-row="${letter}"]`);
   const uncrossed = Array.from(rowCells).filter(c => !c.classList.contains('crossed'));
   const isSoleSurvivor = uncrossed.length === 1 && uncrossed[0] === cell;
-  const hasRevertibleLock = letterLocks[letter] && letterLocks[letter].value === value;
+  const lock = letterLocks[letter];
+  const hasRevertibleLock = lock && lock.value === value && lock.delta.length > 0;
 
   if (isSoleSurvivor && hasRevertibleLock) {
     pushHistory();
@@ -183,11 +175,37 @@ function lockOrUnlockCell(cell) {
     const select = document.getElementById(letter);
     if (select) select.value = '';
     checkDuplicateAnswers();
-    checkAutoAssignRows();   // ← add
+    checkAutoAssignRows();
+  } else if (isSoleSurvivor) {
+    return;
   } else {
     assignLetterValue(letter, value);
   }
 }
+
+function rebuildLetterLocksFromGrid() {
+  if (window._sflClearHintGlow) window._sflClearHintGlow();
+  for (const k in letterLocks) delete letterLocks[k];
+  for (const k in columnLocks) delete columnLocks[k];
+
+  inputIds.forEach(letter => {
+    const select = document.getElementById(letter);
+    const rowCells = gridEl.querySelectorAll(`.cell[data-row="${letter}"]`);
+    const uncrossed = Array.from(rowCells).filter(c => !c.classList.contains('crossed'));
+
+    if (uncrossed.length === 1) {
+      const value = uncrossed[0].dataset.value;
+      letterLocks[letter] = { value, delta: [] };
+      if (select) select.value = value;
+    } else if (select) {
+      select.value = '';
+    }
+  });
+
+  checkDuplicateAnswers();
+  if (window.SFLSession && window.SFLSession.triggerSave) window.SFLSession.triggerSave();
+}
+window._sflRebuildLetterLocks = rebuildLetterLocksFromGrid;
 
 function buildColumnHeaderButtons() {
   const headerRow = document.createElement('div');
@@ -441,7 +459,7 @@ if (undoBtn) undoBtn.addEventListener('click', () => {
   redoStack.push(getGridSnapshot());
   applyGridSnapshot(undoStack.pop());
   updateUndoRedoBtns();
-  checkAutoAssignRows();
+  rebuildLetterLocksFromGrid();
 });
 
 if (redoBtn) redoBtn.addEventListener('click', () => {
@@ -449,7 +467,7 @@ if (redoBtn) redoBtn.addEventListener('click', () => {
   undoStack.push(getGridSnapshot());
   applyGridSnapshot(redoStack.pop());
   updateUndoRedoBtns();
-  checkAutoAssignRows();
+  rebuildLetterLocksFromGrid();
 });
 
 function toggleCell(cell) {
