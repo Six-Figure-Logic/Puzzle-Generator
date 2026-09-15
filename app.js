@@ -2548,7 +2548,7 @@ populateAnswerSelects();
     if (_pc2) _pc2.disabled = false;
     if (_pr2) _pr2.disabled = false;
 
-    newPuzzleBtn.innerHTML = '< BACK';
+    newPuzzleBtn.innerHTML = '<span class="btn-icon">< Back</span>';
     newPuzzleBtn.dataset.backMode = '1';
     newPuzzleBtn.classList.remove('give-up-active');
     penaltyEl.classList.remove('visible');

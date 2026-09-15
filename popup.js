@@ -806,7 +806,6 @@ function nextMinClueScore() {
     const bonusPlayBtn  = document.getElementById('bonusUnlockedPlayBtn');
     if (bonusLaterBtn) bonusLaterBtn.addEventListener('click', () => {
       closeBonusUnlockedPopup();
-      setTimeout(openDailyPopup, 50);
     });
     if (bonusPlayBtn) bonusPlayBtn.addEventListener('click', () => {
       closeBonusUnlockedPopup();
@@ -979,7 +978,7 @@ function nextMinClueScore() {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // RESULT POPUP CLOSE — return to daily popup if puzzle was a daily
+    // RESULT POPUP CLOSE
     // ═══════════════════════════════════════════════════════════════════
     const resultCloseBtn = document.getElementById('resultCloseBtn');
     if (resultCloseBtn) {
@@ -988,13 +987,8 @@ function nextMinClueScore() {
         const justUnlockedExtreme = !!window._sflJustUnlockedExtreme;
         window._sflJustUnlockedExtreme = false;
         if (ctx && ctx.isDaily && !ctx.isReview) {
-          setBackMode(false);
-          ctx.isReview = false;
-          showMainMenu();
           if (justUnlockedExtreme) {
             setTimeout(openBonusUnlockedPopup, 50);
-          } else {
-            setTimeout(openDailyPopup, 50);
           }
         }
       });
