@@ -1850,6 +1850,9 @@ header h1 {
   min-height: 0;
   user-select: text;
   -webkit-user-select: text;
+  font-variant-ligatures: none;
+  -webkit-font-feature-settings: "calt" 0, "liga" 0, "dlig" 0;
+  font-feature-settings: "calt" 0, "liga" 0, "dlig" 0;
 }
 
 /* ══════════════════════════════════════════
